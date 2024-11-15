@@ -1,92 +1,61 @@
-import requests
-import yfinance as yf
+import FinanceDataReader as fdr
 import pandas as pd
+import ta  # 기술적 지표 계산을 위한 라이브러리
 
-# KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
-def get_stock_codes():
-    url = 'https://api.krx.co.kr/contents/COM/GenerateOTP.jspx'
-    params = {
-        'bld': 'COM/01/COM01_01',
-        'name': 'fileDown'
-    }
-
-    # OTP 요청
-    otp_response = requests.get(url, params=params)
-    otp = otp_response.text
-
-    # 종목 코드 요청
-    url = 'https://api.krx.co.kr/contents/COM/01/COM01_01.jspx'
-    headers = {
-        'referer': 'http://www.krx.co.kr/',
-        'User-Agent': 'Mozilla/5.0'
-    }
-    data = {
-        'code': otp,
-        'marketType': 'ALL',
-        'pageIndex': 1,
-        'pageSize': 1000
-    }
-
-    response = requests.post(url, headers=headers, data=data)
-
-    if response.status_code != 200:
-        print(f"Error fetching stock codes: {response.status_code}")
-        return [], []
-
-    # JSON 응답 처리
-    stock_data = response.json()
-    kospi_codes = []
-    kosdaq_codes = []
-
-    for item in stock_data['data']:
-        code = item['code']
-        market_type = item['marketType']
-        if market_type == 'KOSPI':
-            kospi_codes.append(code)
-        elif market_type == 'KOSDAQ':
-            kosdaq_codes.append(code)
-
-    return kospi_codes, kosdaq_codes
-
-def fetch_stock_data(stock_code):
-    """주식 데이터를 가져오는 함수"""
-    try:
-        data = yf.download(stock_code + '.KS', period='1y')  # KOSPI 종목 코드에 '.KS' 추가
-        return data
-    except Exception as e:
-        print(f"Error fetching data for {stock_code}: {e}")
-        return None
-
-def analyze_stock(data):
-    """주식 데이터를 분석하고 조건을 만족하는지 확인하는 함수"""
-    data['SMA_50'] = data['Close'].rolling(window=50).mean()  # 50일 이동 평균
-    data['SMA_200'] = data['Close'].rolling(window=200).mean()  # 200일 이동 평균
-
+def calculate_indicators(df):
+    """MACD와 윌리엄스 %R을 계산하는 함수."""
     # MACD 계산
-    data['EMA_12'] = data['Close'].ewm(span=12, adjust=False).mean()
-    data['EMA_26'] = data['Close'].ewm(span=26, adjust=False).mean()
-    data['MACD'] = data['EMA_12'] - data['EMA_26']
-    data['Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()
+    df['macd'] = ta.trend.MACD(df['Close']).macd()
+    
+    # 윌리엄스 %R 계산
+    df['williams_r'] = ta.momentum.WilliamsR(df['High'], df['Low'], df['Close'], window=14)
 
-    # 조건: SMA 50이 SMA 200을 상회하고 MACD가 0 이상일 때
-    if data['SMA_50'].iloc[-1] > data['SMA_200'].iloc[-1] and data['MACD'].iloc[-1] > 0:
-        return True
-    return False
+    return df
 
-# KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
-kospi_codes, kosdaq_codes = get_stock_codes()
+def search_stocks():
+    """주식 종목을 검색하는 함수."""
+    # 코스피와 코스닥 종목 목록 가져오기
+    kospi = fdr.StockListing('KOSPI')
+    kosdaq = fdr.StockListing('KOSDAQ')
+    
+    # 종목 목록을 하나의 데이터프레임으로 합치기
+    stocks = pd.concat([kospi, kosdaq])
+    result = []
 
-# 조건을 만족하는 종목을 찾기
-selected_stocks = []
+    for symbol in stocks['Symbol']:
+        try:
+            # 최근 10일 데이터 가져오기
+            df = fdr.DataReader(symbol, start='2023-11-01')
+            if len(df) < 10:
+                continue  # 데이터가 10일 미만인 경우 건너뛰기
 
-for stock_code in kospi_codes + kosdaq_codes:  # KOSPI와 KOSDAQ 종목 모두 포함
-    print(f"Fetching data for {stock_code}...")
-    stock_data = fetch_stock_data(stock_code)
-    if stock_data is not None and analyze_stock(stock_data):
-        selected_stocks.append(stock_code)
+            # 장대 양봉 조건 확인
+            recent_data = df.iloc[-10:]
+            last_close = recent_data['Close'].iloc[-1]
+            prev_close = recent_data['Close'].iloc[-2]
 
-# 결과 출력
-if selected_stocks:
-    print("조건을 만족하는 종목:", selected_stocks)
-else:
-    print("조건을 만족하는 종목이 없습니다.")
+            if last_close >= prev_close * 1.3:  # 장대 양봉 조건
+                # MACD와 윌리엄스 %R 계산
+                df = calculate_indicators(df)
+                
+                # MACD와 윌리엄스 %R 조건 확인
+                if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
+                    result.append({
+                        'Symbol': symbol,
+                        'Name': stocks[stocks['Symbol'] == symbol]['Name'].values[0],
+                        'Last Close': last_close,
+                        'MACD': df['macd'].iloc[-1],
+                        'Williams %R': df['williams_r'].iloc[-1]
+                    })
+        except Exception as e:
+            print(f"{symbol} 처리 중 오류 발생: {e}")
+    
+    return pd.DataFrame(result)
+
+if __name__ == "__main__":
+    result = search_stocks()
+    
+    if not result.empty:
+        print(result)
+    else:
+        print("조건에 맞는 종목이 없습니다.")
