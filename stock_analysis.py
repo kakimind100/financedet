@@ -6,14 +6,8 @@ import pandas as pd
 # KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
 def get_stock_codes():
     url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
-    params = {
-        'method': 'download',
-        'pageIndex': '1',
-        'pageSize': '1000'
-    }
-
-    res = requests.get(url, params=params)
-
+    res = requests.get(url)
+    
     if res.status_code != 200:
         print(f"Error fetching stock codes: {res.status_code}")
         return [], []
@@ -22,8 +16,8 @@ def get_stock_codes():
     with open('stock_list.csv', 'wb') as f:
         f.write(res.content)
 
-    # CSV 파일을 읽어와서 종목 코드 추출
-    stock_data = pd.read_csv('stock_list.csv')
+    # CSV 파일을 EUC-KR 인코딩으로 읽어와서 종목 코드 추출
+    stock_data = pd.read_csv('stock_list.csv', encoding='EUC-KR')
     kospi_codes = stock_data[stock_data['시장구분'] == 'KOSPI']['종목코드'].tolist()
     kosdaq_codes = stock_data[stock_data['시장구분'] == 'KOSDAQ']['종목코드'].tolist()
 
