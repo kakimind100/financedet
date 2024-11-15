@@ -1,10 +1,13 @@
 name: Python application
 
-on: [push, pull_request]
+on: 
+  push:
+    branches:
+      - main  # main 브랜치에 푸시할 때만 실행
+  pull_request:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -18,7 +21,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install -r requirements.txt  # requirements.txt에서 종속성 설치
 
     - name: Run stock analysis
       env:
