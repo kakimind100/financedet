@@ -12,7 +12,7 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),  # logs/stock_analysis.log에 저장
-    level=logging.DEBUG,  # DEBUG 레벨로 로그 기록 (더 많은 정보 기록)
+    level=logging.DEBUG,  # DEBUG 레벨로 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -50,20 +50,20 @@ def search_stocks(start_date):
 
     result = []
 
-    # 'Symbol' 열이 존재하는지 확인
-    if 'Symbol' not in column_names:
-        logging.error("'Symbol' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(column_names))
-        print("Error: 'Symbol' 열이 존재하지 않습니다.")
+    # 'Code' 열을 사용하도록 수정
+    if 'Code' not in column_names:
+        logging.error("'Code' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(column_names))
+        print("Error: 'Code' 열이 존재하지 않습니다.")
         return pd.DataFrame()
 
-    for symbol in stocks['Symbol']:
-        logging.info(f"{symbol} 처리 시작")
+    for code in stocks['Code']:  # 'Symbol' 대신 'Code' 사용
+        logging.info(f"{code} 처리 시작")
         try:
-            df = fdr.DataReader(symbol, start=start_date)
-            logging.info(f"{symbol} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
+            df = fdr.DataReader(code, start=start_date)
+            logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
             
             if len(df) < 10:
-                logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
+                logging.warning(f"{code} 데이터가 10일 미만으로 건너뜁니다.")
                 continue
             
             recent_data = df.iloc[-10:]  # 최근 10일 데이터
@@ -76,19 +76,19 @@ def search_stocks(start_date):
                 
                 # MACD와 윌리엄스 %R 조건 확인
                 if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
-                    logging.info(f"{symbol} 조건 만족: Last Close={last_close}, MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
+                    logging.info(f"{code} 조건 만족: Last Close={last_close}, MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
                     result.append({
-                        'Symbol': symbol,
-                        'Name': stocks[stocks['Symbol'] == symbol]['Name'].values[0],
+                        'Code': code,
+                        'Name': stocks[stocks['Code'] == code]['Name'].values[0],
                         'Last Close': last_close,
                         'MACD': df['macd'].iloc[-1],
                         'Williams %R': df['williams_r'].iloc[-1]
                     })
                     continue
             
-            logging.info(f"{symbol} 조건 불만족")
+            logging.info(f"{code} 조건 불만족")
         except Exception as e:
-            logging.error(f"{symbol} 처리 중 오류 발생: {e}")
+            logging.error(f"{code} 처리 중 오류 발생: {e}")
 
     logging.info("주식 검색 완료")
     return pd.DataFrame(result)
