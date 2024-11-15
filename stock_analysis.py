@@ -1,8 +1,13 @@
+import FinanceDataReader as fdr
 import yfinance as yf
 import pandas as pd
 
-# 한국 주식 종목 리스트 가져오기 (예시로 KOSPI 200 종목 사용)
-tickers = ['005930.KS', '000660.KS', '035420.KS']  # 삼성전자, SK하이닉스, NAVER의 티커
+# 한국 주식 종목 리스트 가져오기 (KOSPI와 KOSDAQ)
+kospi = fdr.StockListing('KOSPI')
+kosdaq = fdr.StockListing('KOSDAQ')
+
+# KOSPI와 KOSDAQ의 종목 코드를 합칩니다.
+tickers = kospi['Code'].tolist() + kosdaq['Code'].tolist()
 
 # 결과를 저장할 리스트
 final_results = []
@@ -11,7 +16,10 @@ final_results = []
 for ticker in tickers:
     try:
         # 최근 5거래일 데이터 가져오기
-        data = yf.download(ticker, period='5d')
+        data = yf.download(ticker + '.KS', period='5d')  # KOSPI 종목에 '.KS' 추가
+        # KOSDAQ 종목에 대해서도 '.KQ'를 추가해야 합니다.
+        if ticker in kosdaq['Code'].tolist():
+            data = yf.download(ticker + '.KQ', period='5d')  # KOSDAQ 종목에 '.KQ' 추가
 
         # 상한가 계산 (예시로 5% 상승)
         upper_limit = data['Close'].shift(1) * 1.05
