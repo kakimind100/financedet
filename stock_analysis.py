@@ -6,32 +6,26 @@ import pandas as pd
 # KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
 def get_stock_codes():
     url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
-    res = requests.get(url)
-    
+    params = {
+        'method': 'download',
+        'pageIndex': '1',
+        'pageSize': '1000'
+    }
+
+    res = requests.get(url, params=params)
+
     if res.status_code != 200:
         print(f"Error fetching stock codes: {res.status_code}")
         return [], []
 
-    soup = BeautifulSoup(res.text, 'html.parser')
-    stock_table = soup.find('table', {'class': 'type_1'})
-    
-    if stock_table is None:
-        print("Error: Stock table not found.")
-        return [], []
+    # HTML에서 CSV 파일로 다운로드
+    with open('stock_list.csv', 'wb') as f:
+        f.write(res.content)
 
-    rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
-    kospi_codes = []
-    kosdaq_codes = []
-    
-    for row in rows:
-        cols = row.find_all('td')
-        if len(cols) > 1:
-            code = cols[0].text.strip()  # 종목 코드
-            market_type = cols[1].text.strip()  # 시장 구분 (KOSPI 또는 KOSDAQ)
-            if market_type == 'KOSPI':
-                kospi_codes.append(code)
-            elif market_type == 'KOSDAQ':
-                kosdaq_codes.append(code)
+    # CSV 파일을 읽어와서 종목 코드 추출
+    stock_data = pd.read_csv('stock_list.csv')
+    kospi_codes = stock_data[stock_data['시장구분'] == 'KOSPI']['종목코드'].tolist()
+    kosdaq_codes = stock_data[stock_data['시장구분'] == 'KOSDAQ']['종목코드'].tolist()
 
     return kospi_codes, kosdaq_codes
 
