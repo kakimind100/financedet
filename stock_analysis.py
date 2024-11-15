@@ -25,7 +25,7 @@ logging.getLogger().addHandler(console_handler)
 
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
-    df['macd'] = ta.trend.MACD(df['Close']).macd()
+    df['macd'] = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9).macd()
     df['williams_r'] = ta.momentum.WilliamsR(df['High'], df['Low'], df['Close'], window=14)
     return df
 
@@ -48,8 +48,8 @@ def process_stock(code, start_date):
         if last_close >= prev_close * 1.3:  # 최근 종가가 이전 종가보다 30% 이상 상승
             df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
             
-            # MACD와 윌리엄스 %R 조건 완화
-            if df['macd'].iloc[-1] <= 10 and df['williams_r'].iloc[-1] <= -20:
+            # MACD와 윌리엄스 %R 조건 확인
+            if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
                 result = {
                     'Code': code,
                     'Last Close': last_close,
