@@ -1,14 +1,39 @@
 import yfinance as yf
 import pandas as pd
-import FinanceDataReader as fdr
+import requests
+from bs4 import BeautifulSoup
+
+def get_kospi_kosdaq_tickers():
+    # KOSPI 종목 스크래핑
+    kospi_url = 'https://finance.naver.com/sise/sise_market_sum.naver?sosok=0'
+    response = requests.get(kospi_url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    kospi_table = soup.find('table', class_='type_2')
+    
+    kospi_tickers = []
+    for row in kospi_table.find_all('tr')[2:]:  # 헤더를 제외하고 데이터만 가져옴
+        cols = row.find_all('td')
+        if cols:
+            ticker = cols[1].find('a')['href'].split('=')[1]  # 종목 코드 추출
+            kospi_tickers.append(ticker)
+
+    # KOSDAQ 종목 스크래핑
+    kosdaq_url = 'https://finance.naver.com/sise/sise_market_sum.naver?sosok=1'
+    response = requests.get(kosdaq_url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    kosdaq_table = soup.find('table', class_='type_2')
+    
+    kosdaq_tickers = []
+    for row in kosdaq_table.find_all('tr')[2:]:  # 헤더를 제외하고 데이터만 가져옴
+        cols = row.find_all('td')
+        if cols:
+            ticker = cols[1].find('a')['href'].split('=')[1]  # 종목 코드 추출
+            kosdaq_tickers.append(ticker)
+
+    return kospi_tickers, kosdaq_tickers
 
 # KOSPI와 KOSDAQ 종목 리스트 가져오기
-kospi = fdr.StockListing('KOSPI')
-kosdaq = fdr.StockListing('KOSDAQ')
-
-# KOSPI와 KOSDAQ의 종목 코드를 합칩니다.
-kospi_tickers = kospi['Code'].tolist()
-kosdaq_tickers = kosdaq['Code'].tolist()
+kospi_tickers, kosdaq_tickers = get_kospi_kosdaq_tickers()
 
 # 전체 티커 리스트
 tickers = kospi_tickers + kosdaq_tickers
@@ -20,10 +45,10 @@ final_results = []
 for ticker in tickers:
     try:
         # 최근 5거래일 데이터 가져오기
-        if ticker in kospi['Code'].tolist():
-            data = yf.download(ticker + '.KS', period='5d')  # KOSPI 종목에 '.KS' 추가
-        else:
-            data = yf.download(ticker + '.KQ', period='5d')  # KOSDAQ 종목에 '.KQ' 추가
+        if ticker.startswith('0'):  # KOSPI 종목
+            data = yf.download(ticker + '.KS', period='5d')
+        else:  # KOSDAQ 종목
+            data = yf.download(ticker + '.KQ', period='5d')
 
         # 데이터가 없으면 패스
         if data.empty:
@@ -41,9 +66,6 @@ for ticker in tickers:
         exp2 = data['Close'].ewm(span=26, adjust=False).mean()
         data['MACD'] = exp1 - exp2
         data['Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()  # 시그널 라인을 9로 설정
-
-        # 전저가 확인
-        previous_low = data['Low'].min()  # 최근 5일 중 최저가
 
         # William's R 계산
         high14 = data['High'].rolling(window=14).max()
