@@ -7,3 +7,4 @@ requests        # 웹 요청을 위한 라이브러리
 beautifulsoup4  # HTML 파싱을 위한 라이브러리
 ta
 numpy
+finance-datareader
