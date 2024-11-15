@@ -23,7 +23,10 @@ def search_stocks(start_date):
     
     try:
         kospi = fdr.StockListing('KOSPI')  # 코스피 종목 목록
+        logging.info("코스피 종목 목록 가져오기 성공")
+        
         kosdaq = fdr.StockListing('KOSDAQ')  # 코스닥 종목 목록
+        logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
         return pd.DataFrame()
@@ -37,7 +40,7 @@ def search_stocks(start_date):
 
     # 'Symbol' 열이 존재하는지 확인
     if 'Symbol' not in stocks.columns:
-        logging.error("'Symbol' 열이 존재하지 않습니다.")
+        logging.error("'Symbol' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(stocks.columns.tolist()))
         print("Error: 'Symbol' 열이 존재하지 않습니다.")
         return pd.DataFrame()
 
@@ -45,6 +48,8 @@ def search_stocks(start_date):
         logging.info(f"{symbol} 처리 시작")
         try:
             df = fdr.DataReader(symbol, start=start_date)
+            logging.info(f"{symbol} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
+            
             if len(df) < 10:
                 logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
                 continue
