@@ -13,7 +13,7 @@ def get_kospi_kosdaq_tickers():
     kospi_tickers = []
     for row in kospi_table.find_all('tr')[2:]:  # 헤더를 제외하고 데이터만 가져옴
         cols = row.find_all('td')
-        if cols:
+        if len(cols) > 1:  # cols의 길이가 1보다 클 때만 처리
             ticker = cols[1].find('a')['href'].split('=')[1]  # 종목 코드 추출
             kospi_tickers.append(ticker)
 
@@ -26,7 +26,7 @@ def get_kospi_kosdaq_tickers():
     kosdaq_tickers = []
     for row in kosdaq_table.find_all('tr')[2:]:  # 헤더를 제외하고 데이터만 가져옴
         cols = row.find_all('td')
-        if cols:
+        if len(cols) > 1:  # cols의 길이가 1보다 클 때만 처리
             ticker = cols[1].find('a')['href'].split('=')[1]  # 종목 코드 추출
             kosdaq_tickers.append(ticker)
 
