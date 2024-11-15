@@ -82,7 +82,7 @@ def search_stocks(start_date):
         logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        return []
+        return [], None
 
     stocks = pd.concat([kospi, kosdaq])
     
@@ -91,12 +91,13 @@ def search_stocks(start_date):
     logging.info(f"종목 목록 열 이름: {column_names}")  # 열 이름 로깅
 
     result = []
+    last_stock_data = None  # 마지막 종목 데이터 저장
 
     # 'Code' 열을 사용하도록 수정
     if 'Code' not in column_names:
         logging.error("'Code' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(column_names))
         print("Error: 'Code' 열이 존재하지 않습니다.")
-        return []
+        return [], None
 
     # 멀티스레딩으로 주식 데이터 처리
     with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
@@ -105,13 +106,14 @@ def search_stocks(start_date):
             result_data = future.result()
             if result_data:
                 result.append(result_data)
+                last_stock_data = result_data  # 마지막 종목 데이터 업데이트
                 # 5개 종목 찾으면 종료
                 if len(result) >= 5:
                     logging.info("5개 종목을 찾았습니다. 분석 종료.")
-                    return result
+                    return result, last_stock_data
 
     logging.info("주식 검색 완료")
-    return result
+    return result, last_stock_data
 
 if __name__ == "__main__":
     logging.info("스크립트 실행 시작")
@@ -123,15 +125,17 @@ if __name__ == "__main__":
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    result = search_stocks(start_date_str)
+    result, last_stock_data = search_stocks(start_date_str)
     
     if result:
         for item in result:
             print(item)  # 콘솔에 결과 출력
-        # 마지막 종목의 데이터 로그로 출력
-        logging.info(f"마지막 종목 데이터: {result[-1]}")
     else:
         print("조건에 맞는 종목이 없습니다.")
-        logging.info("조건에 맞는 종목이 없습니다.")
+        if last_stock_data:
+            print(f"마지막 종목 데이터: {last_stock_data}")  # 마지막 종목 데이터 출력
+            logging.info(f"마지막 종목 데이터: {last_stock_data}")
+        else:
+            logging.info("조건에 맞는 종목이 없고, 마지막 종목 데이터도 없습니다.")
 
     logging.info("스크립트 실행 완료")
