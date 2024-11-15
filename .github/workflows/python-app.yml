@@ -29,4 +29,4 @@ jobs:
         uses: actions/upload-artifact@v3  # 새로운 버전 사용
         with:
           name: stock-analysis-log
-          path: stock_analysis.log  # 로그 파일 업로드
+          path: logs/stock_analysis.log  # logs 디렉토리에 있는 로그 파일 업로드
