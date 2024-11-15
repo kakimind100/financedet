@@ -3,6 +3,10 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
+import logging
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # KRX에서 코스피 및 코스닥 종목 코드 가져오기
 def get_stock_codes():
@@ -10,7 +14,7 @@ def get_stock_codes():
     res = requests.get(url)
     
     if res.status_code != 200:
-        print(f"Error fetching stock codes: {res.status_code}")
+        logging.error(f"Error fetching stock codes: {res.status_code}")
         return []
 
     soup = BeautifulSoup(res.text, 'html.parser')
@@ -18,7 +22,7 @@ def get_stock_codes():
     
     # stock_table이 None인지 체크
     if stock_table is None:
-        print("Error: Stock table not found.")
+        logging.error("Stock table not found.")
         return []
 
     rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
@@ -30,6 +34,12 @@ def get_stock_codes():
             code = cols[0].text.strip()  # 종목 코드
             stock_codes.append(code)
 
+    # 종목 코드가 없을 경우 로깅
+    if not stock_codes:
+        logging.warning("No stock codes found.")
+    else:
+        logging.info(f"Found {len(stock_codes)} stock codes.")
+    
     return stock_codes
 
 # 주식 데이터 분석 함수
@@ -62,6 +72,12 @@ def analyze_stocks(stocks):
 
             if macd_condition and williams_condition and current_close >= previous_low:
                 selected_stocks.append(stock)
+
+    # 조건을 만족하는 주식이 없을 경우 로깅
+    if not selected_stocks:
+        logging.info("No stocks met the selection criteria.")
+    else:
+        logging.info(f"Selected stocks: {selected_stocks}")
 
     return selected_stocks
 
