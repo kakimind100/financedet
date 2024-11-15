@@ -1,6 +1,7 @@
 name: Python application
 
 on:
+  workflow_dispatch:   # 수동 실행을 위한 설정
   push:
     branches: [ main ]
   pull_request:
@@ -27,4 +28,3 @@ jobs:
     - name: Run script
       run: |
         python stock_analysis.py  # 본인의 파일 이름으로 변경
-
