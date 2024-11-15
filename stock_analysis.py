@@ -2,7 +2,7 @@ import FinanceDataReader as fdr
 import pandas as pd
 import ta  # 기술적 지표 계산을 위한 라이브러리
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # 로깅 설정
 logging.basicConfig(
@@ -66,15 +66,14 @@ def search_stocks(start_date):
     return pd.DataFrame(result)
 
 if __name__ == "__main__":
-    start_date_input = input("분석 시작 날짜를 입력하세요 (YYYY-MM-DD): ")
-    try:
-        start_date = datetime.strptime(start_date_input, '%Y-%m-%d')
-    except ValueError:
-        logging.error("날짜 형식이 올바르지 않습니다.")
-        print("날짜 형식이 올바르지 않습니다.")
-        exit(1)
+    # 최근 10 거래일을 기준으로 시작 날짜 설정
+    today = datetime.today()
+    start_date = today - timedelta(days=10)  # 최근 10 거래일 전 날짜
+    start_date_str = start_date.strftime('%Y-%m-%d')
 
-    result = search_stocks(start_date.strftime('%Y-%m-%d'))
+    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
+
+    result = search_stocks(start_date_str)
     
     if not result.empty:
         print(result)
