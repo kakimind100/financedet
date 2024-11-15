@@ -1,3 +1,2 @@
 yfinance
-FinanceDataReader
 pandas==1.5.3
