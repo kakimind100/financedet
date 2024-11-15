@@ -21,5 +21,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Run stock analysis
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Secrets에서 API 키를 환경 변수로 설정
       run: |
         python stock_analysis.py  # 주식 분석 스크립트 실행
