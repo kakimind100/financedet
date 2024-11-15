@@ -5,7 +5,11 @@ import logging
 from datetime import datetime
 
 # 로깅 설정
-logging.basicConfig(filename='stock_analysis.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    filename='stock_analysis.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
@@ -15,21 +19,23 @@ def calculate_indicators(df):
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
+    logging.info("주식 검색 시작")
     kospi = fdr.StockListing('KOSPI')
     kosdaq = fdr.StockListing('KOSDAQ')
     
-    # 종목 목록을 하나의 데이터프레임으로 합치기
     stocks = pd.concat([kospi, kosdaq])
     
     # 열 이름 확인
-    print("열 이름:", stocks.columns)  # 열 이름 출력
+    logging.info(f"종목 목록 열 이름: {stocks.columns.tolist()}")  # 열 이름 로깅
 
     result = []
 
-    for symbol in stocks['Symbol']:  # 'Symbol' 열이 실제로 존재하는지 확인
+    for symbol in stocks['Symbol']:
+        logging.info(f"{symbol} 처리 시작")
         try:
             df = fdr.DataReader(symbol, start=start_date)
             if len(df) < 10:
+                logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
                 continue
 
             recent_data = df.iloc[-10:]
@@ -40,6 +46,7 @@ def search_stocks(start_date):
                 df = calculate_indicators(df)
                 
                 if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
+                    logging.info(f"{symbol} 조건 만족: Last Close={last_close}, MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
                     result.append({
                         'Symbol': symbol,
                         'Name': stocks[stocks['Symbol'] == symbol]['Name'].values[0],
@@ -47,10 +54,13 @@ def search_stocks(start_date):
                         'MACD': df['macd'].iloc[-1],
                         'Williams %R': df['williams_r'].iloc[-1]
                     })
+                    continue
+            
+            logging.info(f"{symbol} 조건 불만족")
         except Exception as e:
             logging.error(f"{symbol} 처리 중 오류 발생: {e}")
-            print(f"{symbol} 처리 중 오류 발생: {e}")
-    
+
+    logging.info("주식 검색 완료")
     return pd.DataFrame(result)
 
 if __name__ == "__main__":
@@ -58,6 +68,7 @@ if __name__ == "__main__":
     try:
         start_date = datetime.strptime(start_date_input, '%Y-%m-%d')
     except ValueError:
+        logging.error("날짜 형식이 올바르지 않습니다.")
         print("날짜 형식이 올바르지 않습니다.")
         exit(1)
 
@@ -66,6 +77,7 @@ if __name__ == "__main__":
     if not result.empty:
         print(result)
         result.to_csv('stock_analysis_results.csv', index=False)
-        print("결과가 'stock_analysis_results.csv' 파일로 저장되었습니다.")
+        logging.info("결과가 'stock_analysis_results.csv' 파일로 저장되었습니다.")
     else:
         print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
