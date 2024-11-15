@@ -1,25 +1,50 @@
 import requests
-from bs4 import BeautifulSoup
 import yfinance as yf
 import pandas as pd
 
 # KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
 def get_stock_codes():
-    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
-    res = requests.get(url)
-    
-    if res.status_code != 200:
-        print(f"Error fetching stock codes: {res.status_code}")
+    url = 'https://api.krx.co.kr/contents/COM/GenerateOTP.jspx'
+    params = {
+        'bld': 'COM/01/COM01_01',
+        'name': 'fileDown'
+    }
+
+    # OTP 요청
+    otp_response = requests.get(url, params=params)
+    otp = otp_response.text
+
+    # 종목 코드 요청
+    url = 'https://api.krx.co.kr/contents/COM/01/COM01_01.jspx'
+    headers = {
+        'referer': 'http://www.krx.co.kr/',
+        'User-Agent': 'Mozilla/5.0'
+    }
+    data = {
+        'code': otp,
+        'marketType': 'ALL',
+        'pageIndex': 1,
+        'pageSize': 1000
+    }
+
+    response = requests.post(url, headers=headers, data=data)
+
+    if response.status_code != 200:
+        print(f"Error fetching stock codes: {response.status_code}")
         return [], []
 
-    # HTML에서 CSV 파일로 다운로드
-    with open('stock_list.csv', 'wb') as f:
-        f.write(res.content)
+    # JSON 응답 처리
+    stock_data = response.json()
+    kospi_codes = []
+    kosdaq_codes = []
 
-    # CSV 파일을 EUC-KR 인코딩으로 읽어와서 종목 코드 추출
-    stock_data = pd.read_csv('stock_list.csv', encoding='EUC-KR')
-    kospi_codes = stock_data[stock_data['시장구분'] == 'KOSPI']['종목코드'].tolist()
-    kosdaq_codes = stock_data[stock_data['시장구분'] == 'KOSDAQ']['종목코드'].tolist()
+    for item in stock_data['data']:
+        code = item['code']
+        market_type = item['marketType']
+        if market_type == 'KOSPI':
+            kospi_codes.append(code)
+        elif market_type == 'KOSDAQ':
+            kosdaq_codes.append(code)
 
     return kospi_codes, kosdaq_codes
 
