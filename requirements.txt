@@ -1,2 +1,4 @@
 yfinance
 pandas==1.5.3
+beautifulsoup4
+requests
