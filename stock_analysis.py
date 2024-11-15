@@ -12,9 +12,15 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),  # logs/stock_analysis.log에 저장
-    level=logging.WARNING,  # WARNING 레벨로 로그 기록
+    level=logging.DEBUG,  # DEBUG 레벨로 로그 기록 (더 많은 정보 기록)
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
