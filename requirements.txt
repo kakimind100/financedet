@@ -5,6 +5,7 @@ asyncio         # 비동기 프로그래밍
 pandas_ta       # 기술적 지표 계산을 위한 라이브러리
 requests        # 웹 요청을 위한 라이브러리
 beautifulsoup4  # HTML 파싱을 위한 라이브러리
-ta
 numpy
 finance-datareader
+ta
+plotly
