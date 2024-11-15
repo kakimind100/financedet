@@ -3,10 +3,15 @@ import pandas as pd
 import ta  # 기술적 지표 계산을 위한 라이브러리
 import logging
 from datetime import datetime, timedelta
+import os
+
+# 로그 디렉토리 생성
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
 
 # 로깅 설정
 logging.basicConfig(
-    filename='stock_analysis.log',
+    filename=os.path.join(log_dir, 'stock_analysis.log'),  # logs/stock_analysis.log에 저장
     level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
