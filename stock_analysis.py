@@ -13,9 +13,15 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,
+    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상의 로그만 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
@@ -31,15 +37,16 @@ def process_stock(code, start_date):
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
         
         if len(df) < 10:
-            logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
+            logging.warning(f"{code} 데이터가 10일 미만으로 건너뜁니다.")
             return None
         
-        recent_data = df.iloc[-26:]  # 최근 26일 데이터
+        recent_data = df.iloc[-10:]  # 최근 10일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
         prev_close = recent_data['Close'].iloc[-2]  # 이전 종가
 
         # 장대 양봉 조건 확인
-        if last_close >= prev_close * 1.3:  # 최근 종가가 이전 종가보다 30% 이상 상승
+        if last_close >= prev_close * 1.3:
+            logging.info(f"{code} 장대 양봉 조건 만족: 최근 종가 {last_close}, 이전 종가 {prev_close}")
             df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
             
             # MACD와 윌리엄스 %R 조건 확인
@@ -50,10 +57,13 @@ def process_stock(code, start_date):
                     'MACD': df['macd'].iloc[-1],
                     'Williams %R': df['williams_r'].iloc[-1]
                 }
-                logging.info(f"조건 만족: {result}")
+                logging.info(f"{code} 조건 만족: {result}")
                 return result
+            else:
+                logging.info(f"{code} 조건 불만족: MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
+        else:
+            logging.info(f"{code} 장대 양봉 조건 불만족: 최근 종가 {last_close}, 이전 종가 {prev_close}")
 
-        logging.info(f"{code} 조건 불만족")
         return {
             'Code': code,
             'Last Close': last_close,
@@ -97,7 +107,7 @@ if __name__ == "__main__":
     
     # 최근 10 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
-    start_date = today - timedelta(days=26)  # 최근 26 거래일 전 날짜
+    start_date = today - timedelta(days=10)  # 최근 10 거래일 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
@@ -109,5 +119,6 @@ if __name__ == "__main__":
             print(item)  # 콘솔에 결과 출력
     else:
         print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
 
     logging.info("스크립트 실행 완료")
