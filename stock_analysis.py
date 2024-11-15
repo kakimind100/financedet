@@ -34,13 +34,14 @@ def search_stocks(start_date):
     stocks = pd.concat([kospi, kosdaq])
     
     # 열 이름 확인
-    logging.info(f"종목 목록 열 이름: {stocks.columns.tolist()}")  # 열 이름 로깅
+    column_names = stocks.columns.tolist()
+    logging.info(f"종목 목록 열 이름: {column_names}")  # 열 이름 로깅
 
     result = []
 
     # 'Symbol' 열이 존재하는지 확인
-    if 'Symbol' not in stocks.columns:
-        logging.error("'Symbol' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(stocks.columns.tolist()))
+    if 'Symbol' not in column_names:
+        logging.error("'Symbol' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(column_names))
         print("Error: 'Symbol' 열이 존재하지 않습니다.")
         return pd.DataFrame()
 
@@ -49,6 +50,9 @@ def search_stocks(start_date):
         try:
             df = fdr.DataReader(symbol, start=start_date)
             logging.info(f"{symbol} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
+            
+            # 데이터 내용 로깅
+            logging.info(f"{symbol} 데이터 샘플:\n{df.tail()}")  # 마지막 5행 로깅
             
             if len(df) < 10:
                 logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
