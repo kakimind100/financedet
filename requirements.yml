@@ -1,0 +1,9 @@
+name: stock_analysis_env
+channels:
+  - defaults
+dependencies:
+  - python=3.8
+  - pip
+  - pip:
+      - finance-datareader
+      - plotly
