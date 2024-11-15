@@ -1,66 +1,79 @@
-import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 import yfinance as yf
-import pandas_ta as ta
-import logging
+import pandas as pd
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# CSV 파일 경로
-csv_file_path = 'path/to/your/stock_list.csv'  # CSV 파일의 경로를 수정하세요.
-
-# CSV 파일에서 종목 코드 가져오기
-def get_stock_codes_from_csv():
-    try:
-        df = pd.read_csv(csv_file_path)
-        return df['종목코드'].tolist()  # '종목코드' 컬럼 이름에 맞게 변경
-    except Exception as e:
-        logging.error(f"Error reading stock codes from CSV: {e}")
-        return []
-
-# 주식 데이터 분석 함수
-def analyze_stocks(stocks):
-    selected_stocks = []
+# KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
+def get_stock_codes():
+    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
+    res = requests.get(url)
     
-    for stock in stocks:
-        # Yahoo Finance에서 데이터 가져오기 (KOSPI 종목은 '.KS' 추가)
-        data = yf.download(stock + '.KS', period='30d')
+    if res.status_code != 200:
+        print(f"Error fetching stock codes: {res.status_code}")
+        return [], []
 
-        # 30% 양봉 확인
-        data['Body'] = data['Close'] - data['Open']
-        data['Range'] = data['High'] - data['Low']
-        data['Large_Candle'] = (data['Body'].abs() / data['Range']) > 0.3  # 30% 이상
-        data['Large_Candle'] = data['Large_Candle'] & (data['Body'] > 0)  # 양봉인지 확인
+    soup = BeautifulSoup(res.text, 'html.parser')
+    stock_table = soup.find('table', {'class': 'type_1'})
+    
+    if stock_table is None:
+        print("Error: Stock table not found.")
+        return [], []
 
-        # 최근 10일간 장대양봉 발생 여부
-        recent_large_candles = data['Large_Candle'].iloc[-10:].any()
+    rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
+    kospi_codes = []
+    kosdaq_codes = []
+    
+    for row in rows:
+        cols = row.find_all('td')
+        if len(cols) > 1:
+            code = cols[0].text.strip()  # 종목 코드
+            market_type = cols[1].text.strip()  # 시장 구분 (KOSPI 또는 KOSDAQ)
+            if market_type == 'KOSPI':
+                kospi_codes.append(code)
+            elif market_type == 'KOSDAQ':
+                kosdaq_codes.append(code)
 
-        if recent_large_candles:
-            # MACD 및 윌리엄스 %R 계산
-            data['MACD'] = ta.macd(data['Close'])['macd']
-            data['Williams'] = ta.williams(data['High'], data['Low'], data['Close'])
+    return kospi_codes, kosdaq_codes
 
-            # 조건 체크
-            macd_condition = data['MACD'].iloc[-1] < 5
-            williams_condition = data['Williams'].iloc[-1] < 0
-            previous_low = data['Close'].min()  # 전저점
-            current_close = data['Close'].iloc[-1]
+def fetch_stock_data(stock_code):
+    """주식 데이터를 가져오는 함수"""
+    try:
+        data = yf.download(stock_code + '.KS', period='1y')  # KOSPI 종목 코드에 '.KS' 추가
+        return data
+    except Exception as e:
+        print(f"Error fetching data for {stock_code}: {e}")
+        return None
 
-            if macd_condition and williams_condition and current_close >= previous_low:
-                selected_stocks.append(stock)
+def analyze_stock(data):
+    """주식 데이터를 분석하고 조건을 만족하는지 확인하는 함수"""
+    data['SMA_50'] = data['Close'].rolling(window=50).mean()  # 50일 이동 평균
+    data['SMA_200'] = data['Close'].rolling(window=200).mean()  # 200일 이동 평균
 
-    if not selected_stocks:
-        logging.info("No stocks met the selection criteria.")
-    else:
-        logging.info(f"Selected stocks: {selected_stocks}")
+    # MACD 계산
+    data['EMA_12'] = data['Close'].ewm(span=12, adjust=False).mean()
+    data['EMA_26'] = data['Close'].ewm(span=26, adjust=False).mean()
+    data['MACD'] = data['EMA_12'] - data['EMA_26']
+    data['Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()
 
-    return selected_stocks
+    # 조건: SMA 50이 SMA 200을 상회하고 MACD가 0 이상일 때
+    if data['SMA_50'].iloc[-1] > data['SMA_200'].iloc[-1] and data['MACD'].iloc[-1] > 0:
+        return True
+    return False
 
-# 종목 코드 가져오기
-stocks = get_stock_codes_from_csv()
+# KRX에서 KOSPI 및 KOSDAQ 종목 코드 가져오기
+kospi_codes, kosdaq_codes = get_stock_codes()
 
-# 조건을 만족하는 주식 찾기
-selected_stocks = analyze_stocks(stocks)
+# 조건을 만족하는 종목을 찾기
+selected_stocks = []
+
+for stock_code in kospi_codes + kosdaq_codes:  # KOSPI와 KOSDAQ 종목 모두 포함
+    print(f"Fetching data for {stock_code}...")
+    stock_data = fetch_stock_data(stock_code)
+    if stock_data is not None and analyze_stock(stock_data):
+        selected_stocks.append(stock_code)
 
 # 결과 출력
-print("조건을 만족하는 주식:", selected_stocks)
+if selected_stocks:
+    print("조건을 만족하는 종목:", selected_stocks)
+else:
+    print("조건을 만족하는 종목이 없습니다.")
