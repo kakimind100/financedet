@@ -1,40 +1,58 @@
-import FinanceDataReader as fdr
+import os
+import openai
+import requests
 import pandas as pd
-import plotly.graph_objects as go
 
-def get_kospi_kosdaq_tickers():
-    # KOSPI와 KOSDAQ 종목 목록 가져오기
-    kospi = fdr.StockListing('KOSPI')
-    kosdaq = fdr.StockListing('KOSDAQ')
-    
-    return kospi['Code'].tolist(), kosdaq['Code'].tolist()
-
-def fetch_stock_data(tickers):
-    stock_data = {}
-    for ticker in tickers:
-        try:
-            # 최근 5거래일 데이터 가져오기
-            data = fdr.DataReader(ticker, '2023-11-01', '2023-11-15')  # 날짜는 필요에 따라 조정
-            stock_data[ticker] = data
-        except Exception as e:
-            print(f"Error fetching data for {ticker}: {e}")
-    return stock_data
-
-def plot_stock_data(stock_data):
-    for ticker, data in stock_data.items():
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines+markers', name='Close Price'))
-        fig.update_layout(title=f'Stock Price for {ticker}', xaxis_title='Date', yaxis_title='Price')
-        fig.show()
+# OpenAI API 키 설정
+openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
 
 # KOSPI와 KOSDAQ 종목 리스트 가져오기
-kospi_tickers, kosdaq_tickers = get_kospi_kosdaq_tickers()
+def get_stock_list():
+    # KOSPI 종목 가져오기
+    kospi_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
+    kospi_response = requests.get(kospi_url)
+    kospi_data = pd.read_html(kospi_response.text)[0]
+    kospi_tickers = kospi_data['종목코드'].tolist()
+    kospi_names = kospi_data['회사명'].tolist()
+    
+    # KOSDAQ 종목 가져오기
+    kosdaq_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
+    kosdaq_response = requests.get(kosdaq_url)
+    kosdaq_data = pd.read_html(kosdaq_response.text)[0]
+    kosdaq_tickers = kosdaq_data['종목코드'].tolist()
+    kosdaq_names = kosdaq_data['회사명'].tolist()
+    
+    return kospi_tickers + kosdaq_tickers, kospi_names + kosdaq_names
 
-# 전체 티커 리스트
-tickers = kospi_tickers + kosdaq_tickers
+# OpenAI API에 종목 조건 전달
+def find_matching_stocks(tickers, names):
+    results = []
+    for ticker, name in zip(tickers, names):
+        # OpenAI API를 통해 조건 확인
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "user",
+                    "content": f"Does the stock {name} (ticker: {ticker}) meet the following conditions? "
+                               f"1. There should be a large bullish candle near the upper limit (30%). "
+                               f"2. MACD should drop below 5 after a large bullish candle. "
+                               f"3. William's R should be below 0. "
+                               f"4. The stock price should be above the previous low before the upper limit."
+                }
+            ]
+        )
+        
+        # 조건 충족 여부 확인
+        if response['choices'][0]['message']['content'].lower() == 'yes':
+            results.append(name)
 
-# 종목 데이터 가져오기
-stock_data = fetch_stock_data(tickers)
+    return results
 
-# 주가 데이터 시각화
-plot_stock_data(stock_data)
+# 메인 실행 부분
+if __name__ == "__main__":
+    tickers, names = get_stock_list()
+    matching_stocks = find_matching_stocks(tickers, names)
+    
+    # 결과 출력
+    print("Matching stocks:", matching_stocks)
