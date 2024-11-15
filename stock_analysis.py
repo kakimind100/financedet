@@ -37,14 +37,16 @@ def search_stocks(start_date):
             if len(df) < 10:
                 logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
                 continue
+            
+            recent_data = df.iloc[-10:]  # 최근 10일 데이터
+            last_close = recent_data['Close'].iloc[-1]  # 최근 종가
+            prev_close = recent_data['Close'].iloc[-2]  # 이전 종가
 
-            recent_data = df.iloc[-10:]
-            last_close = recent_data['Close'].iloc[-1]
-            prev_close = recent_data['Close'].iloc[-2]
-
-            if last_close >= prev_close * 1.3:
-                df = calculate_indicators(df)
+            # 장대 양봉 조건 확인
+            if last_close >= prev_close * 1.3:  # 최근 종가가 이전 종가보다 30% 이상 상승
+                df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
                 
+                # MACD와 윌리엄스 %R 조건 확인
                 if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
                     logging.info(f"{symbol} 조건 만족: Last Close={last_close}, MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
                     result.append({
