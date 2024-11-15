@@ -86,6 +86,8 @@ def search_stocks(start_date):
     return pd.DataFrame(result)
 
 if __name__ == "__main__":
+    logging.info("스크립트 실행 시작")
+    
     # 최근 10 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
     start_date = today - timedelta(days=10)  # 최근 10 거래일 전 날짜
@@ -102,3 +104,5 @@ if __name__ == "__main__":
     else:
         print("조건에 맞는 종목이 없습니다.")
         logging.info("조건에 맞는 종목이 없습니다.")
+
+    logging.info("스크립트 실행 완료")
