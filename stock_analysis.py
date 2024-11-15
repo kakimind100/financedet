@@ -1,25 +1,25 @@
-import FinanceDataReader as fdr
+import yfinance as yf
 import pandas as pd
 
-# 한국 주식 종목 리스트 가져오기
-krx = fdr.StockListing('KOSPI')  # KOSDAQ 사용 시 'KOSDAQ'으로 변경
+# 한국 주식 종목 리스트 가져오기 (예시로 KOSPI 200 종목 사용)
+tickers = ['005930.KS', '000660.KS', '035420.KS']  # 삼성전자, SK하이닉스, NAVER의 티커
 
 # 결과를 저장할 리스트
 final_results = []
 
 # 각 종목에 대해 데이터 가져오기
-for code in krx['Code']:
+for ticker in tickers:
     try:
         # 최근 10거래일 데이터 가져오기
-        data = fdr.DataReader(code, period='10D')
+        data = yf.download(ticker, period='10d')
 
         # 상한가 계산 (예시로 5% 상승)
         upper_limit = data['Close'].shift(1) * 1.05
-        
+
         # 장대 양봉 조건 확인
         data['Is Upper Limit'] = data['Close'] >= upper_limit
         data['Is Large Bullish'] = (data['Close'] > data['Open']) & ((data['Close'] - data['Open']) > (data['High'] - data['Low']) * 0.5)
-        
+
         # MACD 계산
         exp1 = data['Close'].ewm(span=12, adjust=False).mean()
         exp2 = data['Close'].ewm(span=26, adjust=False).mean()
@@ -45,10 +45,10 @@ for code in krx['Code']:
                 if (data['Close'].min() >= previous_low):
                     # William's R이 0 이하인 경우
                     if (data['Williams R'] <= 0).any():
-                        final_results.append({'Code': code, 'Name': krx[krx['Code'] == code]['Name'].values[0]})
+                        final_results.append({'Ticker': ticker})
 
     except Exception as e:
-        print(f"Error processing {code}: {e}")
+        print(f"Error processing {ticker}: {e}")
 
 # 결과 출력
 final_results_df = pd.DataFrame(final_results)
