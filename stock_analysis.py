@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
+from io import StringIO
 
 # KRX에서 코스피 및 코스닥 종목 코드 가져오기
 def get_stock_codes():
@@ -13,7 +14,8 @@ def get_stock_codes():
         print(f"Error fetching stock codes: {res.status_code}")
         return []
 
-    df = pd.read_csv(pd.compat.StringIO(res.text))
+    # CSV 데이터를 DataFrame으로 읽기
+    df = pd.read_csv(StringIO(res.text))
     return df['종목코드'].tolist()  # '종목코드' 컬럼에서 코드만 가져옴
 
 # 주식 데이터 분석 함수
