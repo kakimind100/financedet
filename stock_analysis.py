@@ -30,6 +30,12 @@ def search_stocks(start_date):
 
     result = []
 
+    # 'Symbol' 열이 존재하는지 확인
+    if 'Symbol' not in stocks.columns:
+        logging.error("'Symbol' 열이 존재하지 않습니다.")
+        print("Error: 'Symbol' 열이 존재하지 않습니다.")
+        return pd.DataFrame()
+
     for symbol in stocks['Symbol']:
         logging.info(f"{symbol} 처리 시작")
         try:
