@@ -1,56 +1,63 @@
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
+import numpy as np
 import yfinance as yf
-import asyncio
+import talib
 
-async def fetch_stock_data(ticker):
-    """주식 데이터를 비동기적으로 가져오는 함수"""
-    data = yf.download(ticker, period='1d', interval='1m', progress=False)
-    return data
+# KRX 종목 코드 크롤링
+def get_stock_codes():
+    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'html.parser')
 
-def check_conditions(stock_data):
-    """조건을 확인하는 함수"""
-    if stock_data.empty:
-        return False
+    stock_table = soup.find('table', {'class': 'type_1'})
+    rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
 
-    last_row = stock_data.iloc[-1]
-
-    # MACD 계산
-    stock_data['EMA12'] = stock_data['Close'].ewm(span=12, adjust=False).mean()
-    stock_data['EMA26'] = stock_data['Close'].ewm(span=26, adjust=False).mean()
-    stock_data['MACD'] = stock_data['EMA12'] - stock_data['EMA26']
+    stock_codes = []
+    for row in rows:
+        cols = row.find_all('td')
+        if len(cols) > 1:
+            code = cols[0].text.strip()
+            name = cols[1].text.strip()
+            stock_codes.append(code)  # 종목 코드만 저장
     
-    # William's R 계산
-    high = stock_data['High'].rolling(window=14).max()
-    low = stock_data['Low'].rolling(window=14).min()
-    stock_data['WilliamsR'] = (high - last_row['Close']) / (high - low) * -100
+    return stock_codes
 
-    # 조건 확인
-    macd_condition = stock_data['MACD'].iloc[-1] < 5
-    williams_r_condition = stock_data['WilliamsR'].iloc[-1] < 0
-    price_condition = last_row['Close'] > low.iloc[-2]  # 이전 저점보다 높은지 확인
+# 주식 데이터 분석
+def analyze_stocks(stocks):
+    selected_stocks = []
+    
+    for stock in stocks:
+        # 주식 데이터 가져오기
+        data = yf.download(stock + '.KS', period='30d')  # KOSPI 종목은 .KS 붙여야 함
+        
+        # 10일 이내 장대양봉 발생 여부 확인
+        data['Body'] = data['Close'] - data['Open']
+        data['Range'] = data['High'] - data['Low']
+        data['Large_Candle'] = (data['Body'].abs() / data['Range']) > 0.3  # 30% 이상
 
-    return macd_condition and williams_r_condition and price_condition
+        if data['Large_Candle'].iloc[-10:].any():
+            # MACD 및 윌리엄스 %R 계산
+            data['MACD'], data['MACD_Signal'], _ = talib.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+            data['Williams'] = talib.WILLR(data['High'], data['Low'], data['Close'], timeperiod=14)
 
-async def find_matching_stocks(tickers):
-    """주어진 티커 리스트에서 조건을 충족하는 종목 찾기"""
-    matching_stocks = []
+            # 조건 체크
+            macd_condition = data['MACD'].iloc[-1] < 5
+            williams_condition = data['Williams'].iloc[-1] < 0
+            previous_low = data['Close'].iloc[-11]  # 전저점
+            current_close = data['Close'].iloc[-1]
 
-    tasks = [fetch_stock_data(ticker) for ticker in tickers]
-    results = await asyncio.gather(*tasks)
+            if macd_condition and williams_condition and current_close >= previous_low:
+                selected_stocks.append(stock)
 
-    for ticker, stock_data in zip(tickers, results):
-        if check_conditions(stock_data):
-            matching_stocks.append(ticker)
+    return selected_stocks
 
-    return matching_stocks
+# 종목 코드 가져오기
+stocks = get_stock_codes()
 
-if __name__ == "__main__":
-    # 종목 리스트를 CSV 파일에서 읽어오기
-    tickers_df = pd.read_csv('tickers.csv')  # 종목 리스트 파일
-    tickers = tickers_df['Ticker'].tolist()
+# 조건을 만족하는 주식 찾기
+selected_stocks = analyze_stocks(stocks)
 
-    matching_stocks = asyncio.run(find_matching_stocks(tickers))
-
-    # 결과 출력
-    print("Stocks meeting the conditions:")
-    print(matching_stocks)
+# 결과 출력
+print("조건을 만족하는 주식:", selected_stocks)
