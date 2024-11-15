@@ -3,20 +3,34 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
-from io import StringIO
 
 # KRX에서 코스피 및 코스닥 종목 코드 가져오기
 def get_stock_codes():
-    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do?method=download'
+    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
     res = requests.get(url)
     
     if res.status_code != 200:
         print(f"Error fetching stock codes: {res.status_code}")
         return []
 
-    # CSV 데이터를 DataFrame으로 읽기
-    df = pd.read_csv(StringIO(res.text))
-    return df['종목코드'].tolist()  # '종목코드' 컬럼에서 코드만 가져옴
+    soup = BeautifulSoup(res.text, 'html.parser')
+    stock_table = soup.find('table', {'class': 'type_1'})
+    
+    # stock_table이 None인지 체크
+    if stock_table is None:
+        print("Error: Stock table not found.")
+        return []
+
+    rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
+    stock_codes = []
+    
+    for row in rows:
+        cols = row.find_all('td')
+        if len(cols) > 1:
+            code = cols[0].text.strip()  # 종목 코드
+            stock_codes.append(code)
+
+    return stock_codes
 
 # 주식 데이터 분석 함수
 def analyze_stocks(stocks):
