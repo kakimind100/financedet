@@ -10,7 +10,7 @@ final_results = []
 # 각 종목에 대해 데이터 가져오기
 for ticker in tickers:
     try:
-        # 최근 5거래일 데이터 가져오기 (변경된 부분)
+        # 최근 5거래일 데이터 가져오기
         data = yf.download(ticker, period='5d')
 
         # 상한가 계산 (예시로 5% 상승)
@@ -35,7 +35,7 @@ for ticker in tickers:
         data['Williams R'] = -100 * (high14 - data['Close']) / (high14 - low14)
 
         # 조건에 맞는 데이터 필터링
-        if data[data['Is Upper Limit'] & data['Is Large Bullish']].shape[0] > 0:
+        if not data[data['Is Upper Limit'] & data['Is Large Bullish']].empty:
             # MACD가 5 이하인 조건
             if (data['MACD'] <= 5).any():
                 # 가격 하락 조건 확인 (종가가 이전 거래일 종가보다 낮은 경우)
