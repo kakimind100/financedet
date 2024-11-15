@@ -1,7 +1,8 @@
 import openai
+import os
 
 # OpenAI API 키 설정
-openai.api_key = 'YOUR_API_KEY'  # 여기에 API 키를 입력하세요
+openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키를 가져옵니다.
 
 def get_stock_list():
     """KOSPI와 KOSDAQ의 종목 리스트를 가져오는 함수"""
