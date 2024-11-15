@@ -58,9 +58,14 @@ def process_stock(code, start_date):
                 }
                 logging.info(f"조건 만족: {result}")
                 return result
-        
+
         logging.info(f"{code} 조건 불만족")
-        return None  # 조건을 만족하지 않으면 None 반환
+        return {
+            'Code': code,
+            'Last Close': last_close,
+            'MACD': None,
+            'Williams %R': None
+        }  # 조건을 만족하지 않더라도 종목 정보 반환
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None  # 오류 발생 시 None 반환
@@ -123,6 +128,8 @@ if __name__ == "__main__":
     if result:
         for item in result:
             print(item)  # 콘솔에 결과 출력
+        # 마지막 종목의 데이터 로그로 출력
+        logging.info(f"마지막 종목 데이터: {result[-1]}")
     else:
         print("조건에 맞는 종목이 없습니다.")
         logging.info("조건에 맞는 종목이 없습니다.")
