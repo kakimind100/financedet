@@ -15,26 +15,22 @@ jobs:
     - name: Check out the repository
       uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'  # Python 3.8로 설정
+    - name: Install Miniconda
+      run: |
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+        bash miniconda.sh -b -p $HOME/miniconda
+        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
 
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+    - name: Set up Python
+      run: |
+        conda create -n stock_analysis_env python=3.8 -y
+        conda activate stock_analysis_env
+        conda install pip -y
 
     - name: Install dependencies
       run: |
-        pip install -U conda  # Conda 설치
-        conda env create -f requirements.yml  # Conda 환경 생성
-        conda activate stock_analysis_env  # 환경 활성화
-        conda install pip  # Conda 환경에 pip 설치
+        conda env update -f requirements.yml
 
     - name: Run script
       run: |
-        python stock_analysis.py  # 본인의 파일 이름으로 변경
+        conda run -n stock_analysis_env python stock_analysis.py  # 본인의 파일 이름으로 변경
