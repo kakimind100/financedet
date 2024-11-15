@@ -7,3 +7,4 @@ dependencies:
   - pip:
       - finance-datareader
       - plotly
+      - beautifulsoup4  # 추가된 패키지
