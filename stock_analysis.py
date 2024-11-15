@@ -5,7 +5,6 @@ openai.api_key = 'YOUR_API_KEY'  # 여기에 API 키를 입력하세요
 
 def get_stock_list():
     """KOSPI와 KOSDAQ의 종목 리스트를 가져오는 함수"""
-    # AI에게 KOSPI와 KOSDAQ의 종목 리스트를 요청
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -28,7 +27,6 @@ def check_conditions_with_ai(ticker, name, data):
         f"Here is the data: {data}"
     )
 
-    # OpenAI API를 통해 조건 확인
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": message}]
