@@ -21,15 +21,14 @@ jobs:
         bash miniconda.sh -b -p $HOME/miniconda
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
 
-    - name: Set up Python
+    - name: Set up Conda environment
       run: |
         conda create -n stock_analysis_env python=3.8 -y
-        conda activate stock_analysis_env
-        conda install pip -y
+        conda run -n stock_analysis_env pip install -U pip setuptools
 
     - name: Install dependencies
       run: |
-        conda env update -f requirements.yml
+        conda run -n stock_analysis_env conda env update -f requirements.yml
 
     - name: Run script
       run: |
