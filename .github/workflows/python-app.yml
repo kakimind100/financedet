@@ -26,7 +26,7 @@ jobs:
         run: python stock_analysis.py  # 주식 분석 스크립트 실행
 
       - name: Upload log file
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3  # 새로운 버전 사용
         with:
           name: stock-analysis-log
           path: stock_analysis.log  # 로그 파일 업로드
