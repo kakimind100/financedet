@@ -84,6 +84,12 @@ def search_stocks(start_date):
                         'MACD': df['macd'].iloc[-1],
                         'Williams %R': df['williams_r'].iloc[-1]
                     })
+                    
+                    # 5개 종목 찾으면 종료
+                    if len(result) >= 5:
+                        logging.info("5개 종목을 찾았습니다. 분석 종료.")
+                        return pd.DataFrame(result)
+
                     continue
             
             logging.info(f"{code} 조건 불만족")
