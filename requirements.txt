@@ -1,4 +1,7 @@
 openai==0.28.0  # OpenAI API 라이브러리
-pandas==1.5.3   # 데이터 처리 라이브러리 (필요한 경우 추가)
-yfinance
-asyncio
+pandas==1.5.3   # 데이터 처리 라이브러리
+yfinance        # Yahoo Finance 데이터 가져오기
+asyncio         # 비동기 프로그래밍
+pandas_ta       # 기술적 지표 계산을 위한 라이브러리
+requests        # 웹 요청을 위한 라이브러리
+beautifulsoup4  # HTML 파싱을 위한 라이브러리
