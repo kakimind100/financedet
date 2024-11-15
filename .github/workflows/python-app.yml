@@ -15,32 +15,17 @@ jobs:
     - name: Check out the repository
       uses: actions/checkout@v2
 
-    - name: Install Miniconda
-      run: |
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-
-    - name: Cache conda
-      uses: actions/cache@v2
+    - name: Set up Python environment
+      uses: actions/setup-python@v2
       with:
-        path: $HOME/miniconda/pkgs
-        key: ${{ runner.os }}-conda-${{ hashFiles('requirements.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-conda-
-
-    - name: Set up Conda environment
-      run: |
-        conda create -n stock_analysis_env python=3.8 -y
-        source activate stock_analysis_env
-        pip install -U pip setuptools
-
+        python-version: '3.8'  # 사용할 Python 버전
+    
     - name: Install dependencies
       run: |
-        source activate stock_analysis_env
-        conda env update -f requirements.yml
+        pip install requests pandas openai  # 필요한 패키지 설치
 
     - name: Run script
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 환경 변수로 API 키 설정
       run: |
-        source activate stock_analysis_env
         python stock_analysis.py  # 본인의 파일 이름으로 변경
