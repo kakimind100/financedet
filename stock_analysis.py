@@ -12,7 +12,7 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),  # logs/stock_analysis.log에 저장
-    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
+    level=logging.WARNING,  # WARNING 레벨로 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -55,9 +55,6 @@ def search_stocks(start_date):
         try:
             df = fdr.DataReader(symbol, start=start_date)
             logging.info(f"{symbol} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
-            
-            # 데이터 내용 로깅
-            logging.info(f"{symbol} 데이터 샘플:\n{df.tail()}")  # 마지막 5행 로깅
             
             if len(df) < 10:
                 logging.warning(f"{symbol} 데이터가 10일 미만으로 건너뜁니다.")
