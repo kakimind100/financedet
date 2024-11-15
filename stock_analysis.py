@@ -10,8 +10,8 @@ final_results = []
 # 각 종목에 대해 데이터 가져오기
 for ticker in tickers:
     try:
-        # 최근 10거래일 데이터 가져오기
-        data = yf.download(ticker, period='10d')
+        # 최근 5거래일 데이터 가져오기 (변경된 부분)
+        data = yf.download(ticker, period='5d')
 
         # 상한가 계산 (예시로 5% 상승)
         upper_limit = data['Close'].shift(1) * 1.05
@@ -27,7 +27,7 @@ for ticker in tickers:
         data['Signal'] = data['MACD'].ewm(span=9, adjust=False).mean()  # 시그널 라인을 9로 설정
 
         # 전저가 확인
-        previous_low = data['Low'].min()  # 최근 10일 중 최저가
+        previous_low = data['Low'].min()  # 최근 5일 중 최저가
 
         # William's R 계산
         high14 = data['High'].rolling(window=14).max()
