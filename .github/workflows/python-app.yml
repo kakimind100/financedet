@@ -20,4 +20,6 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    # 단위 테스트 실행 단계 제거
+    - name: Run stock analysis
+      run: |
+        python stock_analysis.py  # 주식 분석 스크립트 실행
