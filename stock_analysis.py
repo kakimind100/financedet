@@ -20,9 +20,14 @@ def calculate_indicators(df):
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
     logging.info("주식 검색 시작")
-    kospi = fdr.StockListing('KOSPI')
-    kosdaq = fdr.StockListing('KOSDAQ')
     
+    try:
+        kospi = fdr.StockListing('KOSPI')  # 코스피 종목 목록
+        kosdaq = fdr.StockListing('KOSDAQ')  # 코스닥 종목 목록
+    except Exception as e:
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
+        return pd.DataFrame()
+
     stocks = pd.concat([kospi, kosdaq])
     
     # 열 이름 확인
