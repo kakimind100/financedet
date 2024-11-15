@@ -1,5 +1,3 @@
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
@@ -8,39 +6,17 @@ import logging
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# KRX에서 코스피 및 코스닥 종목 코드 가져오기
-def get_stock_codes():
-    url = 'http://kind.krx.co.kr/corpgeneral/corpList.do'
-    res = requests.get(url)
-    
-    if res.status_code != 200:
-        logging.error(f"Error fetching stock codes: {res.status_code}")
+# CSV 파일 경로
+csv_file_path = 'path/to/your/stock_list.csv'  # CSV 파일의 경로를 수정하세요.
+
+# CSV 파일에서 종목 코드 가져오기
+def get_stock_codes_from_csv():
+    try:
+        df = pd.read_csv(csv_file_path)
+        return df['종목코드'].tolist()  # '종목코드' 컬럼 이름에 맞게 변경
+    except Exception as e:
+        logging.error(f"Error reading stock codes from CSV: {e}")
         return []
-
-    soup = BeautifulSoup(res.text, 'html.parser')
-    stock_table = soup.find('table', {'class': 'type_1'})
-    
-    # stock_table이 None인지 체크
-    if stock_table is None:
-        logging.error("Stock table not found.")
-        return []
-
-    rows = stock_table.find_all('tr')[1:]  # 첫 번째 행은 헤더이므로 제외
-    stock_codes = []
-    
-    for row in rows:
-        cols = row.find_all('td')
-        if len(cols) > 1:
-            code = cols[0].text.strip()  # 종목 코드
-            stock_codes.append(code)
-
-    # 종목 코드가 없을 경우 로깅
-    if not stock_codes:
-        logging.warning("No stock codes found.")
-    else:
-        logging.info(f"Found {len(stock_codes)} stock codes.")
-    
-    return stock_codes
 
 # 주식 데이터 분석 함수
 def analyze_stocks(stocks):
@@ -73,7 +49,6 @@ def analyze_stocks(stocks):
             if macd_condition and williams_condition and current_close >= previous_low:
                 selected_stocks.append(stock)
 
-    # 조건을 만족하는 주식이 없을 경우 로깅
     if not selected_stocks:
         logging.info("No stocks met the selection criteria.")
     else:
@@ -82,7 +57,7 @@ def analyze_stocks(stocks):
     return selected_stocks
 
 # 종목 코드 가져오기
-stocks = get_stock_codes()
+stocks = get_stock_codes_from_csv()
 
 # 조건을 만족하는 주식 찾기
 selected_stocks = analyze_stocks(stocks)
