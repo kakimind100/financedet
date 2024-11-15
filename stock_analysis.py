@@ -2,6 +2,7 @@ import os
 import openai
 import requests
 import pandas as pd
+from bs4 import BeautifulSoup
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -11,14 +12,16 @@ def get_stock_list():
     # KOSPI 종목 가져오기
     kospi_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
     kospi_response = requests.get(kospi_url)
-    kospi_data = pd.read_html(kospi_response.text)[0]
+    kospi_soup = BeautifulSoup(kospi_response.text, 'html.parser')
+    kospi_data = pd.read_html(str(kospi_soup.find_all('table')[0]))[0]
     kospi_tickers = kospi_data['종목코드'].tolist()
     kospi_names = kospi_data['회사명'].tolist()
     
     # KOSDAQ 종목 가져오기
     kosdaq_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
     kosdaq_response = requests.get(kosdaq_url)
-    kosdaq_data = pd.read_html(kosdaq_response.text)[0]
+    kosdaq_soup = BeautifulSoup(kosdaq_response.text, 'html.parser')
+    kosdaq_data = pd.read_html(str(kosdaq_soup.find_all('table')[0]))[0]
     kosdaq_tickers = kosdaq_data['종목코드'].tolist()
     kosdaq_names = kosdaq_data['회사명'].tolist()
     
