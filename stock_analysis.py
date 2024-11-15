@@ -64,12 +64,7 @@ def process_stock(code, start_date):
         else:
             logging.info(f"{code} 장대 양봉 조건 불만족: 최근 종가 {last_close}, 이전 종가 {prev_close}")
 
-        return {
-            'Code': code,
-            'Last Close': last_close,
-            'MACD': None,
-            'Williams %R': None
-        }
+        return None
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
@@ -86,7 +81,6 @@ def search_stocks(start_date):
         logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        print(f"종목 목록 가져오기 중 오류 발생: {e}")  # 콘솔에도 출력
         return []
 
     stocks = pd.concat([kospi, kosdaq])
