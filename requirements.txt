@@ -1,2 +1,2 @@
-FinanceDataReader
-pandas
+FinanceDataReader>=0.9.42  # 설치할 FinanceDataReader의 특정 버전
+pandas>=1.5.3               # 설치할 pandas의 특정 버전
