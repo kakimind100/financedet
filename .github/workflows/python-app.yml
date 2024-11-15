@@ -21,6 +21,14 @@ jobs:
         bash miniconda.sh -b -p $HOME/miniconda
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
 
+    - name: Cache conda
+      uses: actions/cache@v2
+      with:
+        path: $HOME/miniconda/pkgs
+        key: ${{ runner.os }}-conda-${{ hashFiles('requirements.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-conda-
+
     - name: Set up Conda environment
       run: |
         conda create -n stock_analysis_env python=3.8 -y
