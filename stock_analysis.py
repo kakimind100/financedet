@@ -4,7 +4,8 @@ import ta  # 기술적 지표 계산을 위한 라이브러리
 import logging
 from datetime import datetime, timedelta
 import os
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
+import aiohttp
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -23,22 +24,31 @@ console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
+async def fetch_stock_data(session, code, start_date):
+    """주식 데이터를 비동기적으로 가져오는 함수."""
+    logging.info(f"{code} 데이터 가져오기 시작")
+    try:
+        df = fdr.DataReader(code, start=start_date)
+        logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
+        return code, df
+    except Exception as e:
+        logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")
+        return code, None
+
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
     df['macd'] = ta.trend.MACD(df['Close']).macd()
     df['williams_r'] = ta.momentum.WilliamsR(df['High'], df['Low'], df['Close'], window=14)
     return df
 
-def process_stock(code, start_date):
-    """주식 데이터를 처리하는 함수."""
-    logging.info(f"{code} 처리 시작")
-    try:
-        df = fdr.DataReader(code, start=start_date)
-        logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")  # 데이터 로드 성공 로깅
+async def process_stock(code, start_date):
+    """주식 데이터를 처리하는 비동기 함수."""
+    async with aiohttp.ClientSession() as session:
+        code, df = await fetch_stock_data(session, code, start_date)
         
-        if len(df) < 10:
+        if df is None or len(df) < 10:
             logging.warning(f"{code} 데이터가 10일 미만으로 건너뜁니다.")
-            return None  # 데이터가 충분하지 않으면 None 반환
+            return None
         
         recent_data = df.iloc[-10:]  # 최근 10일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
@@ -59,12 +69,9 @@ def process_stock(code, start_date):
         
         logging.info(f"{code} 조건 불만족")
         return None  # 조건을 만족하지 않으면 None 반환
-    except Exception as e:
-        logging.error(f"{code} 처리 중 오류 발생: {e}")
-        return None  # 오류 발생 시 None 반환
 
-def search_stocks(start_date):
-    """주식 종목을 검색하는 함수."""
+async def search_stocks(start_date):
+    """주식 종목을 비동기적으로 검색하는 함수."""
     logging.info("주식 검색 시작")
     
     try:
@@ -91,17 +98,17 @@ def search_stocks(start_date):
         print("Error: 'Code' 열이 존재하지 않습니다.")
         return pd.DataFrame()
 
-    # 멀티스레딩으로 주식 데이터 처리
-    with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
-        futures = {executor.submit(process_stock, code, start_date): code for code in stocks['Code']}
-        for future in as_completed(futures):
-            result_data = future.result()
-            if result_data:
-                result.append(result_data)
-                # 5개 종목 찾으면 종료
-                if len(result) >= 5:
-                    logging.info("5개 종목을 찾았습니다. 분석 종료.")
-                    return pd.DataFrame(result)
+    # 비동기 요청을 통해 주식 데이터 처리
+    tasks = [process_stock(code, start_date) for code in stocks['Code']]
+    results = await asyncio.gather(*tasks)
+
+    for res in results:
+        if res:
+            result.append(res)
+            # 5개 종목 찾으면 종료
+            if len(result) >= 5:
+                logging.info("5개 종목을 찾았습니다. 분석 종료.")
+                return pd.DataFrame(result)
 
     logging.info("주식 검색 완료")
     return pd.DataFrame(result)
@@ -116,7 +123,9 @@ if __name__ == "__main__":
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    result = search_stocks(start_date_str)
+    # 비동기 이벤트 루프 실행
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(search_stocks(start_date_str))
     
     if not result.empty:
         print(result)
