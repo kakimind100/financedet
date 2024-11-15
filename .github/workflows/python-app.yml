@@ -1,4 +1,4 @@
-name: Python application
+name: Python Stock Analysis
 
 on:
   push:
@@ -22,8 +22,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt  # 필요한 패키지 설치
 
-      - name: Create log directory
-        run: mkdir -p logs  # 로그 디렉토리 생성
-
-      - name: Run script
+      - name: Run stock analysis script
         run: python stock_analysis.py  # 주식 분석 스크립트 실행
+
+      - name: Upload log file
+        uses: actions/upload-artifact@v2
+        with:
+          name: stock-analysis-log
+          path: stock_analysis.log  # 로그 파일 업로드
