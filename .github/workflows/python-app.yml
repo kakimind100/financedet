@@ -22,7 +22,8 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install requests pandas openai  # 필요한 패키지 설치
+        pip install --upgrade pip  # pip를 최신으로 업데이트
+        pip install requests pandas openai lxml  # 필요한 패키지 설치
 
     - name: Run script
       env:
