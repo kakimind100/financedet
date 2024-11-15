@@ -1,6 +1,7 @@
-name: Stock Analysis
+name: Python application
 
 on:
+  push:
   workflow_dispatch:  # 수동 실행을 위한 설정
 
 jobs:
@@ -8,20 +9,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'  # 사용할 Python 버전
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'  # 원하는 Python 버전
 
-    - name: Install dependencies
-      run: |
-        pip install -r requirements.txt  # requirements.txt에서 종속성 설치
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # 필요한 패키지 설치
 
-    - name: Run stock analysis
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # Secrets에서 API 키를 환경 변수로 설정
-      run: |
-        python stock_analysis.py  # 주식 분석 스크립트 실행
+      - name: Create log directory
+        run: mkdir -p logs  # 로그 디렉토리 생성
+
+      - name: Run script
+        run: python stock_analysis.py  # 주식 분석 스크립트 실행
