@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 # 로깅 설정
 logging.basicConfig(
     filename='stock_analysis.log',
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
