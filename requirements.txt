@@ -6,6 +6,6 @@ pandas_ta       # 기술적 지표 계산을 위한 라이브러리
 requests        # 웹 요청을 위한 라이브러리
 beautifulsoup4  # HTML 파싱을 위한 라이브러리
 numpy
-finance-datareader==0.9.40
+finance-datareader>=0.9.40
 ta
 plotly
