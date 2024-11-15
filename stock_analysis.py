@@ -1,61 +1,63 @@
-import os
 import openai
-import requests
-import pandas as pd
-from bs4 import BeautifulSoup
 
 # OpenAI API 키 설정
-openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
+openai.api_key = 'YOUR_API_KEY'  # 여기에 API 키를 입력하세요
 
-# KOSPI와 KOSDAQ 종목 리스트 가져오기
 def get_stock_list():
-    # KOSPI 종목 가져오기
-    kospi_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
-    kospi_response = requests.get(kospi_url)
-    kospi_soup = BeautifulSoup(kospi_response.text, 'html.parser')
-    kospi_data = pd.read_html(str(kospi_soup.find_all('table')[0]))[0]
-    kospi_tickers = kospi_data['종목코드'].tolist()
-    kospi_names = kospi_data['회사명'].tolist()
-    
-    # KOSDAQ 종목 가져오기
-    kosdaq_url = 'https://kind.krx.co.kr/corpgeneral/corpList.do'
-    kosdaq_response = requests.get(kosdaq_url)
-    kosdaq_soup = BeautifulSoup(kosdaq_response.text, 'html.parser')
-    kosdaq_data = pd.read_html(str(kosdaq_soup.find_all('table')[0]))[0]
-    kosdaq_tickers = kosdaq_data['종목코드'].tolist()
-    kosdaq_names = kosdaq_data['회사명'].tolist()
-    
-    return kospi_tickers + kosdaq_tickers, kospi_names + kosdaq_names
+    """KOSPI와 KOSDAQ의 종목 리스트를 가져오는 함수"""
+    # AI에게 KOSPI와 KOSDAQ의 종목 리스트를 요청
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {
+                "role": "user",
+                "content": "Please provide the stock codes and names for KOSPI and KOSDAQ."
+            }
+        ]
+    )
+    return response['choices'][0]['message']['content']
 
-# OpenAI API에 종목 조건 전달
-def find_matching_stocks(tickers, names):
-    results = []
-    for ticker, name in zip(tickers, names):
-        # OpenAI API를 통해 조건 확인
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"Does the stock {name} (ticker: {ticker}) meet the following conditions? "
-                               f"1. There should be a large bullish candle near the upper limit (30%). "
-                               f"2. MACD should drop below 5 after a large bullish candle. "
-                               f"3. William's R should be below 0. "
-                               f"4. The stock price should be above the previous low before the upper limit."
-                }
-            ]
-        )
-        
-        # 조건 충족 여부 확인
-        if response['choices'][0]['message']['content'].lower() == 'yes':
-            results.append(name)
+def check_conditions_with_ai(ticker, name, data):
+    """AI를 통해 조건을 확인하는 함수"""
+    message = (
+        f"Does the stock {name} (ticker: {ticker}) meet the following conditions?\n"
+        f"1. There should be a large bullish candle near the upper limit (30%).\n"
+        f"2. MACD should drop below 5 after a large bullish candle.\n"
+        f"3. William's R should be below 0.\n"
+        f"4. The stock price should be above the previous low before the upper limit.\n"
+        f"Here is the data: {data}"
+    )
+
+    # OpenAI API를 통해 조건 확인
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": message}]
+    )
+
+    return response['choices'][0]['message']['content'].lower() == 'yes'
+
+def find_matching_stocks():
+    """조건을 충족하는 종목을 찾는 함수"""
+    stock_data = get_stock_list()
+    results = {'KOSPI': [], 'KOSDAQ': []}
+
+    # AI에게 종목 데이터 요청
+    data = stock_data  # AI가 반환한 종목 데이터
+
+    # AI에게 각 종목에 대해 조건 확인
+    for market in ['KOSPI', 'KOSDAQ']:
+        for stock in data[market]:
+            ticker = stock['code']
+            name = stock['name']
+            if check_conditions_with_ai(ticker, name, data):
+                results[market].append(name)
 
     return results
 
-# 메인 실행 부분
 if __name__ == "__main__":
-    tickers, names = get_stock_list()
-    matching_stocks = find_matching_stocks(tickers, names)
+    matching_stocks = find_matching_stocks()
     
     # 결과 출력
-    print("Matching stocks:", matching_stocks)
+    print("Matching stocks:")
+    for market, names in matching_stocks.items():
+        print(f"{market}: {names}")
