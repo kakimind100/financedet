@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import asyncio
 import aiohttp
+from concurrent.futures import ThreadPoolExecutor
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
