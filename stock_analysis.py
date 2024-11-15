@@ -1,13 +1,17 @@
-import FinanceDataReader as fdr
 import yfinance as yf
 import pandas as pd
+import FinanceDataReader as fdr
 
-# 한국 주식 종목 리스트 가져오기 (KOSPI와 KOSDAQ)
+# KOSPI와 KOSDAQ 종목 리스트 가져오기
 kospi = fdr.StockListing('KOSPI')
 kosdaq = fdr.StockListing('KOSDAQ')
 
 # KOSPI와 KOSDAQ의 종목 코드를 합칩니다.
-tickers = kospi['Code'].tolist() + kosdaq['Code'].tolist()
+kospi_tickers = kospi['Code'].tolist()
+kosdaq_tickers = kosdaq['Code'].tolist()
+
+# 전체 티커 리스트
+tickers = kospi_tickers + kosdaq_tickers
 
 # 결과를 저장할 리스트
 final_results = []
@@ -16,10 +20,14 @@ final_results = []
 for ticker in tickers:
     try:
         # 최근 5거래일 데이터 가져오기
-        data = yf.download(ticker + '.KS', period='5d')  # KOSPI 종목에 '.KS' 추가
-        # KOSDAQ 종목에 대해서도 '.KQ'를 추가해야 합니다.
-        if ticker in kosdaq['Code'].tolist():
+        if ticker in kospi['Code'].tolist():
+            data = yf.download(ticker + '.KS', period='5d')  # KOSPI 종목에 '.KS' 추가
+        else:
             data = yf.download(ticker + '.KQ', period='5d')  # KOSDAQ 종목에 '.KQ' 추가
+
+        # 데이터가 없으면 패스
+        if data.empty:
+            continue
 
         # 상한가 계산 (예시로 5% 상승)
         upper_limit = data['Close'].shift(1) * 1.05
@@ -46,14 +54,7 @@ for ticker in tickers:
         if not data[data['Is Upper Limit'] & data['Is Large Bullish']].empty:
             # MACD가 5 이하인 조건
             if (data['MACD'] <= 5).any():
-                # 가격 하락 조건 확인 (종가가 이전 거래일 종가보다 낮은 경우)
-                price_decline = (data['Close'].diff() < 0).any()
-                
-                # 전저가 이하로 내려가지 않은 경우
-                if (data['Close'].min() >= previous_low):
-                    # William's R이 0 이하인 경우
-                    if (data['Williams R'] <= 0).any():
-                        final_results.append({'Ticker': ticker})
+                final_results.append({'Ticker': ticker})
 
     except Exception as e:
         print(f"Error processing {ticker}: {e}")
