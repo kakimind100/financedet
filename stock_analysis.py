@@ -50,12 +50,14 @@ def process_stock(code, start_date):
             
             # MACD와 윌리엄스 %R 조건 완화
             if df['macd'].iloc[-1] <= 10 and df['williams_r'].iloc[-1] <= -20:
-                return {
+                result = {
                     'Code': code,
                     'Last Close': last_close,
                     'MACD': df['macd'].iloc[-1],
                     'Williams %R': df['williams_r'].iloc[-1]
                 }
+                logging.info(f"조건 만족: {result}")
+                return result
         
         logging.info(f"{code} 조건 불만족")
         return None  # 조건을 만족하지 않으면 None 반환
@@ -75,7 +77,7 @@ def search_stocks(start_date):
         logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        return pd.DataFrame()
+        return []
 
     stocks = pd.concat([kospi, kosdaq])
     
@@ -89,7 +91,7 @@ def search_stocks(start_date):
     if 'Code' not in column_names:
         logging.error("'Code' 열이 존재하지 않습니다. 사용할 수 있는 열: {}".format(column_names))
         print("Error: 'Code' 열이 존재하지 않습니다.")
-        return pd.DataFrame()
+        return []
 
     # 멀티스레딩으로 주식 데이터 처리
     with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
@@ -101,10 +103,10 @@ def search_stocks(start_date):
                 # 5개 종목 찾으면 종료
                 if len(result) >= 5:
                     logging.info("5개 종목을 찾았습니다. 분석 종료.")
-                    return pd.DataFrame(result)
+                    return result
 
     logging.info("주식 검색 완료")
-    return pd.DataFrame(result)
+    return result
 
 if __name__ == "__main__":
     logging.info("스크립트 실행 시작")
@@ -118,10 +120,9 @@ if __name__ == "__main__":
 
     result = search_stocks(start_date_str)
     
-    if not result.empty:
-        print(result)
-        result.to_csv('stock_analysis_results.csv', index=False)
-        logging.info("결과가 'stock_analysis_results.csv' 파일로 저장되었습니다.")
+    if result:
+        for item in result:
+            print(item)  # 콘솔에 결과 출력
     else:
         print("조건에 맞는 종목이 없습니다.")
         logging.info("조건에 맞는 종목이 없습니다.")
