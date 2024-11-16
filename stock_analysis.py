@@ -36,9 +36,9 @@ def process_stock(code, start_date):
         df = fdr.DataReader(code, start=start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
         
-        # 데이터 길이 체크: 최소 40일 데이터
-        if len(df) < 40:
-            logging.warning(f"{code} 데이터가 40일 미만으로 건너뜁니다.")
+        # 데이터 길이 체크: 최소 26일 데이터
+        if len(df) < 26:
+            logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
         
         # 최근 40일 데이터에서 마지막 30일 데이터 추출
@@ -109,10 +109,6 @@ if __name__ == "__main__":
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
-
-    # 데이터 분석 시작 날짜는 최근 26 거래일로 설정
-    trading_days = pd.date_range(end=today, periods=40, freq='B')  # 최근 40 거래일
-    analysis_start_date = trading_days[-26].strftime('%Y-%m-%d')  # 가장 오래된 26 거래일
 
     result = search_stocks(start_date_str)
     
