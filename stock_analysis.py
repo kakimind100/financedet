@@ -36,19 +36,20 @@ def process_stock(code, start_date):
     try:
         df = fdr.DataReader(code, start=start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
-        
-        # 데이터 길이 체크: 최소 20일 데이터
-        if len(df) < 20:
-            logging.warning(f"{code} 데이터가 20일 미만으로 건너뜁니다.")
-            return None
-        
-        # 최근 20일 데이터 확인
-        recent_data = df.iloc[-20:]  # 최근 20일 데이터
-        last_close = recent_data['Close'].iloc[-1]  # 최근 종가
 
-        # 최근 20일 중 29% 이상 상승한 종가 확인
-        if any(recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i-1] * 1.29 for i in range(1, len(recent_data))):
-            logging.info(f"{code} 최근 20일 내 29% 이상 상승한 종목 발견: 최근 종가 {last_close}")
+        # 데이터 길이 체크: 최소 40일 데이터
+        if len(df) < 40:
+            logging.warning(f"{code} 데이터가 40일 미만으로 건너뜁니다.")
+            return None
+
+        # 최근 40일 데이터에서 마지막 26일 데이터 추출
+        recent_data = df.iloc[-40:]  # 최근 40일 데이터
+        last_26_days = recent_data.iloc[-26:]  # 마지막 26일 데이터
+        last_close = last_26_days['Close'].iloc[-1]  # 최근 종가
+
+        # 최근 26일 중 29% 이상 상승한 종가 확인
+        if any(last_26_days['Close'].iloc[i] >= last_26_days['Close'].iloc[i-1] * 1.29 for i in range(1, len(last_26_days))):
+            logging.info(f"{code} 최근 26일 내 29% 이상 상승한 종목 발견: 최근 종가 {last_close}")
 
             df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
             
@@ -63,7 +64,7 @@ def process_stock(code, start_date):
                 'Williams %R': williams_r_last
             }
         else:
-            logging.info(f"{code} 최근 20일 내 29% 이상 상승한 종목 없음: 최근 종가 {last_close}")
+            logging.info(f"{code} 최근 26일 내 29% 이상 상승한 종목 없음: 최근 종가 {last_close}")
 
         return None
     except Exception as e:
@@ -75,8 +76,20 @@ def get_trading_days(start_date, num_days):
     trading_days = []
     current_date = start_date
 
-    # KOSPI/KOSDAQ의 개장일을 가져옴
-    holidays = fdr.get_market_holidays()  # 한국 주식시장 공휴일 데이터
+    # 공휴일 리스트 (예: 2024년 공휴일)
+    holidays = [
+        datetime(2024, 1, 1),   # 신정
+        datetime(2024, 3, 1),   # 삼일절
+        datetime(2024, 5, 1),   # 근로자의 날
+        datetime(2024, 5, 5),   # 어린이날
+        datetime(2024, 5, 27),  # 석가탄신일
+        datetime(2024, 6, 6),   # 현충일
+        datetime(2024, 8, 15),  # 광복절
+        datetime(2024, 9, 30),  # 추석
+        datetime(2024, 10, 3),  # 개천절
+        datetime(2024, 10, 9),  # 한글날
+        datetime(2024, 12, 25)  # 성탄절
+    ]
     
     while len(trading_days) < num_days:
         # 주말 확인 (토요일: 5, 일요일: 6) 및 공휴일 확인
@@ -153,8 +166,8 @@ if __name__ == "__main__":
     # 시작 날짜 설정 (예: 오늘)
     today = datetime.today()
 
-    # 최근 26 거래일 구하기
-    trading_days = get_trading_days(today, 26)
+    # 최근 40 거래일 구하기
+    trading_days = get_trading_days(today, 40)
     start_date_str = trading_days[-1].strftime('%Y-%m-%d')  # 가장 오래된 거래일
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
