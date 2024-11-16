@@ -100,7 +100,8 @@ def analyze_stock(code, start_date):
         # OBV 계산
         df['obv'] = calculate_obv(df)
         obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
-        
+        previous_obv = df['obv'].iloc[-2] if len(df['obv']) > 1 else 0  # 이전 OBV 값
+
         # OBV 세력 판단 조건
         obv_strength_condition = obv_current > previous_obv  # 현재 OBV가 이전 OBV보다 클 때
 
