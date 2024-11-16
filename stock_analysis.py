@@ -9,30 +9,16 @@ import os
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
-import logging
-import os
-
-# 로그 디렉토리 생성
-log_dir = 'logs'
-os.makedirs(log_dir, exist_ok=True)
-
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
+    level=logging.INFO,  # INFO 레벨로 로그 기록 (DEBUG를 INFO로 변경)
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # 콘솔에도 로그 출력
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # 콘솔에서도 DEBUG 레벨 이상의 로그 출력
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
-
-
-# 콘솔에도 로그 출력
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # 콘솔에서도 DEBUG 레벨 이상의 로그 출력
+console_handler.setLevel(logging.INFO)  # 콘솔에서도 INFO 레벨 이상의 로그 출력
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
