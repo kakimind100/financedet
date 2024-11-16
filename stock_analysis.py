@@ -59,8 +59,8 @@ def process_stock(code, start_date):
             # 지표 계산
             df = calculate_indicators(df)  # 윌리엄스 %R 계산
 
-            # 윌리엄스 %R 조건 확인
-            if df['williams_r'].iloc[-1] <= 0:
+            # 윌리엄스 %R 조건 확인 (변경된 부분)
+            if df['williams_r'].iloc[-1] <= -80:
                 result = {
                     'Code': code,
                     'Last Close': last_close,
