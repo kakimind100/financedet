@@ -157,6 +157,7 @@ def analyze_stock(code, start_date):
                     'Williams %R': williams_r,
                     'OBV': obv_current,  
                     'Support Condition': support_condition  # 지지선 조건 추가
+                    'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 return result
