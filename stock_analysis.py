@@ -28,31 +28,38 @@ def calculate_williams_r(df, window=14):
     highest_high = df['High'].rolling(window=window).max()
     lowest_low = df['Low'].rolling(window=window).min()
     williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
+    logging.debug(f"Williams %R 계산 완료: {williams_r.tail()}")
     return williams_r
 
 def calculate_rsi(df, window=14):
     """RSI를 계산하는 함수."""
+    logging.debug(f"Calculating RSI with window size: {window}")
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
+    logging.debug(f"RSI 계산 완료: {rsi.tail()}")
     return rsi
 
 def calculate_macd(df):
     """MACD를 계산하는 함수."""
+    logging.debug("Calculating MACD")
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     macd = exp1 - exp2
     signal = macd.ewm(span=9, adjust=False).mean()
+    logging.debug(f"MACD 계산 완료: {macd.tail()}")
     return macd, signal
 
 def calculate_cci(df, window=5):
     """CCI (Commodity Channel Index)를 계산하는 함수."""
+    logging.debug(f"Calculating CCI with window size: {window}")
     typical_price = (df['High'] + df['Low'] + df['Close']) / 3
     sma = typical_price.rolling(window=window).mean()
     mean_deviation = (typical_price - sma).abs().rolling(window=window).mean()
     cci = (typical_price - sma) / (0.015 * mean_deviation)
+    logging.debug(f"CCI 계산 완료: {cci.tail()}")
     return cci
 
 def analyze_stock(code, start_date):
@@ -85,8 +92,7 @@ def analyze_stock(code, start_date):
         # CCI 계산
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
-        # CCI 반등 조건 수정: 현재 CCI가 -90 이하인 경우
-        cci_condition = cci_current < -90 
+        cci_condition = cci_current < -90  # CCI 반등 조건 수정
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -107,11 +113,11 @@ def analyze_stock(code, start_date):
         # 지지선 확인: 마지막 날의 종가가 최근 저점 이하인지 확인
         support_condition = last_close >= recent_low  # 최근 저점 이하로 내려가지 않았으면 True
 
-        # 조건 확인: 장대 양봉, CCI, Williams %R, RSI, MACD, 지지선 확인
+        # 조건 확인: CCI, Williams %R, RSI, MACD, 지지선 확인
         if (high_condition and 
-            williams_r <= -90 and  # 수정된 조건
+            williams_r <= -90 and 
             rsi_condition and 
-            cci_condition and  # CCI 반등 조건 수정
+            cci_condition and 
             support_condition and 
             macd_condition):  # MACD 조건
             result = {
@@ -126,8 +132,8 @@ def analyze_stock(code, start_date):
             logging.info(f"{code} 조건 불만족: "
                          f"29% 상승: {high_condition}, "
                          f"Williams %R: {williams_r}, "
-                         f"RSI: {rsi_current}, "  # 현재 RSI 값 로그 추가
-                         f"CCI: {cci_current}, "  # CCI 상태 로그 추가
+                         f"RSI: {rsi_current}, "
+                         f"CCI: {cci_current}, "
                          f"MACD: {macd_condition}, "
                          f"지지선 확인: {support_condition}")
 
