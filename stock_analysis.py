@@ -187,10 +187,3 @@ if __name__ == "__main__":
 
     result = search_stocks(start_date_str)
     logging.info("최종 결과: {}".format(result))
-
-            print(item)  # 콘솔에 결과 출력
-    else:
-        print("조건에 맞는 종목이 없습니다.")
-        logging.info("조건에 맞는 종목이 없습니다.")
-
-    logging.info("스크립트 실행 완료")
