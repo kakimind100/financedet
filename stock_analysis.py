@@ -137,25 +137,29 @@ def analyze_stock(code, start_date):
         # 지지선 조건 (당일 제외)
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
-        # 조건 확인: 가격 상승 조건, CCI, Williams %R, RSI, MACD, 지지선 확인
-        if (price_increase_condition and 
-            williams_r <= -80 and 
-            rsi_condition and 
-            support_condition and 
-            macd_condition and 
-            obv_strength_condition):
-            result = {
-                'Code': code,
-                'Last Close': last_close,
-                'Opening Price': opening_price,
-                'Lowest Price': overall_low,
-                'Highest Price': recent_data['High'].max(),
-                'Williams %R': williams_r,
-                'OBV': obv_current,  
-                'Support Condition': support_condition  # 지지선 조건 추가
-            }
-            logging.info(f"{code} 조건 만족: {result}")
-            return result
+        # 장대 양봉 발생 시의 OBV 값 저장
+        if bullish_candle_index is not None:
+            obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
+
+            # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
+            if (price_increase_condition and 
+                williams_r <= -80 and 
+                rsi_condition and 
+                support_condition and 
+                macd_condition and 
+                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
+                result = {
+                    'Code': code,
+                    'Last Close': last_close,
+                    'Opening Price': opening_price,
+                    'Lowest Price': overall_low,
+                    'Highest Price': recent_data['High'].max(),
+                    'Williams %R': williams_r,
+                    'OBV': obv_current,  
+                    'Support Condition': support_condition  # 지지선 조건 추가
+                }
+                logging.info(f"{code} 조건 만족: {result}")
+                return result
         else:
             logging.info(f"{code} 조건 불만족: "
                          f"가격 상승 조건: {price_increase_condition}, "
