@@ -85,6 +85,7 @@ def analyze_stock(code, start_date):
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
+        bullish_candle_index = None  # 장대 양봉 발생 인덱스 초기화
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
@@ -95,6 +96,7 @@ def analyze_stock(code, start_date):
             # 장대 양봉 조건: 당일 최고가가 최저가의 1.29배 초과하고, 종가가 시가보다 높은지 확인
             if daily_high > daily_low * 1.29 and daily_close > daily_open:
                 price_increase_condition = True
+                bullish_candle_index = i  # 장대 양봉 발생 인덱스 저장
                 logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
         # OBV 계산
