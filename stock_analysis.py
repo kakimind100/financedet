@@ -182,4 +182,7 @@ if __name__ == "__main__":
         for item in result:
             print(item)  # 콘솔에 결과 출력
     else:
-        print("조건에 맞는 종목
+        print("조건에 맞는 종목이 없습니다.")  # 문자열 닫힘 오류 수정
+        logging.info("조건에 맞는 종목이 없습니다.")
+
+    logging.info("스크립트 실행 완료")
