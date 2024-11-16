@@ -1,3 +1,40 @@
+import FinanceDataReader as fdr
+import pandas as pd
+import logging
+from datetime import datetime, timedelta
+import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# 로그 디렉토리 생성
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
+
+# 로깅 설정
+logging.basicConfig(
+    filename=os.path.join(log_dir, 'stock_analysis.log'),
+    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상의 로그만 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
+def calculate_williams_r(df, window=14):
+    """Williams %R을 직접 계산하는 함수."""
+    logging.debug(f"Calculating Williams %R with window size: {window}")
+    highest_high = df['High'].rolling(window=window).max()
+    lowest_low = df['Low'].rolling(window=window).min()
+    williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
+    return williams_r
+
+def calculate_indicators(df):
+    """지표를 계산하는 함수."""
+    df['williams_r'] = calculate_williams_r(df, window=14)
+    return df
+
 def process_stock(code, start_date):
     """주식 데이터를 처리하는 함수."""
     logging.info(f"{code} 처리 시작")
@@ -37,24 +74,38 @@ def process_stock(code, start_date):
                 logging.info(f"{code} 장대 양봉의 저가 아래로 떨어져 제외됨.")
                 return None
 
-            logging.info(f"{code} 최근 20일 내 최고가 29% 이상 상승한 종목 발견: 최근 종가 {last_close}, 이전 종가 {prev_close}")
-            
-            # 지표 계산
+            # 윌리엄스 %R 계산
             df = calculate_indicators(df)  # 윌리엄스 %R 계산
 
             # 윌리엄스 %R 조건 확인
-            if df['williams_r'].iloc[-1] <= -90:
+            williams_r = df['williams_r'].iloc[-1]
+            if williams_r <= -90:
                 result = {
                     'Code': code,
                     'Last Close': last_close,
-                    'Williams %R': df['williams_r'].iloc[-1]
+                    'Williams %R': williams_r
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 return result
+            elif -30 <= williams_r < -90:
+                # 윌리엄스 %R이 -30 이상인 경우, 5% 이상 상승 이력 확인
+                if any(recent_20_days['Close'].iloc[i] >= recent_20_days['Close'].iloc[i-1] * 1.05 for i in range(1, len(recent_20_days))):
+                    logging.info(f"{code} 윌리엄스 %R이 -30 이상이며 5% 이상 상승 이력이 있어 제외됨: Williams %R={williams_r}")
+                    return None
+                else:
+                    result = {
+                        'Code': code,
+                        'Last Close': last_close,
+                        'Williams %R': williams_r
+                    }
+                    logging.info(f"{code} 조건 만족: {result}")
+                    return result
             else:
-                logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={df['williams_r'].iloc[-1]}")
+                logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={williams_r}")
 
         return None
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
+
+def search
