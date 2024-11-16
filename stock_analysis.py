@@ -111,7 +111,7 @@ def analyze_stock(code, start_date):
         if (high_condition and 
             williams_r <= -90 and  # 수정된 조건
             rsi_condition and 
-            cci_condition and  # CCI 반등 조건 추가
+            cci_condition <= -100 and  # CCI 반등 조건 추가
             support_condition and 
             macd_condition):  # MACD 조건
             result = {
