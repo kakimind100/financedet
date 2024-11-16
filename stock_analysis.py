@@ -55,9 +55,6 @@ def process_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_20_days = recent_data.iloc[-20:]
 
-        # 최고가가 29% 이상 상승한 종목 확인
-        high_condition = recent_20_days['High'].max() >= recent_20_days['High'].iloc[0] * 1.29
-
         # 장대 양봉 조건 체크
         last_candle = recent_data.iloc[-1]
         previous_candle = recent_data.iloc[-2]
@@ -67,32 +64,21 @@ def process_stock(code, start_date):
                                ((last_candle['Close'] - last_candle['Open']) > (previous_candle['Close'] - previous_candle['Open'])) and \
                                (last_candle['Low'] < previous_candle['Close'])
 
-        # 장대 양봉의 저가 체크
-        if high_condition and is_bullish_engulfing:
-            # 장대 양봉의 저가 아래로 떨어진 경우 체크
-            if recent_data['Low'].iloc[-1] < last_candle['Low']:
-                logging.info(f"{code} 장대 양봉의 저가 아래로 떨어져 제외됨.")
-                return None
+        # 장대 양봉 이후 하향하는지 확인
+        if is_bullish_engulfing and last_close < last_candle['Open']:
+            logging.info(f"{code} 장대 양봉 이후 하향하는 종목: 최근 종가 {last_close}")
 
             # 윌리엄스 %R 계산
             df = calculate_indicators(df)  # 윌리엄스 %R 계산
-
-            # 윌리엄스 %R 조건 확인
             williams_r = df['williams_r'].iloc[-1]
-            if williams_r <= -90:
-                result = {
-                    'Code': code,
-                    'Last Close': last_close,
-                    'Williams %R': williams_r
-                }
-                logging.info(f"{code} 조건 만족: {result}")
-                return result
-            elif -30 <= williams_r < -90:
-                # 윌리엄스 %R이 -30 이상인 경우, 5% 이상 상승 이력 확인
-                if any(recent_20_days['Close'].iloc[i] >= recent_20_days['Close'].iloc[i-1] * 1.05 for i in range(1, len(recent_20_days))):
-                    logging.info(f"{code} 윌리엄스 %R이 -30 이상이며 5% 이상 상승 이력이 있어 제외됨: Williams %R={williams_r}")
-                    return None
-                else:
+
+            # 장대 양봉 이후 7% 이상 상승한 이력 확인
+            bullish_after = recent_data.iloc[:-1]  # 마지막 봉을 제외한 데이터
+            has_risen_7_percent = any(bullish_after['Close'].iloc[i] >= bullish_after['Close'].iloc[i-1] * 1.07 for i in range(1, len(bullish_after)))
+
+            if not has_risen_7_percent:
+                # 조건 확인
+                if williams_r <= -90:
                     result = {
                         'Code': code,
                         'Last Close': last_close,
@@ -100,8 +86,10 @@ def process_stock(code, start_date):
                     }
                     logging.info(f"{code} 조건 만족: {result}")
                     return result
+                else:
+                    logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={williams_r}")
             else:
-                logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={williams_r}")
+                logging.info(f"{code} 장대 양봉 이후 7% 이상 상승한 이력이 있어 제외됨.")
 
         return None
     except Exception as e:
@@ -131,28 +119,4 @@ def search_stocks(start_date):
         for future in as_completed(futures):
             result_data = future.result()
             if result_data:
-                result.append(result_data)
-
-    logging.info("주식 검색 완료")
-    return result
-
-if __name__ == "__main__":
-    logging.info("스크립트 실행 시작")
-    
-    # 최근 40 거래일을 기준으로 시작 날짜 설정
-    today = datetime.today()
-    start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
-    start_date_str = start_date.strftime('%Y-%m-%d')
-
-    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
-
-    result = search_stocks(start_date_str)
-    
-    if result:
-        for item in result:
-            print(item)  # 콘솔에 결과 출력
-    else:
-        print("조건에 맞는 종목이 없습니다.")
-        logging.info("조건에 맞는 종목이 없습니다.")
-
-    logging.info("스크립트 실행 완료")
+                result.append(result_data
