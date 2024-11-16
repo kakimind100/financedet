@@ -17,16 +17,17 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# 콘솔에도 로그 출력
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상의 로그만 출력
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
+def calculate_williams_r(df, window=14):
+    """Williams %R을 직접 계산하는 함수."""
+    highest_high = df['High'].rolling(window=window).max()
+    lowest_low = df['Low'].rolling(window=window).min()
+    williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
+    return williams_r
 
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
     df['macd'] = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9).macd()
-    df['williams_r'] = ta.momentum.WilliamsR(df['High'], df['Low'], df['Close'], window=14)
+    df['williams_r'] = calculate_williams_r(df, window=14)
     return df
 
 def process_stock(code, start_date):
