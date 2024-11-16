@@ -47,7 +47,7 @@ def calculate_macd(df):
     signal = macd.ewm(span=9, adjust=False).mean()
     return macd, signal
 
-def calculate_cci(df, window=20):
+def calculate_cci(df, window=5):
     """CCI (Commodity Channel Index)를 계산하는 함수."""
     typical_price = (df['High'] + df['Low'] + df['Close']) / 3
     sma = typical_price.rolling(window=window).mean()
@@ -83,7 +83,7 @@ def analyze_stock(code, start_date):
                 break  # 조건 만족 시 루프 종료
 
         # CCI 계산
-        df['cci'] = calculate_cci(df)
+        df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
         cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
         cci_condition = cci_current < -10 and cci_previous < cci_current  # 반등 확인
