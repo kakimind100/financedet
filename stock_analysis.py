@@ -57,32 +57,34 @@ def analyze_stock(code, start_date):
     try:
         df = fdr.DataReader(code, start=start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
-        
+
         # 데이터 길이 체크: 최소 26일 데이터
         if len(df) < 26:
             logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
-        
+
         # 최근 30일 데이터 추출
         recent_data = df.iloc[-30:]  # 최근 30일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
         recent_low = recent_data['Low'].min()  # 최근 저점
 
-        # 거래량 증가 조건
-        recent_volume_avg = recent_data['Volume'].mean()  # 최근 30일 평균 거래량
-        current_volume = recent_data['Volume'].iloc[-1]  # 최근 거래량
-        volume_condition = current_volume > recent_volume_avg
-
-        # 최고가가 기준 종가 대비 29% 이상 상승한 조건 체크
+        # 29% 이상 상승 여부 확인
         reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
         high_condition = recent_data['High'].max() >= reference_close * 1.29
 
         # 장대 양봉 여부 체크
-        last_candle = recent_data.iloc[-1]
-        previous_candle = recent_data.iloc[-2]
-        is_bullish_engulfing = (last_candle['Close'] > previous_candle['Close']) and \
-                               ((last_candle['Close'] - last_candle['Open']) > (previous_candle['Close'] - previous_candle['Open'])) and \
-                               (last_candle['Low'] < previous_candle['Close'])
+        is_bullish_engulfing = False
+        if high_condition:
+            last_candle = recent_data.iloc[-1]
+            is_bullish_engulfing = (last_candle['Close'] > last_candle['Open']) and \
+                                   (last_candle['Low'] < last_candle['Close'])
+
+        # 거래량 증가 확인
+        current_volume = recent_data['Volume'].iloc[-1]  # 최근 거래량
+        previous_volume = recent_data['Volume'].iloc[-2]  # 전날 거래량
+        volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
+        if high_condition:
+            logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -95,36 +97,35 @@ def analyze_stock(code, start_date):
         # 이동 평균선 계산
         short_ma = calculate_moving_average(df, window=5).iloc[-1]
         long_ma = calculate_moving_average(df, window=20).iloc[-1]
-        ma_condition = short_ma > long_ma  # 단기 이동 평균이 장기 이동 평균을 초과
+        ma_condition = short_ma > long_ma * 1.01  # 단기 이동 평균이 장기 이동 평균보다 1% 이상 높아야 함
 
         # MACD 계산
         macd, signal = calculate_macd(df)
-        macd_condition = macd.iloc[-1] > signal.iloc[-1]  # MACD가 신호선을 초과
+        macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
-        # 지지선 확인: 최근 저점을 기준으로
-        support_condition = last_close <= recent_low * 1.01  # 최근 종가가 지지선 근처인지 확인
+        # 지지선 확인: 마지막 날의 종가가 최근 저점 이하인지 확인
+        support_condition = last_close >= recent_low  # 최근 저점 이하로 내려가지 않았으면 True
 
         # 조건 확인: 이동 평균선과 MACD 중 하나만 True, 지지선 확인은 True여야 함
-        if (is_bullish_engulfing and 
-            high_condition and 
+        if (high_condition and 
             williams_r <= -80 and 
             rsi_condition and 
-            volume_condition and 
+            volume_increase and 
             support_condition and 
             (ma_condition or macd_condition)):  # 이동 평균선 또는 MACD 조건
             result = {
                 'Code': code,
                 'Last Close': last_close,
-                'Williams %R': williams_r
+                'Williams %R': williams_r,
+                'Bullish Engulfing': is_bullish_engulfing
             }
             logging.info(f"{code} 조건 만족: {result}")
             return result
         else:
             logging.info(f"{code} 조건 불만족: "
-                         f"장대 양봉: {is_bullish_engulfing}, "
                          f"29% 상승: {high_condition}, "
                          f"Williams %R: {williams_r}, "
-                         f"거래량 증가: {volume_condition}, "
+                         f"거래량 증가: {volume_increase}, "
                          f"이동 평균선: {ma_condition}, "
                          f"MACD: {macd_condition}, "
                          f"지지선 확인: {support_condition}")
