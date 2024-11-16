@@ -66,7 +66,7 @@ def analyze_stock(code, start_date):
         # 최근 30일 데이터 추출
         recent_data = df.iloc[-30:]  # 최근 30일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
-        reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
+        recent_low = recent_data['Low'].min()  # 최근 저점
 
         # 거래량 증가 조건
         recent_volume_avg = recent_data['Volume'].mean()  # 최근 30일 평균 거래량
@@ -74,6 +74,7 @@ def analyze_stock(code, start_date):
         volume_condition = current_volume > recent_volume_avg
 
         # 최고가가 기준 종가 대비 29% 이상 상승한 조건 체크
+        reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
         high_condition = recent_data['High'].max() >= reference_close * 1.29
 
         # 장대 양봉 여부 체크
@@ -100,14 +101,13 @@ def analyze_stock(code, start_date):
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] > signal.iloc[-1]  # MACD가 신호선을 초과
 
-        # 지지선 확인
-        support_level = 13650  # 지지선 기준
-        support_condition = last_close <= support_level * 1.01  # 최근 종가가 지지선 근처인지 확인
+        # 지지선 확인: 최근 저점을 기준으로
+        support_condition = last_close <= recent_low * 1.01  # 최근 종가가 지지선 근처인지 확인
 
         # 조건 확인
         if (is_bullish_engulfing and 
             high_condition and 
-            williams_r <= -80 and 
+            williams_r <= -85 and 
             rsi_condition and 
             volume_condition and 
             ma_condition and 
