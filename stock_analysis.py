@@ -85,8 +85,8 @@ def analyze_stock(code, start_date):
         # CCI 계산
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
-        cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
-        cci_condition = cci_current < -90 and cci_previous < cci_current  # 반등 확인
+        # CCI 반등 조건 수정: 현재 CCI가 -90 이하인 경우
+        cci_condition = cci_current < -90 
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -111,7 +111,7 @@ def analyze_stock(code, start_date):
         if (high_condition and 
             williams_r <= -90 and  # 수정된 조건
             rsi_condition and 
-            cci_condition <= -90 and  # CCI 반등 조건 추가
+            cci_condition and  # CCI 반등 조건 수정
             support_condition and 
             macd_condition):  # MACD 조건
             result = {
