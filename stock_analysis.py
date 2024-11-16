@@ -86,7 +86,7 @@ def analyze_stock(code, start_date):
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
         cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
-        cci_condition = cci_current < -100 and cci_previous < cci_current  # 반등 확인
+        cci_condition = cci_current < -90 and cci_previous < cci_current  # 반등 확인
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
