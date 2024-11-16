@@ -50,28 +50,28 @@ def process_stock(code, start_date):
         if any(recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i-1] * 1.29 for i in range(1, len(recent_data))):
             logging.info(f"{code} 최근 20일 내 29% 이상 상승한 종목 발견: 최근 종가 {last_close}, 이전 종가 {prev_close}")
             
-            # 장대 양봉 조건 확인: 다음날이 전일보다 29% 이상 상승
-            for i in range(1, len(recent_data)):
-                if recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i-1] * 1.29:
-                    logging.info(f"{code} 장대 양봉 조건 만족: {recent_data.index[i]} 종가 {recent_data['Close'].iloc[i]}, 이전 종가 {recent_data['Close'].iloc[i-1]}")
-                    df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
-                    
-                    # MACD와 윌리엄스 %R 조건 확인
-                    if df['macd'].iloc[-1] <= 5 and df['williams_r'].iloc[-1] <= 0:
-                        result = {
-                            'Code': code,
-                            'Last Close': df['Close'].iloc[i],
-                            'MACD': df['macd'].iloc[-1],
-                            'Williams %R': df['williams_r'].iloc[-1]
-                        }
-                        logging.info(f"{code} 조건 만족: {result}")
-                        return result
-                    else:
-                        logging.info(f"{code} 조건 불만족: MACD={df['macd'].iloc[-1]}, Williams %R={df['williams_r'].iloc[-1]}")
-                    break  # 조건을 만족한 경우, 반복문 종료
+            # MACD 계산
+            df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
+
+            # MACD 조건 확인
+            if df['macd'].iloc[-1] <= 5:
+                logging.info(f"{code} MACD 조건 만족: MACD={df['macd'].iloc[-1]}")
+                
+                # 윌리엄스 %R 조건 확인
+                if df['williams_r'].iloc[-1] <= 0:
+                    result = {
+                        'Code': code,
+                        'Last Close': last_close,
+                        'MACD': df['macd'].iloc[-1],
+                        'Williams %R': df['williams_r'].iloc[-1]
+                    }
+                    logging.info(f"{code} 조건 만족: {result}")
+                    return result
+                else:
+                    logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={df['williams_r'].iloc[-1]}")
             else:
-                logging.info(f"{code} 장대 양봉 조건 불만족: 20일 기간 내에서 상승 조건 없음")
-        
+                logging.info(f"{code} MACD 조건 불만족: MACD={df['macd'].iloc[-1]}")
+
         return None
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
@@ -119,4 +119,9 @@ if __name__ == "__main__":
     
     if result:
         for item in result:
-            print(item) 
+            print(item)  # 콘솔에 결과 출력
+    else:
+        print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
+
+    logging.info("스크립트 실행 완료")
