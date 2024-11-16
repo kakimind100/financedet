@@ -131,8 +131,10 @@ def analyze_stock(code, start_date):
 
         # 전체 기간의 저점 계산 (당일 제외)
         overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
-        support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
+        if len(filtered_data) > 0:
+            overall_low = min(overall_low, filtered_data['Low'].min())  # 필터링된 데이터의 저점과 비교
 
+        # 지지선 조건 (당일 제외)
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
         # 조건 확인: 가격 상승 조건, CCI, Williams %R, RSI, MACD, 지지선 확인
