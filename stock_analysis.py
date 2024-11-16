@@ -87,7 +87,7 @@ def analyze_stock(code, start_date):
 
         # RSI 계산
         rsi = calculate_rsi(df)
-        rsi_condition = rsi.iloc[-1] < 30  # 최근 RSI가 30 이하
+        rsi_condition = rsi.iloc[-1] < 40  # 최근 RSI가 40 이하
 
         # MACD 계산
         macd, signal = calculate_macd(df)
