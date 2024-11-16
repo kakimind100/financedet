@@ -55,8 +55,11 @@ def process_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_20_days = recent_data.iloc[-20:]
 
-        # 최고가가 29% 이상 상승한 조건 체크
-        high_condition = recent_20_days['High'].max() >= recent_20_days['High'].iloc[0] * 1.29
+        # 기준 날짜의 종가
+        reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
+
+        # 최고가가 기준 종가 대비 29% 이상 상승한 조건 체크
+        high_condition = recent_20_days['High'].max() >= reference_close * 1.29
 
         # 장대 양봉 조건 체크
         last_candle = recent_data.iloc[-1]
@@ -67,18 +70,13 @@ def process_stock(code, start_date):
                                ((last_candle['Close'] - last_candle['Open']) > (previous_candle['Close'] - previous_candle['Open'])) and \
                                (last_candle['Low'] < previous_candle['Close'])
 
-        # 장대 양봉 이후 하향하는지 확인
-        if is_bullish_engulfing and last_close < last_candle['Open']:
-            logging.info(f"{code} 장대 양봉 이후 하향하는 종목: 최근 종가 {last_close}")
+        # 두 조건이 모두 만족하는지 확인
+        if is_bullish_engulfing and last_close < last_candle['Open'] and high_condition:
+            logging.info(f"{code} 장대 양봉 이후 하향하고, 최고가가 기준 종가 대비 29% 이상 상승한 종목: 최근 종가 {last_close}")
 
             # 윌리엄스 %R 계산
             df = calculate_indicators(df)  # 윌리엄스 %R 계산
             williams_r = df['williams_r'].iloc[-1]
-
-            # 29% 상승 이력 확인
-            if high_condition:
-                logging.info(f"{code} 최고가가 29% 이상 상승한 이력이 있어 제외됨.")
-                return None
 
             # 장대 양봉 이후 7% 이상 상승한 이력 확인
             bullish_after = recent_data.iloc[:-1]  # 마지막 봉을 제외한 데이터
