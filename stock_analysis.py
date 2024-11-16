@@ -77,12 +77,17 @@ def analyze_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_data = df.iloc[-20:]  # 최근 20일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
+        opening_price = recent_data['Open'].iloc[-1]  # 최근 시작가 (개장가)
         recent_low = recent_data['Low'].min()  # 최근 저점
+
+        # 상한가 계산 (시작가의 30% 상승)
+        upper_limit_price = opening_price * 1.3  # 상한가 가격
+
+        # 상한가에 도달했는지 확인
+        upper_limit_condition = last_close >= upper_limit_price  # 상한가 도달 여부
 
         # 29% 이상 상승 여부 확인
         high_condition = False
-
-        # 최근 20일 내에서 전일 대비 29% 상승한 날 찾기
         for i in range(1, len(recent_data)):
             if recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i - 1] * 1.29:
                 high_condition = True
@@ -92,7 +97,7 @@ def analyze_stock(code, start_date):
         # CCI 계산
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
-        cci_condition = cci_current < -85  # CCI 반등 조건 수정
+        cci_condition = cci_current < -90  # CCI 조건
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -101,7 +106,7 @@ def analyze_stock(code, start_date):
         # RSI 계산
         rsi = calculate_rsi(df)
         rsi_current = rsi.iloc[-1]  # 현재 RSI 값
-        rsi_condition = rsi_current < 50  # RSI 조건 조정
+        rsi_condition = rsi_current < 50  # RSI 조건
 
         # 현재 RSI와 CCI 값을 로그에 기록
         logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 CCI: {cci_current}")
@@ -113,16 +118,19 @@ def analyze_stock(code, start_date):
         # 지지선 확인: 마지막 날의 종가가 최근 저점의 1% 이상인지 확인
         support_condition = last_close >= recent_low * 1.01  # 최근 저점의 1% 이상
 
-        # 조건 확인: CCI, Williams %R, RSI, MACD, 지지선 확인
+        # 조건 확인: 상한가, CCI, Williams %R, RSI, MACD, 지지선 확인
         if (high_condition and 
-            williams_r <= -85 and 
+            williams_r <= -90 and 
             rsi_condition and 
             cci_condition and 
             support_condition and 
-            macd_condition):  # MACD 조건
+            macd_condition and 
+            upper_limit_condition):  # MACD 조건
             result = {
                 'Code': code,
                 'Last Close': last_close,
+                'Opening Price': opening_price,
+                'Upper Limit Price': upper_limit_price,
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
             }
@@ -130,6 +138,7 @@ def analyze_stock(code, start_date):
             return result
         else:
             logging.info(f"{code} 조건 불만족: "
+                         f"상한가 도달: {upper_limit_condition}, "
                          f"29% 상승: {high_condition}, "
                          f"Williams %R: {williams_r}, "
                          f"RSI: {rsi_current}, "
