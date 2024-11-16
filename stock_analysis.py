@@ -110,8 +110,8 @@ def analyze_stock(code, start_date):
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
-        # 지지선 확인: 마지막 날의 종가가 최근 저점 이하인지 확인
-        support_condition = last_close >= recent_low  # 최근 저점 이하로 내려가지 않았으면 True
+        # 지지선 확인: 마지막 날의 종가가 최근 저점의 1% 이상인지 확인
+        support_condition = last_close >= recent_low * 1.01  # 최근 저점의 1% 이상
 
         # 조건 확인: CCI, Williams %R, RSI, MACD, 지지선 확인
         if (high_condition and 
