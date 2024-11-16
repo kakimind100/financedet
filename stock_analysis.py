@@ -104,15 +104,14 @@ def analyze_stock(code, start_date):
         # 지지선 확인: 최근 저점을 기준으로
         support_condition = last_close <= recent_low * 1.01  # 최근 종가가 지지선 근처인지 확인
 
-        # 조건 확인
+        # 조건 확인: 이동 평균선과 MACD 중 하나만 True, 지지선 확인은 True여야 함
         if (is_bullish_engulfing and 
             high_condition and 
-            williams_r <= -85 and 
+            williams_r <= -80 and 
             rsi_condition and 
             volume_condition and 
-            ma_condition and 
-            macd_condition and 
-            support_condition):
+            support_condition and 
+            (ma_condition or macd_condition)):  # 이동 평균선 또는 MACD 조건
             result = {
                 'Code': code,
                 'Last Close': last_close,
