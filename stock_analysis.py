@@ -108,4 +108,51 @@ def process_stock(code, start_date):
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
 
-def search
+def search_stocks(start_date):
+    """주식 종목을 검색하는 함수."""
+    logging.info("주식 검색 시작")
+    
+    try:
+        kospi = fdr.StockListing('KOSPI')  # KRX 코스피 종목 목록
+        logging.info("코스피 종목 목록 가져오기 성공")
+        
+        kosdaq = fdr.StockListing('KOSDAQ')  # KRX 코스닥 종목 목록
+        logging.info("코스닥 종목 목록 가져오기 성공")
+    except Exception as e:
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
+        return []
+
+    stocks = pd.concat([kospi, kosdaq])
+    result = []
+
+    # 멀티스레딩으로 주식 데이터 처리
+    with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
+        futures = {executor.submit(process_stock, code, start_date): code for code in stocks['Code']}
+        for future in as_completed(futures):
+            result_data = future.result()
+            if result_data:
+                result.append(result_data)
+
+    logging.info("주식 검색 완료")
+    return result
+
+if __name__ == "__main__":
+    logging.info("스크립트 실행 시작")
+    
+    # 최근 40 거래일을 기준으로 시작 날짜 설정
+    today = datetime.today()
+    start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
+    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
+
+    result = search_stocks(start_date_str)
+    
+    if result:
+        for item in result:
+            print(item)  # 콘솔에 결과 출력
+    else:
+        print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
+
+    logging.info("스크립트 실행 완료")
