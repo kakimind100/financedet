@@ -81,6 +81,7 @@ def analyze_stock(code, start_date):
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
+        bullish_candle_index = None  # 장대 양봉 발생 인덱스 저장
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
