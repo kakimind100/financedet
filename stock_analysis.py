@@ -1,6 +1,5 @@
 import FinanceDataReader as fdr
 import pandas as pd
-import ta  # 기술적 지표 계산을 위한 라이브러리
 import logging
 from datetime import datetime, timedelta
 import os
@@ -17,33 +16,35 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상의 로그만 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def calculate_williams_r(df, window=14):
     """Williams %R을 직접 계산하는 함수."""
     logging.debug(f"Calculating Williams %R with window size: {window}")
     highest_high = df['High'].rolling(window=window).max()
     lowest_low = df['Low'].rolling(window=window).min()
     williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
-    logging.debug("Williams %R calculation completed.")
     return williams_r
 
 def calculate_indicators(df):
-    """MACD와 윌리엄스 %R을 계산하는 함수."""
-    logging.debug("Calculating MACD and Williams %R indicators.")
-    df['macd'] = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9).macd()
+    """지표를 계산하는 함수."""
     df['williams_r'] = calculate_williams_r(df, window=14)
-    logging.debug("Indicators calculated successfully.")
     return df
 
 def process_stock(code, start_date):
     """주식 데이터를 처리하는 함수."""
-    logging.info(f"Processing stock code: {code}")
+    logging.info(f"{code} 처리 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
-        logging.info(f"{code} data retrieved successfully, number of records: {len(df)}")
+        logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
         
         # 데이터 길이 체크: 최소 26일 데이터
         if len(df) < 26:
-            logging.warning(f"{code} data has less than 26 records, skipping.")
+            logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
         
         # 최근 30일 데이터 추출
@@ -53,47 +54,40 @@ def process_stock(code, start_date):
 
         # 최근 20일 중 29% 이상 상승한 종가 확인
         if any(recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i-1] * 1.29 for i in range(1, len(recent_data))):
-            logging.info(f"{code} found a stock with over 29% rise within the last 20 days: last close {last_close}, previous close {prev_close}")
+            logging.info(f"{code} 최근 20일 내 29% 이상 상승한 종목 발견: 최근 종가 {last_close}, 이전 종가 {prev_close}")
             
-            # MACD 계산
-            df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
+            # 지표 계산
+            df = calculate_indicators(df)  # 윌리엄스 %R 계산
 
-            # MACD 조건 확인
-            if df['macd'].iloc[-1] <= 5:
-                logging.info(f"{code} MACD condition satisfied: MACD={df['macd'].iloc[-1]}")
-                
-                # 윌리엄스 %R 조건 확인
-                if df['williams_r'].iloc[-1] <= 0:
-                    result = {
-                        'Code': code,
-                        'Last Close': last_close,
-                        'MACD': df['macd'].iloc[-1],
-                        'Williams %R': df['williams_r'].iloc[-1]
-                    }
-                    logging.info(f"{code} conditions satisfied: {result}")
-                    return result
-                else:
-                    logging.info(f"{code} Williams %R condition not satisfied: Williams %R={df['williams_r'].iloc[-1]}")
+            # 윌리엄스 %R 조건 확인
+            if df['williams_r'].iloc[-1] <= 0:
+                result = {
+                    'Code': code,
+                    'Last Close': last_close,
+                    'Williams %R': df['williams_r'].iloc[-1]
+                }
+                logging.info(f"{code} 조건 만족: {result}")
+                return result
             else:
-                logging.info(f"{code} MACD condition not satisfied: MACD={df['macd'].iloc[-1]}")
+                logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={df['williams_r'].iloc[-1]}")
 
         return None
     except Exception as e:
-        logging.error(f"Error processing {code}: {str(e)}", exc_info=True)
+        logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
-    logging.info("Starting stock search...")
+    logging.info("주식 검색 시작")
     
     try:
         kospi = fdr.StockListing('KOSPI')  # KRX 코스피 종목 목록
-        logging.info("Successfully retrieved KOSPI stock list.")
+        logging.info("코스피 종목 목록 가져오기 성공")
         
         kosdaq = fdr.StockListing('KOSDAQ')  # KRX 코스닥 종목 목록
-        logging.info("Successfully retrieved KOSDAQ stock list.")
+        logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
-        logging.error(f"Error retrieving stock lists: {str(e)}", exc_info=True)
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
     stocks = pd.concat([kospi, kosdaq])
@@ -107,18 +101,18 @@ def search_stocks(start_date):
             if result_data:
                 result.append(result_data)
 
-    logging.info("Stock search completed.")
+    logging.info("주식 검색 완료")
     return result
 
 if __name__ == "__main__":
-    logging.info("Script execution started.")
+    logging.info("스크립트 실행 시작")
     
     # 최근 40 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
     start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    logging.info(f"Starting stock analysis from date: {start_date_str}")
+    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
     result = search_stocks(start_date_str)
     
@@ -126,7 +120,7 @@ if __name__ == "__main__":
         for item in result:
             print(item)  # 콘솔에 결과 출력
     else:
-        print("No stocks met the conditions.")
-        logging.info("No stocks met the conditions.")
+        print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
 
-    logging.info("Script execution completed.")
+    logging.info("스크립트 실행 완료")
