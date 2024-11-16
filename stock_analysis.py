@@ -42,6 +42,15 @@ def calculate_macd(df):
     signal = macd.ewm(span=9, adjust=False).mean()
     return macd, signal
 
+def calculate_rsi(df, window=14):
+    """RSI를 계산하는 함수."""
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def analyze_stock(code, start_date):
     """주식 데이터를 분석하는 함수."""
     logging.info(f"{code} 데이터 분석 시작")
@@ -79,7 +88,7 @@ def analyze_stock(code, start_date):
         williams_r = df['williams_r'].iloc[-1]
 
         # RSI 계산
-        rsi = 100 - (100 / (1 + (df['Close'].diff(1).rolling(window=14).mean() / abs(df['Close'].diff(1).rolling(window=14).min())))
+        rsi = calculate_rsi(df)
         rsi_condition = rsi.iloc[-1] < 30  # 최근 RSI가 30 이하
 
         # 이동 평균선 계산
