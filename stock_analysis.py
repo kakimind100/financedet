@@ -133,6 +133,7 @@ def analyze_stock(code, start_date):
                 'Highest Price': recent_data['High'].max(),
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
+                'Support Condition': support_condition  # 지지선 조건 추가
             }
             logging.info(f"{code} 조건 만족: {result}")
             return result
