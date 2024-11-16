@@ -52,15 +52,19 @@ def calculate_macd(df):
     logging.debug(f"MACD 계산 완료: {macd.tail()}")
     return macd, signal
 
-def calculate_cci(df, window=5):
-    """CCI (Commodity Channel Index)를 계산하는 함수."""
-    logging.debug(f"Calculating CCI with window size: {window}")
-    typical_price = (df['High'] + df['Low'] + df['Close']) / 3
-    sma = typical_price.rolling(window=window).mean()
-    mean_deviation = (typical_price - sma).abs().rolling(window=window).mean()
-    cci = (typical_price - sma) / (0.015 * mean_deviation)
-    logging.debug(f"CCI 계산 완료: {cci.tail()}")
-    return cci
+def calculate_obv(df):
+    """OBV (On-Balance Volume)를 계산하는 함수."""
+    logging.debug("Calculating OBV")
+    obv = [0]  # 첫 번째 OBV 값은 0으로 초기화
+    for i in range(1, len(df)):
+        if df['Close'].iloc[i] > df['Close'].iloc[i - 1]:  # 종가가 이전 종가보다 높을 때
+            obv.append(obv[-1] + df['Volume'].iloc[i])  # 현재 거래량을 추가
+        elif df['Close'].iloc[i] < df['Close'].iloc[i - 1]:  # 종가가 이전 종가보다 낮을 때
+            obv.append(obv[-1] - df['Volume'].iloc[i])  # 현재 거래량을 빼기
+        else:
+            obv.append(obv[-1])  # 종가가 변하지 않으면 이전 OBV 유지
+    logging.debug(f"OBV 계산 완료: {obv[-5:]}")  # 마지막 5개 OBV 값 로그
+    return pd.Series(obv, index=df.index)
 
 def analyze_stock(code, start_date):
     """주식 데이터를 분석하는 함수."""
@@ -93,10 +97,10 @@ def analyze_stock(code, start_date):
                 price_increase_condition = True
                 logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
-        # CCI 계산
-        df['cci'] = calculate_cci(df, window=5)
-        cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
-        cci_condition = cci_current < -70  # CCI 조건
+        # OBV 계산
+        df['obv'] = calculate_obv(df)
+        obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
+
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -107,8 +111,8 @@ def analyze_stock(code, start_date):
         rsi_current = rsi.iloc[-1]  # 현재 RSI 값
         rsi_condition = rsi_current < 50  # RSI 조건
 
-        # 현재 RSI와 CCI 값을 로그에 기록
-        logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 CCI: {cci_current}")
+        # 현재 RSI와 OBV 값을 로그에 기록
+        logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 OBV: {obv_current}")
 
         # MACD 계산
         macd, signal = calculate_macd(df)
@@ -130,9 +134,9 @@ def analyze_stock(code, start_date):
         if (price_increase_condition and 
             williams_r <= -80 and 
             rsi_condition and 
-            cci_condition and 
             support_condition and 
-            macd_condition):  # MACD 조건
+            macd_condition and 
+            obv_current > previous_obv):
             result = {
                 'Code': code,
                 'Last Close': last_close,
@@ -140,7 +144,7 @@ def analyze_stock(code, start_date):
                 'Lowest Price': overall_low,
                 'Highest Price': recent_data['High'].max(),
                 'Williams %R': williams_r,
-                'CCI': cci_current,  # 현재 CCI 값 추가
+                'OBV': obv_current,  
                 'Support Condition': support_condition  # 지지선 조건 추가
             }
             logging.info(f"{code} 조건 만족: {result}")
@@ -150,7 +154,7 @@ def analyze_stock(code, start_date):
                          f"가격 상승 조건: {price_increase_condition}, "
                          f"Williams %R: {williams_r}, "
                          f"RSI: {rsi_current}, "
-                         f"CCI: {cci_current}, "
+                         f"OBV: {obv_current}, "
                          f"MACD: {macd_condition}, "
                          f"지지선 확인: {support_condition}")
 
