@@ -86,7 +86,7 @@ def analyze_stock(code, start_date):
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
         cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
-        cci_condition = cci_current < -10 and cci_previous < cci_current  # 반등 확인
+        cci_condition = cci_current < -90 and cci_previous < cci_current  # 반등 확인
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -95,7 +95,7 @@ def analyze_stock(code, start_date):
         # RSI 계산
         rsi = calculate_rsi(df)
         rsi_current = rsi.iloc[-1]  # 현재 RSI 값
-        rsi_condition = rsi_current < 35  # RSI 조건 조정
+        rsi_condition = rsi_current < 50  # RSI 조건 조정
 
         # 현재 RSI와 CCI 값을 로그에 기록
         logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 CCI: {cci_current}")
