@@ -2,8 +2,8 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 from datetime import datetime, timedelta
-import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -30,14 +30,21 @@ def calculate_williams_r(df, window=14):
     williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
     return williams_r
 
-def calculate_indicators(df):
-    """지표를 계산하는 함수."""
-    df['williams_r'] = calculate_williams_r(df, window=14)
-    return df
+def calculate_moving_average(df, window):
+    """이동 평균을 계산하는 함수."""
+    return df['Close'].rolling(window=window).mean()
 
-def process_stock(code, start_date):
-    """주식 데이터를 처리하는 함수."""
-    logging.info(f"{code} 처리 시작")
+def calculate_macd(df):
+    """MACD를 계산하는 함수."""
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    macd = exp1 - exp2
+    signal = macd.ewm(span=9, adjust=False).mean()
+    return macd, signal
+
+def analyze_stock(code, start_date):
+    """주식 데이터를 분석하는 함수."""
+    logging.info(f"{code} 데이터 분석 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
@@ -50,54 +57,70 @@ def process_stock(code, start_date):
         # 최근 30일 데이터 추출
         recent_data = df.iloc[-30:]  # 최근 30일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
-        prev_close = recent_data['Close'].iloc[-2]  # 이전 종가
-
-        # 최근 20일 데이터 추출
-        recent_20_days = recent_data.iloc[-20:]
-
-        # 기준 날짜의 종가
         reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
 
-        # 최고가가 기준 종가 대비 29% 이상 상승한 조건 체크
-        high_condition = recent_20_days['High'].max() >= reference_close * 1.29
+        # 거래량 증가 조건
+        recent_volume_avg = recent_data['Volume'].mean()  # 최근 30일 평균 거래량
+        current_volume = recent_data['Volume'].iloc[-1]  # 최근 거래량
+        volume_condition = current_volume > recent_volume_avg
 
-        # 장대 양봉 조건 체크
+        # 최고가가 기준 종가 대비 29% 이상 상승한 조건 체크
+        high_condition = recent_data['High'].max() >= reference_close * 1.29
+
+        # 장대 양봉 여부 체크
         last_candle = recent_data.iloc[-1]
         previous_candle = recent_data.iloc[-2]
-
-        # 장대 양봉 여부
         is_bullish_engulfing = (last_candle['Close'] > previous_candle['Close']) and \
                                ((last_candle['Close'] - last_candle['Open']) > (previous_candle['Close'] - previous_candle['Open'])) and \
                                (last_candle['Low'] < previous_candle['Close'])
 
-        # 두 조건이 모두 만족하는지 확인
-        if is_bullish_engulfing and last_close < last_candle['Open'] and high_condition:
-            logging.info(f"{code} 장대 양봉 이후 하향하고, 최고가가 기준 종가 대비 29% 이상 상승한 종목: 최근 종가 {last_close}")
+        # Williams %R 계산
+        df['williams_r'] = calculate_williams_r(df)
+        williams_r = df['williams_r'].iloc[-1]
 
-            # 윌리엄스 %R 계산
-            df = calculate_indicators(df)  # 윌리엄스 %R 계산
-            williams_r = df['williams_r'].iloc[-1]
+        # RSI 계산
+        rsi = 100 - (100 / (1 + (df['Close'].diff(1).rolling(window=14).mean() / abs(df['Close'].diff(1).rolling(window=14).min())))
+        rsi_condition = rsi.iloc[-1] < 30  # 최근 RSI가 30 이하
 
-            # 장대 양봉 이후 7% 이상 상승한 이력 확인
-            bullish_after = recent_data.iloc[:-1]  # 마지막 봉을 제외한 데이터
-            has_risen_7_percent = any(bullish_after['Close'].iloc[i] >= bullish_after['Close'].iloc[i-1] * 1.07 for i in range(1, len(bullish_after)))
+        # 이동 평균선 계산
+        short_ma = calculate_moving_average(df, window=5).iloc[-1]
+        long_ma = calculate_moving_average(df, window=20).iloc[-1]
+        ma_condition = short_ma > long_ma  # 단기 이동 평균이 장기 이동 평균을 초과
 
-            if not has_risen_7_percent:
-                # 조건 확인
-                if williams_r <= -90:
-                    result = {
-                        'Code': code,
-                        'Last Close': last_close,
-                        'Williams %R': williams_r
-                    }
-                    logging.info(f"{code} 조건 만족: {result}")
-                    return result
-                else:
-                    logging.info(f"{code} 윌리엄스 %R 조건 불만족: Williams %R={williams_r}")
-            else:
-                logging.info(f"{code} 장대 양봉 이후 7% 이상 상승한 이력이 있어 제외됨.")
+        # MACD 계산
+        macd, signal = calculate_macd(df)
+        macd_condition = macd.iloc[-1] > signal.iloc[-1]  # MACD가 신호선을 초과
 
-        return None
+        # 지지선 확인
+        support_level = 13650  # 지지선 기준
+        support_condition = last_close <= support_level * 1.01  # 최근 종가가 지지선 근처인지 확인
+
+        # 조건 확인
+        if (is_bullish_engulfing and 
+            high_condition and 
+            williams_r <= -80 and 
+            rsi_condition and 
+            volume_condition and 
+            ma_condition and 
+            macd_condition and 
+            support_condition):
+            result = {
+                'Code': code,
+                'Last Close': last_close,
+                'Williams %R': williams_r
+            }
+            logging.info(f"{code} 조건 만족: {result}")
+            return result
+        else:
+            logging.info(f"{code} 조건 불만족: "
+                         f"장대 양봉: {is_bullish_engulfing}, "
+                         f"29% 상승: {high_condition}, "
+                         f"Williams %R: {williams_r}, "
+                         f"거래량 증가: {volume_condition}, "
+                         f"이동 평균선: {ma_condition}, "
+                         f"MACD: {macd_condition}, "
+                         f"지지선 확인: {support_condition}")
+
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
@@ -121,7 +144,7 @@ def search_stocks(start_date):
 
     # 멀티스레딩으로 주식 데이터 처리
     with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
-        futures = {executor.submit(process_stock, code, start_date): code for code in stocks['Code']}
+        futures = {executor.submit(analyze_stock, code, start_date): code for code in stocks['Code']}
         for future in as_completed(futures):
             result_data = future.result()
             if result_data:
