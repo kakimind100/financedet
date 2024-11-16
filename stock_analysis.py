@@ -63,23 +63,25 @@ def analyze_stock(code, start_date):
             logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
 
-        # 최근 30일 데이터 추출
-        recent_data = df.iloc[-30:]  # 최근 30일 데이터
+        # 최근 20일 데이터 추출
+        recent_data = df.iloc[-20:]  # 최근 20일 데이터
         last_close = recent_data['Close'].iloc[-1]  # 최근 종가
         recent_low = recent_data['Low'].min()  # 최근 저점
 
         # 29% 이상 상승 여부 확인
-        reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
-        high_condition = recent_data['High'].max() >= reference_close * 1.29
-
-        # 거래량 증가 조건 확인
+        high_condition = False
         volume_increase = False
-        if high_condition:
-            # 29% 상승한 날의 거래량과 전날 거래량 확인
-            current_volume = recent_data['Volume'].iloc[-1]  # 가장 최근 거래량 (29% 상승한 날의 거래량)
-            previous_volume = recent_data['Volume'].iloc[-2]  # 전날 거래량
-            volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
-            logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
+
+        # 최근 20일 내에서 전일 대비 29% 상승한 날 찾기
+        for i in range(1, len(recent_data)):
+            if recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i - 1] * 1.29:
+                high_condition = True
+                # 해당 날의 거래량과 전날 거래량 확인
+                current_volume = recent_data['Volume'].iloc[i]  # 29% 상승한 날의 거래량
+                previous_volume = recent_data['Volume'].iloc[i - 1]  # 전날 거래량
+                volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
+                logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
+                break  # 조건 만족 시 루프 종료
 
         # 장대 양봉 여부 체크
         is_bullish_engulfing = False
@@ -180,7 +182,4 @@ if __name__ == "__main__":
         for item in result:
             print(item)  # 콘솔에 결과 출력
     else:
-        print("조건에 맞는 종목이 없습니다.")
-        logging.info("조건에 맞는 종목이 없습니다.")
-
-    logging.info("스크립트 실행 완료")
+        print("조건에 맞는 종목
