@@ -81,7 +81,6 @@ def analyze_stock(code, start_date):
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
-        bullish_candle_index = None  # 장대 양봉 발생 인덱스 저장
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
@@ -123,8 +122,7 @@ def analyze_stock(code, start_date):
 
         # 전체 기간의 저점 계산 (당일 제외)
         overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
-        if len(filtered_data) > 0:
-            overall_low = min(overall_low, filtered_data['Low'].min())  # 필터링된 데이터의 저점과 비교
+        support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
 
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
