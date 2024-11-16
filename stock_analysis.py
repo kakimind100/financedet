@@ -139,7 +139,7 @@ def analyze_stock(code, start_date):
             rsi_condition and 
             support_condition and 
             macd_condition and 
-            obv_current > previous_obv):
+            obv_strength_condition):
             result = {
                 'Code': code,
                 'Last Close': last_close,
@@ -159,7 +159,8 @@ def analyze_stock(code, start_date):
                          f"RSI: {rsi_current}, "
                          f"OBV: {obv_current}, "
                          f"MACD: {macd_condition}, "
-                         f"지지선 확인: {support_condition}")
+                         f"지지선 확인: {support_condition}"
+                         f"OBV 세력 확인: {obv_strength_condition}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
