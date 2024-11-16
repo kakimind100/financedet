@@ -41,14 +41,13 @@ def process_stock(code, start_date):
             logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
         
-        # 최근 40일 데이터에서 마지막 30일 데이터 추출
-        recent_data = df.iloc[-40:]  # 최근 40일 데이터
-        last_30_days = recent_data.iloc[-30:]  # 마지막 30일 데이터
-        last_close = last_30_days['Close'].iloc[-1]  # 최근 종가
-        prev_close = last_30_days['Close'].iloc[-2]  # 이전 종가
+        # 최근 30일 데이터 추출
+        recent_data = df.iloc[-30:]  # 최근 30일 데이터
+        last_close = recent_data['Close'].iloc[-1]  # 최근 종가
+        prev_close = recent_data['Close'].iloc[-2]  # 이전 종가
 
-        # 장대 양봉 조건 확인
-        if last_close >= prev_close * 1.3:
+        # 장대 양봉 조건 확인: 다음날이 전일보다 29% 이상 상승
+        if last_close >= prev_close * 1.29:
             logging.info(f"{code} 장대 양봉 조건 만족: 최근 종가 {last_close}, 이전 종가 {prev_close}")
             df = calculate_indicators(df)  # MACD와 윌리엄스 %R 계산
             
