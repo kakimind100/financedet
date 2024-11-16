@@ -114,8 +114,17 @@ def analyze_stock(code, start_date):
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
+        # 장대 양봉 이후의 데이터에서 저점 계산
+        if bullish_candle_index is not None:
+            filtered_data = recent_data.iloc[:bullish_candle_index]  # 장대 양봉 이전 데이터만 필터링
+        else:
+            filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
+
         # 전체 기간의 저점 계산 (당일 제외)
         overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
+        if len(filtered_data) > 0:
+            overall_low = min(overall_low, filtered_data['Low'].min())  # 필터링된 데이터의 저점과 비교
+
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
         # 조건 확인: 가격 상승 조건, CCI, Williams %R, RSI, MACD, 지지선 확인
