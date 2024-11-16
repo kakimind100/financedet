@@ -27,7 +27,7 @@ logging.getLogger().addHandler(console_handler)
 def calculate_indicators(df):
     """MACD와 윌리엄스 %R을 계산하는 함수."""
     df['macd'] = ta.trend.MACD(df['Close'], window_slow=26, window_fast=12, window_sign=9).macd()
-    df['williams_r'] = ta.momentum.WilliamsR(df['High'], df['Low'], df['Close'], window=14)
+    df['williams_r'] = ta.momentum.WilliamsRIndicator(high=df['High'], low=df['Low'], close=df['Close'], window=14).williams_r()
     return df
 
 def process_stock(code, start_date):
@@ -69,6 +69,22 @@ def process_stock(code, start_date):
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
+
+def get_trading_days(start_date, num_days):
+    """주식 개장일을 기준으로 지정된 개수의 거래일을 반환하는 함수."""
+    trading_days = []
+    current_date = start_date
+
+    # KOSPI/KOSDAQ의 개장일을 가져옴
+    holidays = fdr.get_market_holidays()  # 한국 주식시장 공휴일 데이터
+    
+    while len(trading_days) < num_days:
+        # 주말 확인 (토요일: 5, 일요일: 6) 및 공휴일 확인
+        if current_date.weekday() < 5 and current_date not in holidays:
+            trading_days.append(current_date)
+        current_date += timedelta(days=1)
+
+    return trading_days
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
@@ -134,10 +150,12 @@ def save_to_database(results):
 if __name__ == "__main__":
     logging.info("스크립트 실행 시작")
     
-    # 최근 30 거래일을 기준으로 시작 날짜 설정
+    # 시작 날짜 설정 (예: 오늘)
     today = datetime.today()
-    start_date = today - timedelta(days=30)  # 최근 30 거래일 전 날짜
-    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    # 최근 26 거래일 구하기
+    trading_days = get_trading_days(today, 26)
+    start_date_str = trading_days[-1].strftime('%Y-%m-%d')  # 가장 오래된 거래일
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
