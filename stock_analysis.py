@@ -72,19 +72,21 @@ def analyze_stock(code, start_date):
         reference_close = recent_data['Close'].iloc[-2]  # 장대 양봉 이전 종가
         high_condition = recent_data['High'].max() >= reference_close * 1.29
 
+        # 거래량 증가 조건 확인
+        volume_increase = False
+        if high_condition:
+            # 29% 상승한 날의 거래량과 전날 거래량 확인
+            current_volume = recent_data['Volume'].iloc[-1]  # 가장 최근 거래량 (29% 상승한 날의 거래량)
+            previous_volume = recent_data['Volume'].iloc[-2]  # 전날 거래량
+            volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
+            logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
+
         # 장대 양봉 여부 체크
         is_bullish_engulfing = False
         if high_condition:
             last_candle = recent_data.iloc[-1]
             is_bullish_engulfing = (last_candle['Close'] > last_candle['Open']) and \
                                    (last_candle['Low'] < last_candle['Close'])
-
-        # 거래량 증가 확인
-        current_volume = recent_data['Volume'].iloc[-1]  # 최근 거래량
-        previous_volume = recent_data['Volume'].iloc[-2]  # 전날 거래량
-        volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
-        if high_condition:
-            logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
