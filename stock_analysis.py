@@ -86,8 +86,8 @@ def analyze_stock(code, start_date):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
             daily_high = recent_data['High'].iloc[i]  # 당일 최고가
             
-            # 당일 최고가가 최저가의 29% 이상인지 확인
-            if daily_high >= daily_low * 1.29:
+            # 당일 최고가가 최저가의 29% 초과인지 확인
+            if daily_high > daily_low * 1.29:
                 price_increase_condition = True
                 logging.info(f"{code} - {recent_data.index[i].date()}일: 최고가 {daily_high}가 최저가 {daily_low}의 29% 이상")
 
