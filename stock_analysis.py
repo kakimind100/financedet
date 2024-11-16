@@ -156,24 +156,26 @@ def analyze_stock(code, start_date):
                     'Highest Price': recent_data['High'].max(),
                     'Williams %R': williams_r,
                     'OBV': obv_current,  
-                    'Support Condition': support_condition  # 지지선 조건 추가
+                    'Support Condition': support_condition,
                     'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
                 }
                 logging.info(f"{code} 조건 만족: {result}")
+                print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드만 출력
                 return result
-        else:
-            logging.info(f"{code} 조건 불만족: "
-                         f"가격 상승 조건: {price_increase_condition}, "
-                         f"Williams %R: {williams_r}, "
-                         f"RSI: {rsi_current}, "
-                         f"OBV: {obv_current}, "
-                         f"MACD: {macd_condition}, "
-                         f"지지선 확인: {support_condition}"
-                         f"OBV 세력 확인: {obv_strength_condition}")
+            else:
+                logging.info(f"{code} 조건 불만족: "
+                             f"가격 상승 조건: {price_increase_condition}, "
+                             f"Williams %R: {williams_r}, "
+                             f"RSI: {rsi_current}, "
+                             f"OBV: {obv_current}, "
+                             f"MACD: {macd_condition}, "
+                             f"지지선 확인: {support_condition}, "
+                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
+
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
