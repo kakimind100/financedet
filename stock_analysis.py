@@ -49,9 +49,6 @@ def calculate_macd(df):
 
 def calculate_cci(df, window=20):
     """CCI (Commodity Channel Index)를 계산하는 함수."""
-    if len(df) < window:
-        return pd.Series([float('nan')] * len(df))  # 충분한 데이터가 없을 경우 NaN 반환
-
     typical_price = (df['High'] + df['Low'] + df['Close']) / 3
     sma = typical_price.rolling(window=window).mean()
     mean_deviation = (typical_price - sma).abs().rolling(window=window).mean()
@@ -87,14 +84,9 @@ def analyze_stock(code, start_date):
 
         # CCI 계산
         df['cci'] = calculate_cci(df)
-        # CCI 값 확인
-        if df['cci'].isnull().all():
-            logging.warning(f"{code} CCI 값이 모두 NaN입니다.")
-            return None
-
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
         cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
-        cci_condition = cci_current < -100 and cci_previous < cci_current  # 반등 확인
+        cci_condition = cci_current < -10 and cci_previous < cci_current  # 반등 확인
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -127,6 +119,7 @@ def analyze_stock(code, start_date):
                 'Last Close': last_close,
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
+                'Bullish Engulfing': is_bullish_engulfing
             }
             logging.info(f"{code} 조건 만족: {result}")
             return result
@@ -190,4 +183,4 @@ if __name__ == "__main__":
         print("조건에 맞는 종목이 없습니다.")
         logging.info("조건에 맞는 종목이 없습니다.")
 
-    logging.info("스크립트 실행 완료")  # 이 부분에서 따옴표가 닫혔습니다.
+    logging.info("스크립트 실행 완료")
