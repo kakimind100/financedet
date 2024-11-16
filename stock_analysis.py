@@ -84,7 +84,9 @@ def analyze_stock(code, start_date):
 
         # CCI 계산
         df['cci'] = calculate_cci(df)
-        cci_condition = df['cci'].iloc[-1] < -100  # CCI가 -100 이하인지 확인
+        cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
+        cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
+        cci_condition = cci_current < -100 and cci_previous < cci_current  # 반등 확인
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -92,7 +94,11 @@ def analyze_stock(code, start_date):
 
         # RSI 계산
         rsi = calculate_rsi(df)
-        rsi_condition = rsi.iloc[-1] < 45  # RSI 조건 조정
+        rsi_current = rsi.iloc[-1]  # 현재 RSI 값
+        rsi_condition = rsi_current < 35  # RSI 조건 조정
+
+        # 현재 RSI와 CCI 값을 로그에 기록
+        logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 CCI: {cci_current}")
 
         # MACD 계산
         macd, signal = calculate_macd(df)
@@ -105,14 +111,14 @@ def analyze_stock(code, start_date):
         if (high_condition and 
             williams_r <= -80 and 
             rsi_condition and 
-            cci_condition and  # CCI 조건 추가
+            cci_condition and  # CCI 반등 조건 추가
             support_condition and 
             macd_condition):  # MACD 조건
             result = {
                 'Code': code,
                 'Last Close': last_close,
                 'Williams %R': williams_r,
-                'CCI': df['cci'].iloc[-100],  # CCI 값 추가
+                'CCI': cci_current,  # 현재 CCI 값 추가
                 'Bullish Engulfing': is_bullish_engulfing
             }
             logging.info(f"{code} 조건 만족: {result}")
@@ -121,8 +127,8 @@ def analyze_stock(code, start_date):
             logging.info(f"{code} 조건 불만족: "
                          f"29% 상승: {high_condition}, "
                          f"Williams %R: {williams_r}, "
-                         f"RSI: {rsi_condition}, "
-                         f"CCI: {cci_condition}, "  # CCI 상태 로그 추가
+                         f"RSI: {rsi_current}, "  # 현재 RSI 값 로그 추가
+                         f"CCI: {cci_current}, "  # CCI 상태 로그 추가
                          f"MACD: {macd_condition}, "
                          f"지지선 확인: {support_condition}")
 
