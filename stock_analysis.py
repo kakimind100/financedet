@@ -129,7 +129,7 @@ def analyze_stock(code, start_date):
                 'Code': code,
                 'Last Close': last_close,
                 'Opening Price': opening_price,
-                'Lowest Price': recent_low,
+                'Lowest Price': overall_low,
                 'Highest Price': recent_data['High'].max(),
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
