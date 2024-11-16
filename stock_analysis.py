@@ -55,11 +55,11 @@ def process_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_20_days = recent_data.iloc[-20:]
 
-        # 종가가 25% 이상 상승한 종목 확인
-        close_condition = recent_20_days['Close'].iloc[-1] >= recent_20_days['Close'].iloc[0] * 1.25
+        # 최고가가 29% 이상 상승한 종목 확인
+        high_condition = recent_20_days['High'].max() >= recent_20_days['High'].iloc[0] * 1.29
 
-        if close_condition:
-            logging.info(f"{code} 최근 20일 내 종가 25% 이상 상승한 종목 발견: 최근 종가 {last_close}, 이전 종가 {prev_close}")
+        if high_condition:
+            logging.info(f"{code} 최근 20일 내 최고가 29% 이상 상승한 종목 발견: 최근 종가 {last_close}, 이전 종가 {prev_close}")
             
             # 지표 계산
             df = calculate_indicators(df)  # 윌리엄스 %R 계산
