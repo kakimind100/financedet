@@ -119,4 +119,28 @@ def search_stocks(start_date):
         for future in as_completed(futures):
             result_data = future.result()
             if result_data:
-                result.append(result_data
+                result.append(result_data)
+
+    logging.info("주식 검색 완료")
+    return result
+
+if __name__ == "__main__":
+    logging.info("스크립트 실행 시작")
+    
+    # 최근 40 거래일을 기준으로 시작 날짜 설정
+    today = datetime.today()
+    start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
+    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
+
+    result = search_stocks(start_date_str)
+    
+    if result:
+        for item in result:
+            print(item)  # 콘솔에 결과 출력
+    else:
+        print("조건에 맞는 종목이 없습니다.")
+        logging.info("조건에 맞는 종목이 없습니다.")
+
+    logging.info("스크립트 실행 완료")
