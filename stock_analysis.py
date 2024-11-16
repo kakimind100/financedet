@@ -86,7 +86,7 @@ def analyze_stock(code, start_date):
         df['cci'] = calculate_cci(df, window=5)
         cci_current = df['cci'].iloc[-1]  # 현재 CCI 값
         cci_previous = df['cci'].iloc[-2]  # 이전 CCI 값
-        cci_condition = cci_current < -90 and cci_previous < cci_current  # 반등 확인
+        cci_condition = cci_current < -100 and cci_previous < cci_current  # 반등 확인
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -109,7 +109,7 @@ def analyze_stock(code, start_date):
 
         # 조건 확인: 장대 양봉, CCI, Williams %R, RSI, MACD, 지지선 확인
         if (high_condition and 
-            williams_r <= -80 and 
+            williams_r <= -90 and  # 수정된 조건
             rsi_condition and 
             cci_condition and  # CCI 반등 조건 추가
             support_condition and 
@@ -119,7 +119,6 @@ def analyze_stock(code, start_date):
                 'Last Close': last_close,
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
-                'Bullish Engulfing': is_bullish_engulfing
             }
             logging.info(f"{code} 조건 만족: {result}")
             return result
