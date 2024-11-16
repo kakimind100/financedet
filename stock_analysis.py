@@ -85,11 +85,13 @@ def analyze_stock(code, start_date):
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
             daily_high = recent_data['High'].iloc[i]  # 당일 최고가
-            
-            # 당일 최고가가 최저가의 29% 초과인지 확인
-            if daily_high > daily_low * 1.29:
+            daily_open = recent_data['Open'].iloc[i]  # 당일 시가
+            daily_close = recent_data['Close'].iloc[i]  # 당일 종가
+
+            # 당일 최고가가 최저가의 29% 초과하고, 종가가 시가보다 높은지 확인
+            if daily_high > daily_low * 1.29 and daily_close > daily_open:
                 price_increase_condition = True
-                logging.info(f"{code} - {recent_data.index[i].date()}일: 최고가 {daily_high}가 최저가 {daily_low}의 29% 이상")
+                logging.info(f"{code} - {recent_data.index[i].date()}일: 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
         # CCI 계산
         df['cci'] = calculate_cci(df, window=5)
@@ -112,9 +114,9 @@ def analyze_stock(code, start_date):
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
-        # 지지선 확인: 마지막 날의 종가가 최근 저점의 1% 이상인지 확인
+        # 지지선 확인: 마지막 날의 종가가 최근 저점의 1% 초과인지 확인
         recent_low = recent_data['Low'].min()  # 최근 저점
-        support_condition = last_close > recent_low * 1.01  # 최근 저점의 1% 이상
+        support_condition = last_close > recent_low * 1.01  # 최근 저점의 1% 초과
 
         # 조건 확인: 가격 상승 조건, CCI, Williams %R, RSI, MACD, 지지선 확인
         if (price_increase_condition and 
@@ -186,4 +188,4 @@ if __name__ == "__main__":
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
     result = search_stocks(start_date_str)
-    logging.info("최종 결과: {}".format(result))
+   
