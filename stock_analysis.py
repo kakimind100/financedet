@@ -55,6 +55,9 @@ def process_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_20_days = recent_data.iloc[-20:]
 
+        # 최고가가 29% 이상 상승한 종목 확인
+        high_condition = recent_20_days['High'].max() >= recent_20_days['High'].iloc[0] * 1.29
+
         # 장대 양봉 조건 체크
         last_candle = recent_data.iloc[-1]
         previous_candle = recent_data.iloc[-2]
@@ -76,7 +79,7 @@ def process_stock(code, start_date):
             bullish_after = recent_data.iloc[:-1]  # 마지막 봉을 제외한 데이터
             has_risen_7_percent = any(bullish_after['Close'].iloc[i] >= bullish_after['Close'].iloc[i-1] * 1.07 for i in range(1, len(bullish_after)))
 
-            if not has_risen_7_percent:
+            if not has_risen_7_percent and high_condition:
                 # 조건 확인
                 if williams_r <= -90:
                     result = {
@@ -113,34 +116,4 @@ def search_stocks(start_date):
     stocks = pd.concat([kospi, kosdaq])
     result = []
 
-    # 멀티스레딩으로 주식 데이터 처리
-    with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
-        futures = {executor.submit(process_stock, code, start_date): code for code in stocks['Code']}
-        for future in as_completed(futures):
-            result_data = future.result()
-            if result_data:
-                result.append(result_data)
-
-    logging.info("주식 검색 완료")
-    return result
-
-if __name__ == "__main__":
-    logging.info("스크립트 실행 시작")
-    
-    # 최근 40 거래일을 기준으로 시작 날짜 설정
-    today = datetime.today()
-    start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
-    start_date_str = start_date.strftime('%Y-%m-%d')
-
-    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
-
-    result = search_stocks(start_date_str)
-    
-    if result:
-        for item in result:
-            print(item)  # 콘솔에 결과 출력
-    else:
-        print("조건에 맞는 종목이 없습니다.")
-        logging.info("조건에 맞는 종목이 없습니다.")
-
-    logging.info("스크립트 실행 완료")
+    #
