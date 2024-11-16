@@ -30,10 +30,6 @@ def calculate_williams_r(df, window=14):
     williams_r = -100 * (highest_high - df['Close']) / (highest_high - lowest_low)
     return williams_r
 
-def calculate_moving_average(df, window):
-    """이동 평균을 계산하는 함수."""
-    return df['Close'].rolling(window=window).mean()
-
 def calculate_macd(df):
     """MACD를 계산하는 함수."""
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
@@ -70,17 +66,12 @@ def analyze_stock(code, start_date):
 
         # 29% 이상 상승 여부 확인
         high_condition = False
-        volume_increase = False
 
         # 최근 20일 내에서 전일 대비 29% 상승한 날 찾기
         for i in range(1, len(recent_data)):
             if recent_data['Close'].iloc[i] >= recent_data['Close'].iloc[i - 1] * 1.29:
                 high_condition = True
-                # 해당 날의 거래량과 전날 거래량 확인
-                current_volume = recent_data['Volume'].iloc[i]  # 29% 상승한 날의 거래량
-                previous_volume = recent_data['Volume'].iloc[i - 1]  # 전날 거래량
-                volume_increase = current_volume >= previous_volume * 2  # 전날 대비 200% 이상 증가 여부
-                logging.info(f"{code} 거래량 증가: 전날 대비 {current_volume / previous_volume * 100 - 100:.2f}%")
+                logging.info(f"{code} 29% 상승 발생: {recent_data['Close'].iloc[i]} (전일: {recent_data['Close'].iloc[i - 1]})")
                 break  # 조건 만족 시 루프 종료
 
         # 장대 양봉 여부 체크
@@ -98,11 +89,6 @@ def analyze_stock(code, start_date):
         rsi = calculate_rsi(df)
         rsi_condition = rsi.iloc[-1] < 30  # 최근 RSI가 30 이하
 
-        # 이동 평균선 계산
-        short_ma = calculate_moving_average(df, window=5).iloc[-1]
-        long_ma = calculate_moving_average(df, window=20).iloc[-1]
-        ma_condition = short_ma > long_ma * 1.01  # 단기 이동 평균이 장기 이동 평균보다 1% 이상 높아야 함
-
         # MACD 계산
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
@@ -110,13 +96,12 @@ def analyze_stock(code, start_date):
         # 지지선 확인: 마지막 날의 종가가 최근 저점 이하인지 확인
         support_condition = last_close >= recent_low  # 최근 저점 이하로 내려가지 않았으면 True
 
-        # 조건 확인: 이동 평균선과 MACD 중 하나만 True, 지지선 확인은 True여야 함
+        # 조건 확인: 장대 양봉, Williams %R, RSI, MACD, 지지선 확인
         if (high_condition and 
             williams_r <= -80 and 
             rsi_condition and 
-            volume_increase and 
             support_condition and 
-            (ma_condition or macd_condition)):  # 이동 평균선 또는 MACD 조건
+            macd_condition):  # MACD 조건
             result = {
                 'Code': code,
                 'Last Close': last_close,
@@ -129,8 +114,7 @@ def analyze_stock(code, start_date):
             logging.info(f"{code} 조건 불만족: "
                          f"29% 상승: {high_condition}, "
                          f"Williams %R: {williams_r}, "
-                         f"거래량 증가: {volume_increase}, "
-                         f"이동 평균선: {ma_condition}, "
+                         f"RSI: {rsi_condition}, "
                          f"MACD: {macd_condition}, "
                          f"지지선 확인: {support_condition}")
 
