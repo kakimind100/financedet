@@ -127,7 +127,6 @@ def analyze_stock(code, start_date):
                 'Last Close': last_close,
                 'Williams %R': williams_r,
                 'CCI': cci_current,  # 현재 CCI 값 추가
-                'Bullish Engulfing': is_bullish_engulfing
             }
             logging.info(f"{code} 조건 만족: {result}")
             return result
@@ -191,4 +190,4 @@ if __name__ == "__main__":
         print("조건에 맞는 종목이 없습니다.")
         logging.info("조건에 맞는 종목이 없습니다.")
 
-    logging.info("스크립트 실행 완료
+    logging.info("스크립트 실행 완료")  # 이 부분에서 따옴표가 닫혔습니다.
