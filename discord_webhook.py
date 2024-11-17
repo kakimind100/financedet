@@ -134,6 +134,9 @@ def main():
 
     logging.info(f"총 {len(results)}개의 종목 데이터가 로드되었습니다.")
 
+    # JSON 데이터 로깅
+    logging.info(f"로드된 종목 데이터: {json.dumps(results, ensure_ascii=False, indent=2)}")
+
     # AI 분석 결과 생성
     ai_response = generate_ai_response(results)
 
