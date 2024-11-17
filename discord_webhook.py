@@ -79,7 +79,12 @@ def generate_ai_response(stock_data):
             max_tokens=300  # 응답의 최대 토큰 수
         )
         logging.info("AI의 응답을 성공적으로 받았습니다.")
-        return response['choices'][0]['message']['content']  # 응답 내용 반환
+        result = response['choices'][0]['message']['content']
+        
+        # 결과 가공: 각 종목 간에 줄바꿈 추가
+        formatted_result = result.replace("\n", "\n")  # 줄바꿈 유지 (변경 없음)
+        
+        return formatted_result
     except Exception as e:
         logging.error(f"API 호출 중 오류 발생: {e}")
         return None
