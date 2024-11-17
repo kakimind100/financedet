@@ -24,7 +24,6 @@ def send_to_discord_webhook(webhook_url, message):
 def generate_ai_response(stock_data):
     prompt = "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 오를 종목을 5개 추천해 주세요. 결과는 종목 코드와 추천 이유만 포함해 주세요:\n"
     
-    # 모든 데이터를 포함하여 AI에게 분석을 요청
     for stock in stock_data:
         prompt += (f"종목 코드: {stock['Code']}, "
                    f"마지막 종가: {stock['Last Close']}, "
@@ -51,21 +50,9 @@ def generate_ai_response(stock_data):
         logging.error(f"API 호출 중 오류 발생: {e}")
         return None
 
-# 메시지를 분할하여 전송하는 함수
-def send_large_message(webhook_url, message):
-    logging.info("메시지를 2000자 이하로 나누어 전송합니다.")
-    while len(message) > 2000:
-        part = message[:2000]
-        send_to_discord_webhook(webhook_url, part)
-        message = message[2000:]  # 잘라낸 부분 제거
-
-    # 남은 메시지 전송
-    if message:
-        send_to_discord_webhook(webhook_url, message)
-
 # 메인 함수
 def main():
-    logging.info("스クリ프트 실행 시작.")
+    logging.info("스크립트 실행 시작.")
     
     # JSON 파일에서 결과 읽기
     filename = 'results.json'
@@ -104,7 +91,7 @@ def main():
         logging.info("전송할 메시지 생성 완료.")
         logging.info(f"전송할 메시지: {message}")
         
-        send_large_message(webhook_url, message)  # 웹훅으로 결과 전송
+        send_to_discord_webhook(webhook_url, message)  # 웹훅으로 결과 전송
     else:
         logging.error("웹훅 URL이 설정되어 있지 않습니다.")
 
