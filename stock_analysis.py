@@ -114,7 +114,7 @@ def analyze_stock(code, start_date):
         # RSI 계산
         rsi = calculate_rsi(df)
         rsi_current = rsi.iloc[-1]  # 현재 RSI 값
-        rsi_condition = rsi_current < 50  # RSI 조건
+        rsi_condition = rsi_current < 51  # RSI 조건
 
         # 현재 RSI와 OBV 값을 로그에 기록
         logging.info(f"{code} - 현재 RSI: {rsi_current}, 현재 OBV: {obv_current}")
