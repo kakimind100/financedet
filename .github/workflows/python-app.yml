@@ -33,6 +33,7 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # 시크릿으로 웹훅 URL 사용
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 시크릿으로 OpenAI API 키 사용
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}  # 수동 실행 여부 설정
         run: |
           python discord_webhook.py  # 디스코드 웹훅 스크립트 실행
 
