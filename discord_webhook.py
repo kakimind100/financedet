@@ -22,7 +22,7 @@ def send_to_discord_webhook(webhook_url, message):
 
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
 def generate_ai_response(stock_data):
-    prompt = "다음 주식 데이터에 대해 기술적 분석을 기반으로 다음 거래일에 가장 많이 오를 종목을 5개 추천해 주세요:\n"
+    prompt = "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 오를 종목을 5개 추천해 주세요. 결과는 종목 코드와 추천 이유만 포함해 주세요:\n"
     
     # 모든 데이터를 포함하여 AI에게 분석을 요청
     for stock in stock_data:
@@ -36,10 +36,6 @@ def generate_ai_response(stock_data):
                    f"지지선 확인: {stock['Support Condition']}, "
                    f"OBV 세력 확인: {stock['OBV Strength Condition']}\n")
 
-    prompt += "이 데이터를 기반으로 다음 거래일에 가장 많이 오를 종목 5개를 추천하고, 각 종목에 대한 간단한 분석을 포함해 주세요. 결과는 종목 코드와 추천 이유만 포함해 주세요."
-
-    logging.info("AI에게 요청할 프롬프트를 생성했습니다.")
-    
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",  # 사용할 모델 설정
@@ -69,7 +65,7 @@ def send_large_message(webhook_url, message):
 
 # 메인 함수
 def main():
-    logging.info("스クリプ트 실행 시작.")
+    logging.info("스クリ프트 실행 시작.")
     
     # JSON 파일에서 결과 읽기
     filename = 'results.json'
