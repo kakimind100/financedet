@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import json
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -203,7 +204,8 @@ def search_stocks(start_date):
 
     logging.info("주식 검색 완료")
     return result
-
+    
+# 메인 실행 블록에서 결과 저장 호출 추가
 if __name__ == "__main__":
     logging.info("스크립트 실행 시작")
     
@@ -217,5 +219,6 @@ if __name__ == "__main__":
     results = search_stocks(start_date_str)  # 결과를 변수에 저장
     if results:  # 결과가 있을 때만 출력
         logging.info(f"만족한 종목 리스트: {[stock['Code'] for stock in results]}")
+        save_results_to_json([stock['Code'] for stock in results])  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
