@@ -82,7 +82,7 @@ def generate_ai_response(stock_data):
                 {"role": "user", "content": prompt}
             ],
             max_tokens=1000,  # 응답의 최대 토큰 수 증가
-            temperature=0.5  # 온도 조정 (0.0 ~ 1.0)
+            temperature=1.0  # 온도 조정 (0.0 ~ 1.0)
         )
         logging.info("AI의 응답을 성공적으로 받았습니다.")
         result = response['choices'][0]['message']['content']
