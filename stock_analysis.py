@@ -135,8 +135,8 @@ def analyze_stock(code, start_date):
         else:
             filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
 
-        # 전체 기간의 저점 계산 (당일 제외)
-        overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
+        # 전체 기간의 저점 계산 (당일 포한 2일제외)
+        overall_low = df.iloc[:-2]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
         if len(filtered_data) > 0:
             overall_low = min(overall_low, filtered_data['Low'].min())  # 필터링된 데이터의 저점과 비교
 
