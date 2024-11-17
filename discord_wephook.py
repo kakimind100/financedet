@@ -1,8 +1,7 @@
 import os
-import discord
-from discord.ext import commands
 import openai
 import json
+import requests
 
 # JSON 파일에서 결과를 읽어오는 함수
 def load_results_from_json(filename='results.json'):
@@ -31,28 +30,27 @@ def generate_response(stock_codes):
         print(f"API 호출 중 오류 발생: {e}")
         return None
 
-# 디스코드 봇 설정
-intents = discord.Intents.default()
-intents.messages = True
-intents.guilds = True
+# 웹훅을 통해 메시지를 디스코드 채널로 보내는 함수
+def send_to_discord_webhook(webhook_url, message):
+    data = {"content": message}
+    response = requests.post(webhook_url, json=data)
+    if response.status_code == 204:
+        print("메시지가 성공적으로 전송되었습니다.")
+    else:
+        print(f"메시지 전송 실패: {response.status_code} - {response.text}")
 
-bot = commands.Bot(command_prefix='!', intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f'봇이 준비되었습니다: {bot.user.name}')
-
-@bot.command()
-async def analyze_stocks(ctx):
+# 메인 함수
+def main():
     results = load_results_from_json()  # JSON 파일에서 결과 읽기
     print(f"전송된 종목 리스트: {results}")  # 결과 출력
 
     # API 호출 및 응답 출력
     response = generate_response(results)
     if response:
-        await ctx.send(f"OpenAI 응답: {response}")  # 디스코드 채널에 응답 전송
+        webhook_url = os.getenv("DISCORD_WEBHOOK_URL")  # 환경 변수에서 웹훅 URL을 가져옴
+        send_to_discord_webhook(webhook_url, f"OpenAI 응답: {response}")  # 웹훅으로 응답 전송
     else:
-        await ctx.send("주식 분석 요청 중 오류가 발생했습니다.")
+        print("주식 분석 요청 중 오류가 발생했습니다.")
 
-# 봇 실행
-bot.run(os.getenv('BOT_TOKEN'))
+if __name__ == "__main__":
+    main()
