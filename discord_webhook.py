@@ -21,7 +21,7 @@ def send_to_discord_webhook(webhook_url, message):
 
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
 def generate_ai_response(stock_data):
-    prompt = "다음 주식 데이터에 대해 기술적 분석을 기반으로 투자 전략과 조언을 제공해 주세요:\n"
+    prompt = "다음 주식 데이터에 대해 기술적 분석을 기반으로 다음거래일에 가장 많이 오를 종목을 5개 추천 해주세요 :\n"
     
     for stock in stock_data:
         # 각 종목에 대한 데이터를 추가
