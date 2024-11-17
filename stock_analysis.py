@@ -147,13 +147,7 @@ def analyze_stock(code, start_date):
         if bullish_candle_index is not None:
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
-            # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
-            if (price_increase_condition and 
-                williams_r <= -80 and 
-                rsi_condition and 
-                support_condition and 
-                macd_condition and 
-                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
+                # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
                 result = {
                     'Code': code,
                     'Last Close': last_close,
@@ -161,9 +155,9 @@ def analyze_stock(code, start_date):
                     'Lowest Price': overall_low,
                     'Highest Price': recent_data['High'].max(),
                     'Williams %R': williams_r,
-                    'OBV': obv_current,  
+                    'OBV': obv_current,
                     'Support Condition': support_condition,
-                    'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
+                    'OBV Strength Condition': obv_current > obv_at_bullish_candle,  # OBV 세력 확인 조건 추가
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
@@ -224,6 +218,6 @@ if __name__ == "__main__":
     results = search_stocks(start_date_str)  # 결과를 변수에 저장
     if results:  # 결과가 있을 때만 출력
         logging.info(f"만족한 종목 리스트: {[stock['Code'] for stock in results]}")
-        save_results_to_json([stock['Code'] for stock in results])  # JSON 파일로 저장
+        save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
