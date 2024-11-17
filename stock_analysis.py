@@ -72,6 +72,19 @@ def calculate_obv(df):
     logging.debug(f"OBV 계산 완료: {obv[-5:]}")  # 마지막 5개 OBV 값 로그
     return pd.Series(obv, index=df.index)
 
+def calculate_bollinger_bands(df, window=20, num_std_dev=1):
+    """볼린저 밴드를 계산하는 함수."""
+    logging.debug("Calculating Bollinger Bands")
+    rolling_mean = df['Close'].rolling(window=window).mean()  # 이동 평균
+    rolling_std = df['Close'].rolling(window=window).std()  # 표준 편차
+    lower_band = rolling_mean - (rolling_std * num_std_dev)  # 하한선
+    upper_band = rolling_mean + (rolling_std * num_std_dev)  # 상한선
+    
+    # 볼린저 밴드 로그 기록
+    logging.debug(f"볼린저 밴드 계산 완료: 하한선 {lower_band.tail()}, 상한선 {upper_band.tail()}")
+    
+    return lower_band, upper_band
+
 def analyze_stock(code, start_date):
     """주식 데이터를 분석하는 함수."""
     logging.info(f"{code} 데이터 분석 시작")
@@ -131,6 +144,13 @@ def analyze_stock(code, start_date):
         macd, signal = calculate_macd(df)
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
+        # 볼린저 밴드 계산
+        lower_band, upper_band = calculate_bollinger_bands(df, window=20, num_std_dev=1)
+        bollinger_condition = last_close > lower_band.iloc[-1]  # 최근 종가가 볼린저 밴드 하한선 위에 있는지 확인
+
+        # 볼린저 밴드 조건 로그 기록
+        logging.info(f"{code} - 볼린저 밴드 하한선: {lower_band.iloc[-1]}, 최근 종가: {last_close}, 조건 만족: {bollinger_condition}")
+
         # 장대 양봉 이후의 데이터에서 저점 계산
         if bullish_candle_index is not None:
             filtered_data = recent_data.iloc[:bullish_candle_index]  # 장대 양봉 이전 데이터만 필터링
@@ -149,13 +169,14 @@ def analyze_stock(code, start_date):
         if bullish_candle_index is not None:
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
-            # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
+            # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인, 볼린저 밴드 조건 추가
             if (price_increase_condition and 
                 williams_r <= -80 and 
                 rsi_condition and 
                 support_condition and 
                 macd_condition and 
-                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
+                obv_current > obv_at_bullish_candle and 
+                bollinger_condition):  # 볼린저 밴드 조건 추가
                 result = {
                     'Code': str(code),  # 코드: 문자열
                     'Last Close': float(last_close),  # 최근 종가: 부동소수점
@@ -165,7 +186,8 @@ def analyze_stock(code, start_date):
                     'Williams %R': float(williams_r),  # Williams %R: 부동소수점
                     'OBV': int(obv_current),  # OBV: 정수
                     'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
-                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle)  # OBV 세력 확인 조건: 불리언
+                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # OBV 세력 확인 조건: 불리언
+                    'Bollinger Condition': bool(bollinger_condition)  # 볼린저 밴드 조건: 불리언
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
@@ -179,7 +201,8 @@ def analyze_stock(code, start_date):
                              f"OBV: {obv_current}, "
                              f"MACD: {macd_condition}, "
                              f"지지선 확인: {support_condition}, "
-                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}")
+                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}, "
+                             f"볼린저 밴드 조건: {bollinger_condition}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
