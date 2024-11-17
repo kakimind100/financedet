@@ -1,4 +1,6 @@
 import os
+import discord
+from discord.ext import commands
 import openai
 import json
 
@@ -29,12 +31,28 @@ def generate_response(stock_codes):
         print(f"API 호출 중 오류 발생: {e}")
         return None
 
-# 메인 실행 블록
-if __name__ == "__main__":
+# 디스코드 봇 설정
+intents = discord.Intents.default()
+intents.messages = True
+intents.guilds = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f'봇이 준비되었습니다: {bot.user.name}')
+
+@bot.command()
+async def analyze_stocks(ctx):
     results = load_results_from_json()  # JSON 파일에서 결과 읽기
     print(f"전송된 종목 리스트: {results}")  # 결과 출력
 
     # API 호출 및 응답 출력
     response = generate_response(results)
     if response:
-        print("OpenAI 응답:", response)
+        await ctx.send(f"OpenAI 응답: {response}")  # 디스코드 채널에 응답 전송
+    else:
+        await ctx.send("주식 분석 요청 중 오류가 발생했습니다.")
+
+# 봇 실행
+bot.run(os.getenv('BOT_TOKEN'))
