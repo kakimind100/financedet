@@ -44,8 +44,21 @@ def main():
     with open(filename, 'r') as f:
         results = json.load(f)
 
+    # results가 문자열인지 확인하고 리스트로 변환
+    if isinstance(results, str):
+        try:
+            results = json.loads(results)  # 문자열을 JSON으로 변환
+        except json.JSONDecodeError:
+            print("결과가 올바른 JSON 형식이 아닙니다.")
+            return
+
+    # results가 리스트인지 확인
+    if not isinstance(results, list):
+        print("결과가 리스트 형식이 아닙니다.")
+        return
+
     # AI 분석 결과 생성
-    ai_response = generate_ai_response([result['Code'] for result in results])
+    ai_response = generate_ai_response([result['Code'] for result in results if 'Code' in result])
 
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")  # 환경 변수에서 웹훅 URL을 가져옴
     if webhook_url:
