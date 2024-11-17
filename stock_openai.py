@@ -1,25 +1,12 @@
-# stock_openai.py
-import logging
 import json
-import os
-import time
 
-# 로그 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+# JSON 파일에서 결과를 읽어오는 함수
+def load_results_from_json(filename='results.json'):
+    with open(filename, 'r') as f:
+        results = json.load(f)
+    return results
 
-def read_result_from_file():
-    """파일에서 결과를 읽는 함수."""
-    if os.path.exists('result.json'):
-        with open('result.json', 'r') as f:
-            data = json.load(f)
-            logging.info("수신된 데이터: %s", data)
-    else:
-        logging.warning("결과 파일이 존재하지 않습니다.")
-
+# 메인 실행 블록
 if __name__ == "__main__":
-    while True:
-        read_result_from_file()
-        time.sleep(5)  # 5초마다 결과 파일 확인
+    results = load_results_from_json()  # JSON 파일에서 결과 읽기
+    print(f"전송된 종목 리스트: {results}")  # 결과 출력
