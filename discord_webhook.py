@@ -3,6 +3,7 @@ import json
 import openai
 import requests
 import logging
+from datetime import datetime
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -10,6 +11,35 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # OpenAI API 키 설정
 openai.api_key = os.getenv("OPENAI_API_KEY")  # 환경 변수에서 API 키를 가져옴
 logging.info("OpenAI API 키를 설정했습니다.")
+
+# 한국의 공휴일을 반환하는 함수
+def get_holidays(year):
+    # 한국의 대표적인 공휴일 (예시)
+    holidays = [
+        f"{year}-01-01",  # 신정
+        f"{year}-03-01",  # 삼일절
+        f"{year}-05-01",  # 노동절
+        f"{year}-06-06",  # 현충일
+        # 추가 공휴일...
+    ]
+    
+    # 예시: 설날과 추석의 정확한 날짜를 계산하는 로직 필요
+    return holidays
+
+# 주식 시장이 열리는 날인지 확인하는 함수
+def is_market_open(date):
+    # 주말 확인
+    if date.weekday() >= 5:  # 5: 토요일, 6: 일요일
+        return False
+
+    # 공휴일 리스트 가져오기
+    holidays = get_holidays(date.year)
+
+    # 공휴일 확인
+    if date.strftime("%Y-%m-%d") in holidays:
+        return False
+
+    return True
 
 # 웹훅을 통해 메시지를 디스코드 채널로 보내는 함수
 def send_to_discord_webhook(webhook_url, message):
@@ -54,6 +84,17 @@ def generate_ai_response(stock_data):
 def main():
     logging.info("스크립트 실행 시작.")
     
+    # 오늘 날짜 확인
+    today = datetime.today()
+
+    # 수동 실행인지 확인
+    manual_run = os.getenv("MANUAL_RUN", "false").lower() == "true"
+
+    # 주식 시장이 열리는 날인지 확인 (자동 실행일 경우에만 확인)
+    if not manual_run and not is_market_open(today):
+        logging.info("오늘은 주식 시장이 열리지 않습니다. 스크립트를 종료합니다.")
+        return
+
     # JSON 파일에서 결과 읽기
     filename = 'results.json'
     if not os.path.exists(filename):
