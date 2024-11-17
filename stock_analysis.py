@@ -157,17 +157,18 @@ def analyze_stock(code, start_date):
                 support_condition and 
                 macd_condition and 
                 obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
-                result = {
-                    'Code': code,
-                    'Last Close': last_close,
-                    'Opening Price': opening_price,
-                    'Lowest Price': overall_low,
-                    'Highest Price': recent_data['High'].max(),
-                    'Williams %R': williams_r,
-                    'OBV': obv_current,  
-                    'Support Condition': support_condition,
-                    'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
-                }
+            result = {
+                'Code': str(code),  # 코드: 문자열
+                'Last Close': float(last_close),  # 최근 종가: 부동소수점
+                'Opening Price': float(opening_price),  # 최근 시작가: 부동소수점
+                'Lowest Price': float(overall_low),  # 전체 저점: 부동소수점
+                'Highest Price': float(recent_data['High'].max()),  # 최고가: 부동소수점
+                'Williams %R': float(williams_r),  # Williams %R: 부동소수점
+                'OBV': int(obv_current),  # OBV: 정수
+                'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
+                'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle)  # OBV 세력 확인 조건: 불리언
+            }
+
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
                 return result  # 조건을 만족하는 경우 결과 반환
