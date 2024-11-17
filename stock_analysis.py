@@ -156,12 +156,12 @@ def analyze_stock(code, start_date):
                 obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
                 result = {
                     'Code': code,
-                    'Last Close': last_close,
-                    'Opening Price': opening_price,
-                    'Lowest Price': overall_low,
-                    'Highest Price': recent_data['High'].max(),
-                    'Williams %R': williams_r,
-                    'OBV': obv_current,
+                    'Last Close': int(last_close),  # int로 변환
+                    'Opening Price': int(opening_price),  # int로 변환
+                    'Lowest Price': int(overall_low),  # int로 변환
+                    'Highest Price': int(recent_data['High'].max()),  # int로 변환
+                    'Williams %R': float(williams_r),  # float으로 변환
+                    'OBV': int(obv_current),  # int로 변환
                     'Support Condition': support_condition,
                     'OBV Strength Condition': obv_current > obv_at_bullish_candle,  # OBV 세력 확인 조건 추가
                 }
