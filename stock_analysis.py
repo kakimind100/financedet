@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import json  # JSON 모듈 추가
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -21,6 +22,13 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)  # 콘솔에서도 INFO 레벨 이상의 로그 출력
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
+
+# 결과를 JSON 파일로 저장하는 함수
+def save_result_to_file(result):
+    """결과를 JSON 파일에 저장하는 함수."""
+    with open('result.json', 'w') as f:
+        json.dump(result, f)
+        logging.info("결과가 result.json 파일에 저장되었습니다.")
 
 def calculate_williams_r(df, window=14):
     """Williams %R을 직접 계산하는 함수."""
@@ -142,26 +150,29 @@ def analyze_stock(code, start_date):
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
-            if (price_increase_condition and 
-                williams_r <= -80 and 
-                rsi_condition and 
-                support_condition and 
-                macd_condition and 
-                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
-                result = {
-                    'Code': code,
-                    'Last Close': last_close,
-                    'Opening Price': opening_price,
-                    'Lowest Price': overall_low,
-                    'Highest Price': recent_data['High'].max(),
-                    'Williams %R': williams_r,
-                    'OBV': obv_current,  
-                    'Support Condition': support_condition,
-                    'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
-                }
-                logging.info(f"{code} 조건 만족: {result}")
-                print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드만 출력
-                return result
+        # 조건 확인 후 결과 저장
+        if (price_increase_condition and 
+            williams_r <= -80 and 
+            rsi_condition and 
+            support_condition and 
+            macd_condition and 
+            obv_current > obv_at_bullish_candle):
+            
+            result = {
+                'Code': code,
+                'Last Close': last_close,
+                'Opening Price': opening_price,
+                'Lowest Price': overall_low,
+                'Highest Price': recent_data['High'].max(),
+                'Williams %R': williams_r,
+                'OBV': obv_current,
+                'Support Condition': support_condition,
+                'OBV Strength Condition': obv_current > obv_at_bullish_candle
+            }
+            logging.info(f"{code} 조건 만족: {result}")
+            save_result_to_file(result)  # 결과 파일로 저장
+            print(f"만족한 종목 코드: {code}")
+            return result
             else:
                 logging.info(f"{code} 조건 불만족: "
                              f"가격 상승 조건: {price_increase_condition}, "
