@@ -86,6 +86,7 @@ def analyze_stock(code, start_date):
 
         # 최근 종가 확인 및 가격 조건 체크
         last_close = df['Close'].iloc[-1]  # 최근 종가
+        logging.info(f"{code} 최근 종가: {last_close}")
         if last_close <= 3000:
             logging.warning(f"{code}의 최근 종가가 3000원 이하로 건너뜁니다. 최근 종가: {last_close}")
             return None
@@ -93,6 +94,7 @@ def analyze_stock(code, start_date):
         # 최근 20일 데이터 추출
         recent_data = df.iloc[-20:]  # 최근 20일 데이터
         opening_price = recent_data['Open'].iloc[-1]  # 최근 시작가 (개장가)
+        logging.info(f"{code} 최근 20일 데이터 분석 시작")
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
@@ -115,12 +117,15 @@ def analyze_stock(code, start_date):
         # OBV 계산
         df['obv'] = calculate_obv(df)
         obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
+        previous_obv = df['obv'].iloc[-2] if len(df['obv']) > 1 else 0  # 이전 OBV 값
 
         # 이전 OBV 값을 장대 양봉 발생 시의 OBV 값으로 설정
         previous_obv = df['obv'].iloc[recent_data.index.get_loc(bullish_candle_date)] if bullish_candle_date else 0  # 장대 양봉 발생 시의 OBV 값
+        logging.info(f"{code} - 장대 양봉 발생 시 OBV: {previous_obv}")
 
         # OBV 세력 판단 조건
         obv_strength_condition = obv_current > previous_obv  # 현재 OBV가 이전 OBV보다 클 때
+        logging.info(f"{code} - OBV 세력 조건: {obv_strength_condition} (현재 OBV: {obv_current}, 이전 OBV: {previous_obv})")
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -148,7 +153,8 @@ def analyze_stock(code, start_date):
 
         # 지지선 조건 (당일 제외)
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
-        
+        logging.info(f"{code} - 지지선 조건: {support_condition} (최근 종가: {last_close}, 전체 저점: {overall_low})")
+
         # 장대 양봉 발생 시의 OBV 값 저장
         if bullish_candle_index is not None:
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
@@ -159,7 +165,7 @@ def analyze_stock(code, start_date):
                 rsi_condition and 
                 support_condition and 
                 macd_condition and 
-                obv_current > previous_obv):  # 이전 OBV 값을 장대 양봉 발생 시의 OBV 값으로 사용
+                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
                 result = {
                     'Code': code,
                     'Last Close': int(last_close),  # int로 변환
@@ -169,7 +175,7 @@ def analyze_stock(code, start_date):
                     'Williams %R': float(williams_r),  # float으로 변환
                     'OBV': int(obv_current),  # int로 변환
                     'Support Condition': bool(support_condition),  # bool로 변환
-                    'OBV Strength Condition': bool(obv_current > previous_obv),  # bool로 변환
+                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # bool로 변환
                     'Bullish Candle Date': bullish_candle_date  # 장대 양봉 발생 날짜 기록
                 }
                 logging.info(f"{code} 조건 만족: {result}")
@@ -183,7 +189,7 @@ def analyze_stock(code, start_date):
                              f"OBV: {obv_current}, "
                              f"MACD: {macd_condition}, "
                              f"지지선 확인: {support_condition}, "
-                             f"OBV 세력 확인: {obv_current > previous_obv}")
+                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
