@@ -56,7 +56,11 @@ def send_to_discord_webhook(webhook_url, message):
 
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
 def generate_ai_response(stock_data):
-    prompt = "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 오를 종목을 5개 추천하고 순서를 지정해 주세요. 결과는 추천하는 종목명과 간단한 이유 10자내외로 적어 주세요."
+    prompt = (
+        "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 오를 종목을 5개 추천하고, "
+        "각 종목의 우선순위를 지정하여 추천 이유를 포함해 주세요. "
+        "결과는 '종목 코드: [종목 코드], 추천 이유: [이유]' 형식으로 줄바꿈 없이 작성해 주세요."
+    )
     
     for stock in stock_data:
         prompt += (f"종목 코드: {stock['Code']}, "
@@ -76,7 +80,7 @@ def generate_ai_response(stock_data):
                 {"role": "system", "content": "이 시스템은 최고의 주식 분석 시스템입니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300  # 응답의 최대 토큰 수
+            max_tokens=500  # 응답의 최대 토큰 수 증가
         )
         logging.info("AI의 응답을 성공적으로 받았습니다.")
         result = response['choices'][0]['message']['content']
