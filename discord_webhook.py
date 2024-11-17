@@ -57,8 +57,9 @@ def send_to_discord_webhook(webhook_url, message):
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
 def generate_ai_response(stock_data):
     prompt = (
-        "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 상승할 가능성이 있는 종목을 순서대로 추천해 주세요. "
-        "각 종목의 우선순위를 지정하고, 추천 이유로는 Williams %R, OBV, 가격 변동성 등을 고려해 주세요. "
+        "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 상승할 가능성이 있는 종목을 우선순위에 따라 추천해 주세요. "
+        "각 종목의 우선순위는 Williams %R, OBV, 가격 변동성의 조합에 따라 결정됩니다. "
+        "각 종목에 대해 명확한 추천 이유를 제공해 주세요. "
         "결과는 '종목 코드: [종목 코드], 추천 이유: [이유]' 형식으로 줄바꿈 없이 작성해 주세요."
     )
     
@@ -81,7 +82,7 @@ def generate_ai_response(stock_data):
                 {"role": "user", "content": prompt}
             ],
             max_tokens=1000,  # 응답의 최대 토큰 수 증가
-            temperature=0.3  # 온도 설정 (0.0 ~ 1.0)
+            temperature=0.5  # 온도 조정 (0.0 ~ 1.0)
         )
         logging.info("AI의 응답을 성공적으로 받았습니다.")
         result = response['choices'][0]['message']['content']
