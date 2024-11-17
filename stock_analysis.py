@@ -156,8 +156,8 @@ def analyze_stock(code, start_date):
         logging.info(f"{code} - 지지선 조건: {support_condition} (최근 종가: {last_close}, 전체 저점: {overall_low})")
 
         # 장대 양봉 발생 시의 OBV 값 저장
-        if bullish_candle_index is not None:
-            obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
+        if bullish_candle_found:
+            obv_at_bullish_candle = df['obv'].iloc[recent_data.index.get_loc(bullish_candle_date)]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
             if (price_increase_condition and 
@@ -240,3 +240,4 @@ if __name__ == "__main__":
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
+
