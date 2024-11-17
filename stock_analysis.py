@@ -6,6 +6,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import json
 
+# JSON 파일로 결과를 저장하는 함수
+def save_results_to_json(data, filename='results.json'):
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=4)
+
 # 로그 디렉토리 생성
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
