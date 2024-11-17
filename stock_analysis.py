@@ -162,8 +162,8 @@ def analyze_stock(code, start_date):
                     'Highest Price': int(recent_data['High'].max()),  # int로 변환
                     'Williams %R': float(williams_r),  # float으로 변환
                     'OBV': int(obv_current),  # int로 변환
-                    'Support Condition': support_condition,
-                    'OBV Strength Condition': obv_current > obv_at_bullish_candle,  # OBV 세력 확인 조건 추가
+                    'Support Condition': bool(support_condition),  # bool로 변환
+                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # bool로 변환
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
@@ -227,4 +227,3 @@ if __name__ == "__main__":
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
-
