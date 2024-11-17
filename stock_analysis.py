@@ -182,7 +182,6 @@ def analyze_stock(code, start_date):
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
 
-
 # 예외 처리
 except Exception as e:
     logging.error(f"{code} 처리 중 오류 발생: {e}")
