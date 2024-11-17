@@ -150,30 +150,30 @@ def analyze_stock(code, start_date):
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
-        # 조건 확인 후 결과 저장
-        if (price_increase_condition and 
-            williams_r <= -80 and 
-            rsi_condition and 
-            support_condition and 
-            macd_condition and 
-            obv_current > obv_at_bullish_candle):
-            
-            result = {
-                'Code': code,
-                'Last Close': last_close,
-                'Opening Price': opening_price,
-                'Lowest Price': overall_low,
-                'Highest Price': recent_data['High'].max(),
-                'Williams %R': williams_r,
-                'OBV': obv_current,
-                'Support Condition': support_condition,
-                'OBV Strength Condition': obv_current > obv_at_bullish_candle
-            }
-            logging.info(f"{code} 조건 만족: {result}")
-            save_result_to_file(result)  # 결과 파일로 저장
-            print(f"만족한 종목 코드: {code}")
-            return result
+            if (price_increase_condition and 
+                williams_r <= -80 and 
+                rsi_condition and 
+                support_condition and 
+                macd_condition and 
+                obv_current > obv_at_bullish_candle):  # 조건이 충족되면
+
+                result = {
+                    'Code': code,
+                    'Last Close': last_close,
+                    'Opening Price': opening_price,
+                    'Lowest Price': overall_low,
+                    'Highest Price': recent_data['High'].max(),
+                    'Williams %R': williams_r,
+                    'OBV': obv_current,
+                    'Support Condition': support_condition,
+                    'OBV Strength Condition': obv_current > obv_at_bullish_candle
+                }
+                logging.info(f"{code} 조건 만족: {result}")
+                save_result_to_file(result)  # 결과 파일로 저장
+                print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드 출력
+                return result
             else:
+                # 조건이 불만족일 때의 코드
                 logging.info(f"{code} 조건 불만족: "
                              f"가격 상승 조건: {price_increase_condition}, "
                              f"Williams %R: {williams_r}, "
@@ -186,6 +186,7 @@ def analyze_stock(code, start_date):
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
+
 
 
 def search_stocks(start_date):
