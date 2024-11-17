@@ -182,11 +182,6 @@ def analyze_stock(code, start_date):
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
 
-# 예외 처리
-except Exception as e:
-    logging.error(f"{code} 처리 중 오류 발생: {e}")
-    return None
-
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
     logging.info("주식 검색 시작")
@@ -232,3 +227,4 @@ if __name__ == "__main__":
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
+
