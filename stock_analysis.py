@@ -84,22 +84,14 @@ def analyze_stock(code, start_date):
             logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
 
-        # 최근 종가 확인 및 가격 조건 체크
-        last_close = df['Close'].iloc[-1]  # 최근 종가
-        logging.info(f"{code} 최근 종가: {last_close}")
-        if last_close <= 3000:
-            logging.warning(f"{code}의 최근 종가가 3000원 이하로 건너뜁니다. 최근 종가: {last_close}")
-            return None
-
         # 최근 20일 데이터 추출
         recent_data = df.iloc[-20:]  # 최근 20일 데이터
+        last_close = recent_data['Close'].iloc[-1]  # 최근 종가
         opening_price = recent_data['Open'].iloc[-1]  # 최근 시작가 (개장가)
-        logging.info(f"{code} 최근 20일 데이터 분석 시작")
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
-        bullish_candle_found = False  # 장대 양봉이 처음 발생했는지 확인하는 변수
-        bullish_candle_date = None  # 장대 양봉 발생 날짜를 저장할 변수
+        bullish_candle_index = None  # 장대 양봉 발생 인덱스 초기화
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
@@ -108,24 +100,18 @@ def analyze_stock(code, start_date):
             daily_close = recent_data['Close'].iloc[i]  # 당일 종가
 
             # 장대 양봉 조건: 당일 최고가가 최저가의 1.29배 초과하고, 종가가 시가보다 높은지 확인
-            if daily_high > daily_low * 1.29 and daily_close > daily_open and not bullish_candle_found:
+            if daily_high > daily_low * 1.29 and daily_close > daily_open and bullish_candle_index is None:
                 price_increase_condition = True
-                bullish_candle_found = True  # 장대 양봉이 처음 발생했음을 기록
-                bullish_candle_date = recent_data.index[i].date()  # 장대 양봉 발생 날짜 저장
-                logging.info(f"{code} - {bullish_candle_date}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
+                bullish_candle_index = i  # 장대 양봉 발생 인덱스 저장
+                logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
         # OBV 계산
         df['obv'] = calculate_obv(df)
         obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
         previous_obv = df['obv'].iloc[-2] if len(df['obv']) > 1 else 0  # 이전 OBV 값
 
-        # 이전 OBV 값을 장대 양봉 발생 시의 OBV 값으로 설정
-        previous_obv = df['obv'].iloc[recent_data.index.get_loc(bullish_candle_date)] if bullish_candle_date else 0  # 장대 양봉 발생 시의 OBV 값
-        logging.info(f"{code} - 장대 양봉 발생 시 OBV: {previous_obv}")
-
         # OBV 세력 판단 조건
         obv_strength_condition = obv_current > previous_obv  # 현재 OBV가 이전 OBV보다 클 때
-        logging.info(f"{code} - OBV 세력 조건: {obv_strength_condition} (현재 OBV: {obv_current}, 이전 OBV: {previous_obv})")
 
         # Williams %R 계산
         df['williams_r'] = calculate_williams_r(df)
@@ -144,7 +130,10 @@ def analyze_stock(code, start_date):
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
         # 장대 양봉 이후의 데이터에서 저점 계산
-        filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
+        if bullish_candle_index is not None:
+            filtered_data = recent_data.iloc[:bullish_candle_index]  # 장대 양봉 이전 데이터만 필터링
+        else:
+            filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
 
         # 전체 기간의 저점 계산 (당일 제외)
         overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
@@ -153,11 +142,10 @@ def analyze_stock(code, start_date):
 
         # 지지선 조건 (당일 제외)
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
-        logging.info(f"{code} - 지지선 조건: {support_condition} (최근 종가: {last_close}, 전체 저점: {overall_low})")
-
+        
         # 장대 양봉 발생 시의 OBV 값 저장
-        if bullish_candle_found:
-            obv_at_bullish_candle = df['obv'].iloc[recent_data.index.get_loc(bullish_candle_date)]  # 장대 양봉 발생 시의 OBV
+        if bullish_candle_index is not None:
+            obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
             if (price_increase_condition and 
@@ -168,15 +156,14 @@ def analyze_stock(code, start_date):
                 obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
                 result = {
                     'Code': code,
-                    'Last Close': int(last_close),  # int로 변환
-                    'Opening Price': int(opening_price),  # int로 변환
-                    'Lowest Price': int(overall_low),  # int로 변환
-                    'Highest Price': int(recent_data['High'].max()),  # int로 변환
-                    'Williams %R': float(williams_r),  # float으로 변환
-                    'OBV': int(obv_current),  # int로 변환
-                    'Support Condition': bool(support_condition),  # bool로 변환
-                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # bool로 변환
-                    'Bullish Candle Date': bullish_candle_date  # 장대 양봉 발생 날짜 기록
+                    'Last Close': last_close,
+                    'Opening Price': opening_price,
+                    'Lowest Price': overall_low,
+                    'Highest Price': recent_data['High'].max(),
+                    'Williams %R': williams_r,
+                    'OBV': obv_current,  
+                    'Support Condition': support_condition,
+                    'OBV Strength Condition': obv_current > obv_at_bullish_candle  # OBV 세력 확인 조건 추가
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
