@@ -17,7 +17,7 @@ def send_to_discord_webhook(webhook_url, message):
 
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
 def generate_ai_response(stock_codes):
-    prompt = f"다음 종목 코드에 대해 분석하여 다음 거래일에 가장 많이 오를 것 같은 3개의 종목을 찾아주세요: {stock_codes}"
+    prompt = f"다음 종목 코드에 대해 기술적 분석을 기반으로 다음 거래일에 가장 상승할 가능성이 높은 3개의 종목을 추천해 주세요: {stock_codes}. 각 종목에 대한 간단한 분석도 포함해 주세요."
     
     try:
         response = openai.ChatCompletion.create(
