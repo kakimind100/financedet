@@ -97,6 +97,7 @@ def analyze_stock(code, start_date):
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
         bullish_candle_found = False  # 장대 양봉이 처음 발생했는지 확인하는 변수
+        bullish_candle_date = None  # 장대 양봉 발생 날짜를 저장할 변수
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
@@ -108,7 +109,8 @@ def analyze_stock(code, start_date):
             if daily_high > daily_low * 1.29 and daily_close > daily_open and not bullish_candle_found:
                 price_increase_condition = True
                 bullish_candle_found = True  # 장대 양봉이 처음 발생했음을 기록
-                logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
+                bullish_candle_date = recent_data.index[i].date()  # 장대 양봉 발생 날짜 저장
+                logging.info(f"{code} - {bullish_candle_date}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
         # OBV 계산
         df['obv'] = calculate_obv(df)
@@ -166,6 +168,7 @@ def analyze_stock(code, start_date):
                     'OBV': int(obv_current),  # int로 변환
                     'Support Condition': bool(support_condition),  # bool로 변환
                     'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # bool로 변환
+                    'Bullish Candle Date': bullish_candle_date  # 장대 양봉 발생 날짜
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
