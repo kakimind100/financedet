@@ -200,7 +200,7 @@ def search_stocks(start_date):
     result = []
 
     # 멀티스레딩으로 주식 데이터 처리
-    with ThreadPoolExecutor(max_workers=10) as executor:  # 최대 10개의 스레드 사용
+    with ThreadPoolExecutor(max_workers=15) as executor:  # 최대 15개의 스레드 사용
         futures = {executor.submit(analyze_stock, code, start_date): code for code in stocks['Code']}
         for future in as_completed(futures):
             result_data = future.result()
