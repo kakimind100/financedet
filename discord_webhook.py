@@ -27,7 +27,11 @@ def get_holidays(year):
     return holidays
 
 # 주식 시장이 열리는 날인지 확인하는 함수
-def is_market_open(date):
+def is_market_open(date, manual_run):
+    # 수동 실행인 경우, 공휴일 체크를 무시
+    if manual_run:
+        return True
+
     # 주말 확인
     if date.weekday() >= 5:  # 5: 토요일, 6: 일요일
         return False
@@ -90,8 +94,8 @@ def main():
     # 수동 실행인지 확인
     manual_run = os.getenv("MANUAL_RUN", "false").lower() == "true"
 
-    # 주식 시장이 열리는 날인지 확인 (자동 실행일 경우에만 확인)
-    if not manual_run and not is_market_open(today):
+    # 주식 시장이 열리는 날인지 확인
+    if not is_market_open(today, manual_run):
         logging.info("오늘은 주식 시장이 열리지 않습니다. 스크립트를 종료합니다.")
         return
 
