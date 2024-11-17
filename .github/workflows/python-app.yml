@@ -3,7 +3,6 @@ name: Python Stock Analysis and Discord Webhook
 on:
   schedule:
     - cron: '0 7 * * *'  # 매일 07:00 UTC에 실행 (KST 16:00)
-
   workflow_dispatch:  # 수동 실행을 위한 설정
 
 jobs:
@@ -25,15 +24,17 @@ jobs:
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
       - name: Run stock analysis
+        env:
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}  # 수동 실행 여부 설정
         run: |
           python stock_analysis.py  # 주식 분석 스크립트 실행
 
       - name: Send results to Discord
-        run: |
-          python discord_webhook.py  # 디스코드 웹훅 스크립트 실행
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # 시크릿으로 웹훅 URL 사용
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 시크릿으로 OpenAI API 키 사용
+        run: |
+          python discord_webhook.py  # 디스코드 웹훅 스크립트 실행
 
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
