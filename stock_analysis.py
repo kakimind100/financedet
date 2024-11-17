@@ -168,7 +168,7 @@ def analyze_stock(code, start_date):
                     'Support Condition': support_condition,
                     'OBV Strength Condition': obv_current > obv_at_bullish_candle
                 }
-                logging.info(f"{code} 조건 만족: {result}")
+                logging.info(f"{code} 조건 만족: {results}")
                 save_result_to_file(result)  # 결과 파일로 저장
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드 출력
                 return result
