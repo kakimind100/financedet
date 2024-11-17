@@ -20,9 +20,19 @@ def send_to_discord_webhook(webhook_url, message):
         logging.error(f"메시지 전송 실패: {response.status_code} - {response.text}")
 
 # AI를 사용하여 주식 분석 결과를 생성하는 함수
-def generate_ai_response(stock_codes):
-    prompt = f"다음 종목 코드에 대해 기술적 분석을 기반으로 다음 거래일에 가장 상승할 가능성이 높은 3개의 종목을 추천해 주세요: {stock_codes}. 각 종목에 대한 간단한 분석도 포함해 주세요."
+def generate_ai_response(stock_data):
+    prompt = "다음 주식 데이터에 대해 기술적 분석을 기반으로 투자 전략과 조언을 제공해 주세요:\n"
     
+    for stock in stock_data:
+        # 각 종목에 대한 데이터를 추가
+        prompt += (f"종목 코드: {stock['Code']}, 마지막 종가: {stock['Last Close']}, "
+                   f"개장가: {stock['Opening Price']}, 최저가: {stock['Lowest Price']}, "
+                   f"최고가: {stock['Highest Price']}, Williams %R: {stock['Williams %R']}, "
+                   f"OBV: {stock['OBV']}, 지지선 확인: {stock['Support Condition']}, "
+                   f"OBV 세력 확인: {stock['OBV Strength Condition']}\n")
+
+    prompt += "각 종목에 대한 간단한 분석도 포함해 주세요."
+
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",  # 사용할 모델 설정
@@ -30,7 +40,7 @@ def generate_ai_response(stock_codes):
                 {"role": "system", "content": "이 시스템은 최고의 주식 분석 시스템입니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=150  # 응답의 최대 토큰 수
+            max_tokens=300  # 응답의 최대 토큰 수
         )
         return response['choices'][0]['message']['content']  # 응답 내용 반환
     except Exception as e:
@@ -62,7 +72,7 @@ def main():
         return
 
     # AI 분석 결과 생성
-    ai_response = generate_ai_response([result['Code'] for result in results if 'Code' in result])
+    ai_response = generate_ai_response(results)
 
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")  # 환경 변수에서 웹훅 URL을 가져옴
     if webhook_url:
