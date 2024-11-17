@@ -115,7 +115,9 @@ def analyze_stock(code, start_date):
         # OBV 계산
         df['obv'] = calculate_obv(df)
         obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
-        previous_obv = df['obv'].iloc[-2] if len(df['obv']) > 1 else 0  # 이전 OBV 값
+
+        # 이전 OBV 값을 장대 양봉 발생 시의 OBV 값으로 설정
+        previous_obv = df['obv'].iloc[recent_data.index.get_loc(bullish_candle_date)] if bullish_candle_date else 0  # 장대 양봉 발생 시의 OBV 값
 
         # OBV 세력 판단 조건
         obv_strength_condition = obv_current > previous_obv  # 현재 OBV가 이전 OBV보다 클 때
@@ -157,7 +159,7 @@ def analyze_stock(code, start_date):
                 rsi_condition and 
                 support_condition and 
                 macd_condition and 
-                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
+                obv_current > previous_obv):  # 이전 OBV 값을 장대 양봉 발생 시의 OBV 값으로 사용
                 result = {
                     'Code': code,
                     'Last Close': int(last_close),  # int로 변환
@@ -167,8 +169,8 @@ def analyze_stock(code, start_date):
                     'Williams %R': float(williams_r),  # float으로 변환
                     'OBV': int(obv_current),  # int로 변환
                     'Support Condition': bool(support_condition),  # bool로 변환
-                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # bool로 변환
-                    'Bullish Candle Date': bullish_candle_date  # 장대 양봉 발생 날짜
+                    'OBV Strength Condition': bool(obv_current > previous_obv),  # bool로 변환
+                    'Bullish Candle Date': bullish_candle_date  # 장대 양봉 발생 날짜 기록
                 }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
@@ -181,7 +183,7 @@ def analyze_stock(code, start_date):
                              f"OBV: {obv_current}, "
                              f"MACD: {macd_condition}, "
                              f"지지선 확인: {support_condition}, "
-                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}")
+                             f"OBV 세력 확인: {obv_current > previous_obv}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
@@ -232,4 +234,3 @@ if __name__ == "__main__":
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
-
