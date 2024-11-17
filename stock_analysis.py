@@ -150,8 +150,8 @@ def analyze_stock(code, start_date):
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
         # 장대 양봉 발생 시의 OBV 값 저장
-        if price_increase_condition:
-            obv_at_bullish_candle = obv_current  # 장대 양봉 발생 시의 OBV
+        if bullish_candle_index is not None:
+            obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
             if (price_increase_condition and 
