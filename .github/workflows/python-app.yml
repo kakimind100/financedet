@@ -1,4 +1,4 @@
-name: Python Stock Analysis
+name: Python Stock Analysis and Discord Bot
 
 on:
   workflow_dispatch:  # 수동 실행을 위한 설정
@@ -24,8 +24,11 @@ jobs:
       - name: Run stock analysis script
         run: python stock_analysis.py  # 주식 분석 스크립트 실행
 
-      - name: Run stock openai script
-        run: python stock_openai.py  # OpenAI 관련 스크립트 실행
+      - name: Run Discord bot
+        run: python bot.py  # 디스코드 봇 스크립트 실행
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # GitHub Secrets에서 가져온 봇 토큰
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # GitHub Secrets에서 가져온 OpenAI API 키
 
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
