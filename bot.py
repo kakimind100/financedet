@@ -21,4 +21,4 @@ async def echo(ctx, *, message: str):
     await ctx.send(message)
 
 # 여기서 YOUR_BOT_TOKEN을 복사한 토큰으로 교체합니다.
-bot.run('YOUR_BOT_TOKEN')
+bot.run('BOT_TOKEN')
