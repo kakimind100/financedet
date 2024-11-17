@@ -1,35 +1,35 @@
 name: Python Stock Analysis
 
 on:
-  push:
+  push:  # 코드가 푸시될 때 실행
   workflow_dispatch:  # 수동 실행을 위한 설정
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Ubuntu 최신 버전에서 실행
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2  # 리포지토리의 코드를 체크아웃
 
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'  # 원하는 Python 버전
+          python-version: '3.8'  # 사용할 Python 버전 설정
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt  # 필요한 패키지 설치
+          python -m pip install --upgrade pip  # pip 업그레이드
+          pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
       - name: Run stock analysis script
         run: python stock_analysis.py  # 주식 분석 스크립트 실행
 
       - name: Run stock openai script
-        run: python stock_openai.py  # stock_openai.py 실행
+        run: python stock_openai.py  # OpenAI 관련 스크립트 실행
 
       - name: Upload log file
-        uses: actions/upload-artifact@v3  # 새로운 버전 사용
+        uses: actions/upload-artifact@v3  # 로그 파일 업로드
         with:
-          name: stock-analysis-log
-          path: logs/stock_analysis.log  # logs 디렉토리에 있는 로그 파일 업로드
+          name: stock-analysis-log  # 업로드할 아티팩트의 이름
+          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로
