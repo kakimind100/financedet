@@ -21,12 +21,16 @@ jobs:
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
-      - name: Run stock analysis and send to Discord
+      - name: Run stock analysis
         run: |
-          python discord_webhook.py  # discord_webhook.py 스크립트 실행
+          python stock_analysis.py  # 주식 분석 스크립트 실행
+
+      - name: Send results to Discord
+        run: |
+          python discord_webhook.py  # 디스코드 웹훅 스크립트 실행
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 시크릿으로 OpenAI API 키 사용
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # 시크릿으로 웹훅 URL 사용
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 시크릿으로 OpenAI API 키 사용
 
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
