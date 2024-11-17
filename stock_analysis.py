@@ -107,7 +107,6 @@ def analyze_stock(code, start_date):
                 bullish_candle_index = i  # 장대 양봉 발생 인덱스 저장
                 logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
-
         # OBV 계산
         df['obv'] = calculate_obv(df)
         obv_current = df['obv'].iloc[-1]  # 현재 OBV 값
@@ -157,21 +156,21 @@ def analyze_stock(code, start_date):
                 support_condition and 
                 macd_condition and 
                 obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
-            result = {
-                'Code': str(code),  # 코드: 문자열
-                'Last Close': float(last_close),  # 최근 종가: 부동소수점
-                'Opening Price': float(opening_price),  # 최근 시작가: 부동소수점
-                'Lowest Price': float(overall_low),  # 전체 저점: 부동소수점
-                'Highest Price': float(recent_data['High'].max()),  # 최고가: 부동소수점
-                'Williams %R': float(williams_r),  # Williams %R: 부동소수점
-                'OBV': int(obv_current),  # OBV: 정수
-                'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
-                'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle)  # OBV 세력 확인 조건: 불리언
-            }
-
+                result = {
+                    'Code': str(code),  # 코드: 문자열
+                    'Last Close': float(last_close),  # 최근 종가: 부동소수점
+                    'Opening Price': float(opening_price),  # 최근 시작가: 부동소수점
+                    'Lowest Price': float(overall_low),  # 전체 저점: 부동소수점
+                    'Highest Price': float(recent_data['High'].max()),  # 최고가: 부동소수점
+                    'Williams %R': float(williams_r),  # Williams %R: 부동소수점
+                    'OBV': int(obv_current),  # OBV: 정수
+                    'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
+                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle)  # OBV 세력 확인 조건: 불리언
+                }
                 logging.info(f"{code} 조건 만족: {result}")
                 print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
                 return result  # 조건을 만족하는 경우 결과 반환
+            
             else:
                 logging.info(f"{code} 조건 불만족: "
                              f"가격 상승 조건: {price_increase_condition}, "
@@ -213,11 +212,11 @@ def search_stocks(start_date):
 
     logging.info("주식 검색 완료")
     return result
-    
+
 # 메인 실행 블록에서 결과 저장 호출 추가
 if __name__ == "__main__":
     logging.info("스크립트 실행 시작")
-    
+
     # 최근 40 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
     start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
