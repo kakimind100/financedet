@@ -228,7 +228,7 @@ if __name__ == "__main__":
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
     result = search_stocks(start_date_str)
-    if result:
+    if results:  # 결과가 있을 때만 로그 출력
         logging.info(f"만족한 종목 리스트: {[stock['Code'] for stock in result]}")
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
