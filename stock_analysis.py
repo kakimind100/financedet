@@ -96,7 +96,7 @@ def analyze_stock(code, start_date):
 
         # 가격 상승 조건 체크 (장대 양봉)
         price_increase_condition = False
-        bullish_candle_index = None  # 장대 양봉 발생 인덱스 초기화
+        bullish_candle_found = False  # 장대 양봉이 처음 발생했는지 확인하는 변수
 
         for i in range(len(recent_data)):
             daily_low = recent_data['Low'].iloc[i]  # 당일 최저가
@@ -105,9 +105,9 @@ def analyze_stock(code, start_date):
             daily_close = recent_data['Close'].iloc[i]  # 당일 종가
 
             # 장대 양봉 조건: 당일 최고가가 최저가의 1.29배 초과하고, 종가가 시가보다 높은지 확인
-            if daily_high > daily_low * 1.29 and daily_close > daily_open:
+            if daily_high > daily_low * 1.29 and daily_close > daily_open and not bullish_candle_found:
                 price_increase_condition = True
-                bullish_candle_index = i  # 장대 양봉 발생 인덱스 저장
+                bullish_candle_found = True  # 장대 양봉이 처음 발생했음을 기록
                 logging.info(f"{code} - {recent_data.index[i].date()}일: 장대 양봉 발생, 최고가 {daily_high}가 최저가 {daily_low}의 29% 초과")
 
         # OBV 계산
@@ -135,10 +135,7 @@ def analyze_stock(code, start_date):
         macd_condition = macd.iloc[-1] <= 5  # MACD가 5 이하일 경우
 
         # 장대 양봉 이후의 데이터에서 저점 계산
-        if bullish_candle_index is not None:
-            filtered_data = recent_data.iloc[:bullish_candle_index]  # 장대 양봉 이전 데이터만 필터링
-        else:
-            filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
+        filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
 
         # 전체 기간의 저점 계산 (당일 제외)
         overall_low = df.iloc[:-1]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
@@ -149,8 +146,8 @@ def analyze_stock(code, start_date):
         support_condition = last_close > overall_low * 1.01  # 최근 종가가 전체 저점의 1% 초과
         
         # 장대 양봉 발생 시의 OBV 값 저장
-        if bullish_candle_index is not None:
-            obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
+        if price_increase_condition:
+            obv_at_bullish_candle = obv_current  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
             if (price_increase_condition and 
