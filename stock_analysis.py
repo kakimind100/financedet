@@ -84,9 +84,14 @@ def analyze_stock(code, start_date):
             logging.warning(f"{code} 데이터가 26일 미만으로 건너뜁니다.")
             return None
 
+        # 최근 종가 확인 및 가격 조건 체크
+        last_close = df['Close'].iloc[-1]  # 최근 종가
+        if last_close <= 3000:
+            logging.warning(f"{code}의 최근 종가가 3000원 이하로 건너뜁니다. 최근 종가: {last_close}")
+            return None
+
         # 최근 20일 데이터 추출
         recent_data = df.iloc[-20:]  # 최근 20일 데이터
-        last_close = recent_data['Close'].iloc[-1]  # 최근 종가
         opening_price = recent_data['Open'].iloc[-1]  # 최근 시작가 (개장가)
 
         # 가격 상승 조건 체크 (장대 양봉)
@@ -135,7 +140,7 @@ def analyze_stock(code, start_date):
         else:
             filtered_data = recent_data  # 장대 양봉이 없으면 전체 데이터 사용
 
-        # 전체 기간의 저점 계산 (당일 포한 2일제외)
+        # 전체 기간의 저점 계산 (당일 포함 2일 제외)
         overall_low = df.iloc[:-2]['Low'].min()  # 전체 기간에서 마지막 행(당일) 제외하고 저점 계산
         if len(filtered_data) > 0:
             overall_low = min(overall_low, filtered_data['Low'].min())  # 필터링된 데이터의 저점과 비교
@@ -227,3 +232,4 @@ if __name__ == "__main__":
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
+
