@@ -1,4 +1,4 @@
-name: Python Stock Analysis and Discord Bot
+name: Python Stock Analysis and Discord Webhook
 
 on:
   workflow_dispatch:  # 수동 실행을 위한 설정
@@ -21,17 +21,15 @@ jobs:
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
-      - name: Run stock analysis script
-        run: python stock_analysis.py  # 주식 분석 스크립트 실행
-
-      - name: Run Discord bot
-        run: python bot.py  # 디스코드 봇 스크립트 실행
+      - name: Run stock analysis and send to Discord
+        run: |
+          python discord_webhook.py  # discord_webhook.py 스크립트 실행
         env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}  # GitHub Secrets에서 가져온 봇 토큰
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # GitHub Secrets에서 가져온 OpenAI API 키
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # 시크릿으로 OpenAI API 키 사용
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # 시크릿으로 웹훅 URL 사용
 
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
         with:
           name: stock-analysis-log  # 업로드할 아티팩트의 이름
-          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로
+          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로 (필요한 경우)
