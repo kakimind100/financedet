@@ -170,39 +170,40 @@ def analyze_stock(code, start_date):
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
             # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인, 볼린저 밴드 조건 추가
-            if (price_increase_condition and 
-                williams_r <= -80 and 
-                rsi_condition and 
-                support_condition and 
-                macd_condition and 
-                obv_current > obv_at_bullish_candle and 
-                bollinger_condition):  # 볼린저 밴드 조건 추가
-                result = {
-                    'Code': str(code),  # 코드: 문자열
-                    'Last Close': float(last_close),  # 최근 종가: 부동소수점
-                    'Opening Price': float(opening_price),  # 최근 시작가: 부동소수점
-                    'Lowest Price': float(overall_low),  # 전체 저점: 부동소수점
-                    'Highest Price': float(recent_data['High'].max()),  # 최고가: 부동소수점
-                    'Williams %R': float(williams_r),  # Williams %R: 부동소수점
-                    'OBV': int(obv_current),  # OBV: 정수
-                    'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
-                    'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # OBV 세력 확인 조건: 불리언
-                    'Bollinger Condition': bool(bollinger_condition)  # 볼린저 밴드 조건: 불리언
-                }
-                logging.info(f"{code} 조건 만족: {result}")
-                print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
-                return result  # 조건을 만족하는 경우 결과 반환
-            
-            else:
-                logging.info(f"{code} 조건 불만족: "
-                             f"가격 상승 조건: {price_increase_condition}, "
-                             f"Williams %R: {williams_r}, "
-                             f"RSI: {rsi_current}, "
-                             f"OBV: {obv_current}, "
-                             f"MACD: {macd_condition}, "
-                             f"지지선 확인: {support_condition}, "
-                             f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}, "
-                             f"볼린저 밴드 조건: {bollinger_condition}")
+        if (price_increase_condition and 
+            williams_r <= -80 and 
+            rsi_condition and  # RSI 조건 추가
+            support_condition and 
+            macd_condition and 
+            obv_current > obv_at_bullish_candle and 
+            bollinger_condition):  # 볼린저 밴드 조건 추가
+            result = {
+                'Code': str(code),  # 코드: 문자열
+                'Last Close': float(last_close),  # 최근 종가: 부동소수점
+                'Opening Price': float(opening_price),  # 최근 시작가: 부동소수점
+                'Lowest Price': float(overall_low),  # 전체 저점: 부동소수점
+                'Highest Price': float(recent_data['High'].max()),  # 최고가: 부동소수점
+                'Williams %R': float(williams_r),  # Williams %R: 부동소수점
+                'OBV': int(obv_current),  # OBV: 정수
+                'Support Condition': bool(support_condition),  # 지지선 조건: 불리언
+                'OBV Strength Condition': bool(obv_current > obv_at_bullish_candle),  # OBV 세력 확인 조건: 불리언
+                'Bollinger Condition': bool(bollinger_condition),  # 볼린저 밴드 조건: 불리언
+                'RSI': float(rsi_current)  # RSI 값 추가
+            }
+            logging.info(f"{code} 조건 만족: {result}")
+            print(f"만족한 종목 코드: {code}")  # 만족한 종목 코드
+            return result  # 조건을 만족하는 경우 결과 반환
+    
+        else:
+            logging.info(f"{code} 조건 불만족: "
+                         f"가격 상승 조건: {price_increase_condition}, "
+                         f"Williams %R: {williams_r}, "
+                         f"RSI: {rsi_current}, "
+                         f"OBV: {obv_current}, "
+                         f"MACD: {macd_condition}, "
+                         f"지지선 확인: {support_condition}, "
+                         f"OBV 세력 확인: {obv_current > obv_at_bullish_candle}, "
+                         f"볼린저 밴드 조건: {bollinger_condition}")
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
