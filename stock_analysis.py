@@ -147,7 +147,13 @@ def analyze_stock(code, start_date):
         if bullish_candle_index is not None:
             obv_at_bullish_candle = df['obv'].iloc[bullish_candle_index]  # 장대 양봉 발생 시의 OBV
 
-                # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
+            # 조건 확인: 가격 상승 조건, Williams %R, RSI, MACD, 지지선 확인
+            if (price_increase_condition and 
+                williams_r <= -80 and 
+                rsi_condition and 
+                support_condition and 
+                macd_condition and 
+                obv_current > obv_at_bullish_candle):  # OBV 세력 조건 추가
                 result = {
                     'Code': code,
                     'Last Close': last_close,
@@ -175,6 +181,12 @@ def analyze_stock(code, start_date):
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return None
+
+
+# 예외 처리
+except Exception as e:
+    logging.error(f"{code} 처리 중 오류 발생: {e}")
+    return None
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
