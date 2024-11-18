@@ -1,9 +1,8 @@
-name: Python Stock Analysis and Discord Webhook
-
 on:
   schedule:
-    - cron: '00 07 * * *'  # 매일 07:20 UTC에 실행 (KST 16:00)
+    - cron: '29 8 * * *'  # 매일 09:00 KST에 실행 (UTC 00:00)
   workflow_dispatch:  # 수동 실행을 위한 설정
+
 jobs:
   build:
     runs-on: ubuntu-latest  # Ubuntu 최신 버전에서 실행
@@ -41,3 +40,7 @@ jobs:
         with:
           name: stock-analysis-log  # 업로드할 아티팩트의 이름
           path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로 (필요한 경우)
+
+      - name: Get Korean Time
+        run: |
+          echo "한국 시간: $(node -e 'const getKoreaTime = () => { const now = new Date(); const diffConfig = now.getTimezoneOffset() * 60 * 1000; const diffKorea = 9 * 60 * 60 * 1000; const koreaTime = new Date(now.getTime() + diffConfig + diffKorea); return koreaTime.getFullYear() + \"년 \" + (koreaTime.getMonth() + 1) + \"월 \" + koreaTime.getDate() + \"일 \" + koreaTime.getHours() + \"시 \"; }; console.log(getKoreaTime());')"  # 한국 시간 출력
