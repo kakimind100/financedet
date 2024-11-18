@@ -2,7 +2,7 @@ name: Python Stock Analysis and Discord Webhook
 
 on:
   schedule:
-    - cron: '11 08 * * *'  # 매일 07:20 UTC에 실행 (KST 17:03)
+    - cron: '18 17 * * *'  # 매일 07:20 UTC에 실행 (KST 17:03)
   workflow_dispatch:  # 수동 실행을 위한 설정
 jobs:
   build:
