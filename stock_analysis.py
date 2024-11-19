@@ -20,19 +20,8 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# CSV 파일에 데이터 저장
-def save_to_csv(data, filename='stock_data.csv'):
-    df = pd.DataFrame(data)
-    if os.path.exists(filename):
-        df.to_csv(filename, mode='a', header=False, index=False)  # 기존 파일에 추가
-        logging.info(f"{filename}에 기존 데이터 추가 완료.")
-    else:
-        df.to_csv(filename, index=False)  # 새 파일 생성
-        logging.info(f"{filename} 새 파일 생성 완료.")
-    logging.info(f"{len(data)}개의 데이터를 {filename}에 저장 완료.")
-
 def fetch_and_store_stock_data(code, start_date):
-    """주식 데이터를 가져와서 CSV 파일에 저장하는 함수."""
+    """주식 데이터를 가져오는 함수."""
     logging.info(f"{code} 데이터 가져오기 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
@@ -65,11 +54,14 @@ def fetch_and_store_stock_data(code, start_date):
 
 def analyze_stocks(data):
     """OpenAI API를 사용하여 기술적 분석을 수행하고 상승 예측을 반환하는 함수."""
+    # 데이터 문자열 변환
+    data_string = "\n".join([f"종목 코드: {item['Code']}, 날짜: {item['Date']}, "
+                              f"시가: {item['Opening Price']}, 종가: {item['Last Close']}, "
+                              f"거래량: {item['Volume']}" for item in data])
+
     messages = [
         {"role": "system", "content": "당신은 금융 분석가입니다."},
         {"role": "user", "content": (
-            "다음은 주식 데이터입니다:\n"
-            f"{data}\n\n"
             "이 데이터를 분석하여 다음 거래일에 가장 많이 상승할 것으로 예상되는 "
             "종목을 0%~100%까지의 비율로 순위를 매기고, "
             "상위 5개 주식에 대해 각 종목의 종목 코드와 추천 이유를 20자 내외로 작성해 주세요."
@@ -125,8 +117,7 @@ def main():
                 all_results.extend(stock_data)
 
     if all_results:
-        save_to_csv(all_results)
-        logging.info(f"총 저장된 데이터 수: {len(all_results)}")
+        logging.info(f"총 수집된 데이터 수: {len(all_results)}")
 
         # OpenAI API를 통한 기술적 분석 및 상승 예측
         analysis_result = analyze_stocks(all_results)
