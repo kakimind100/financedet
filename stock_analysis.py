@@ -3,10 +3,15 @@ import pandas as pd
 import logging
 from datetime import datetime, timedelta
 import os
+import json
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
+
+# JSON 파일 저장 디렉토리 생성
+json_dir = 'json_results'
+os.makedirs(json_dir, exist_ok=True)
 
 # 로깅 설정
 logging.basicConfig(
@@ -21,18 +26,36 @@ console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상만 출
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
-def add_date_column(df):
-    """주식 데이터프레임에 날짜 열을 추가하는 함수."""
-    if 'Date' not in df.columns:
-        # 비즈니스 일 기준으로 날짜 생성
-        df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
-        df.set_index('Date', inplace=True)
-        logging.debug("날짜 정보를 데이터프레임에 추가했습니다.")
+def fetch_and_save_stock_data(codes, start_date, end_date):
+    """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
+    all_data = {}
+    
+    for code in codes:
+        try:
+            logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
+            df = fdr.DataReader(code, start=start_date, end=end_date)
+            # DataFrame을 JSON 형식으로 변환하여 저장
+            all_data[code] = df.to_dict(orient='records')
+            logging.info(f"{code} 데이터 가져오기 성공")
+        except Exception as e:
+            logging.error(f"{code} 처리 중 오류 발생: {e}")
+
+    # JSON 파일로 저장
+    filename = os.path.join(json_dir, 'stock_data.json')
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(all_data, f, ensure_ascii=False, indent=4)
+    logging.info(f"주식 데이터를 JSON 파일로 저장했습니다: {filename}")
+
+def load_stock_data_from_json():
+    """JSON 파일에서 주식 데이터를 로드하는 함수."""
+    filename = os.path.join(json_dir, 'stock_data.json')
+    with open(filename, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:  # 최소 60일의 데이터 필요
-        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0] if 'Code' in df.columns else 'N/A'}")
+        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code']}")
         return False, None
     
     # 컵의 저점과 핸들의 저점 찾기
@@ -48,52 +71,31 @@ def is_cup_with_handle(df):
     
     # 컵과 핸들 패턴 조건
     if handle_top < cup_top and cup_bottom < handle_top:
-        logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0] if 'Code' in df.columns else 'N/A'}")
+        logging.debug(f"패턴 발견! 종목 코드: {df['Code']}")
         return True, df.index[-1]  # 최근 날짜 반환
     return False, None
 
-def search_stocks(start_date, end_date):
-    """주식 종목을 검색하고 가장 최근 Cup with Handle 패턴을 찾는 함수."""
-    logging.info("주식 검색 시작")
-
-    try:
-        kospi = fdr.StockListing('KOSPI')  # KRX 코스피 종목 목록
-        logging.info("코스피 종목 목록 가져오기 성공")
-        
-        kosdaq = fdr.StockListing('KOSDAQ')  # KRX 코스닥 종목 목록
-        logging.info("코스닥 종목 목록 가져오기 성공")
-    except Exception as e:
-        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        return []
-
-    stocks = pd.concat([kospi, kosdaq])
+def search_cup_with_handle(stocks_data):
+    """저장된 주식 데이터에서 Cup with Handle 패턴을 찾는 함수."""
     recent_cup_with_handle = None
     recent_date = None
+    results = []
 
-    for code in stocks['Code']:
-        try:
-            logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
-            df = fdr.DataReader(code, start=start_date, end=end_date)  # 시작 및 종료 날짜를 사용하여 데이터 가져오기
-            
-            # 'Code' 컬럼을 DataFrame에 추가
-            df['Code'] = code
-            
-            # 날짜 열 추가
-            add_date_column(df)
-            
-            is_pattern, pattern_date = is_cup_with_handle(df)
-            if is_pattern:
-                if recent_date is None or pattern_date > recent_date:
-                    recent_date = pattern_date
-                    recent_cup_with_handle = code
-                    logging.info(f"{code}에서 최근 Cup with Handle 패턴 발견 (완성 날짜: {pattern_date})")
-            else:
-                logging.debug(f"{code}에서 Cup with Handle 패턴 발견하지 못함.")
-        except Exception as e:
-            logging.error(f"{code} 처리 중 오류 발생: {e}")
+    for code, data in stocks_data.items():
+        df = pd.DataFrame(data)
+        df['Code'] = code  # 코드 추가
 
-    logging.info("주식 검색 완료")
-    return recent_cup_with_handle, recent_date
+        is_pattern, pattern_date = is_cup_with_handle(df)
+        if is_pattern:
+            if recent_date is None or pattern_date > recent_date:
+                recent_date = pattern_date
+                recent_cup_with_handle = code
+                results.append({
+                    'code': code,
+                    'pattern_date': pattern_date.strftime('%Y-%m-%d')
+                })
+    
+    return recent_cup_with_handle, recent_date, results
 
 # 메인 실행 블록
 if __name__ == "__main__":
@@ -105,10 +107,31 @@ if __name__ == "__main__":
     end_date = today.strftime('%Y-%m-%d')  # 오늘 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    logging.info(f"주식 분석 시작 날짜: {start_date_str}")
+    # KOSPI 및 KOSDAQ 종목 목록 가져오기
+    try:
+        kospi = fdr.StockListing('KOSPI')['Code'].tolist()
+        kosdaq = fdr.StockListing('KOSDAQ')['Code'].tolist()
+        all_codes = kospi + kosdaq
+        logging.info("종목 목록 가져오기 성공")
+    except Exception as e:
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
+        exit()
 
-    recent_stock, date_found = search_stocks(start_date_str, end_date)  # 결과를 변수에 저장
+    # 주식 데이터 가져와 JSON으로 저장
+    fetch_and_save_stock_data(all_codes, start_date_str, end_date)
+
+    # JSON 파일에서 주식 데이터 로드
+    stocks_data = load_stock_data_from_json()
+
+    # Cup with Handle 패턴 찾기
+    recent_stock, date_found, results = search_cup_with_handle(stocks_data)
     if recent_stock:  # 최근 패턴이 발견된 경우
         logging.info(f"가장 최근 Cup with Handle 패턴이 발견된 종목: {recent_stock} (완성 날짜: {date_found})")
     else:
         logging.info("Cup with Handle 패턴을 가진 종목이 없습니다.")
+
+    # 결과를 JSON 파일로 저장
+    result_filename = os.path.join(json_dir, 'cup_with_handle_results.json')
+    with open(result_filename, 'w', encoding='utf-8') as f:
+        json.dump(results, f, ensure_ascii=False, indent=4)
+    logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
