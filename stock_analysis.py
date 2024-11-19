@@ -6,9 +6,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import json
 import openai
-import matplotlib
-matplotlib.use('Agg')  # Agg 백엔드 사용
-import matplotlib.pyplot as plt
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -75,65 +72,16 @@ def search_stocks(start_date):
     logging.info("주식 검색 완료")
     return result
 
-def visualize_stock_data(stock_data):
-    """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
-    logging.info("그래프 이미지화 시작")
-    
-    plt.figure(figsize=(14, 8))  # 그래프 크기 설정
-
-    # 종가와 거래량을 저장할 데이터프레임 초기화
-    combined_data = pd.DataFrame()
-
-    total_stocks = len(stock_data)  # 전체 종목 수
-
-    # 각 종목의 데이터를 가져와서 combined_data에 추가
-    for idx, (code, records) in enumerate(stock_data.items()):
-        if not records:  # records가 비어 있는 경우
-            logging.warning(f"{code}의 데이터가 비어 있습니다.")
-            continue
-
-        df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
-        df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
-        df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
-
-        # 종가와 거래량을 combined_data에 추가
-        combined_data[code + '_Close'] = df['Close']  # 종가
-        combined_data[code + '_Volume'] = df['Volume']  # 거래량
-
-        # 진행 상태 로그
-        percent_complete = (idx + 1) / total_stocks * 100
-        logging.info(f"{code} 데이터 처리 완료: {percent_complete:.2f}% 완료")
-
-    # 종가 그래프 그리기
-    for code in stock_data.keys():
-        if f'{code}_Close' in combined_data.columns:
-            plt.plot(combined_data.index, combined_data[f'{code}_Close'], label=f'{code} 종가', alpha=0.7)
-
-    # 거래량 그래프 그리기 (second y-axis)
-    ax2 = plt.gca().twinx()  # 두 번째 y축 생성
-    for code in stock_data.keys():
-        if f'{code}_Volume' in combined_data.columns:
-            ax2.bar(combined_data.index, combined_data[f'{code}_Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
-
-    plt.title('주식 종가 및 거래량 (2년간)')
-    plt.xlabel('날짜')
-    plt.ylabel('종가')
-    ax2.set_ylabel('거래량')
-    plt.legend(loc='upper left')  # 범례에 종목 코드 포함
-    plt.xticks(rotation=45)
-    plt.tight_layout()  # 레이아웃 조정
-
-    # 그래프를 이미지 파일로 저장
-    plt.savefig('stock_prices_and_volume.png')
-    logging.info("그래프 이미지 저장 완료: 'stock_prices_and_volume.png'")
-    plt.close()  # 그래프 닫기
-
-def send_graph_description_to_ai(graph_description):
-    """AI에게 그래프 설명을 요청하는 함수."""
+def send_stock_analysis_to_ai(stock_data):
+    """AI에게 주식 데이터 분석을 요청하는 함수."""
+    analysis_request = (
+        "다음은 최근 6개월간의 주식 데이터입니다. "
+        "주식의 상승 가능성을 %로 표기하고, 상위 5개 종목의 이유를 20자 내외로 작성해 주세요."
+    )
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "user", "content": graph_description}
+            {"role": "user", "content": analysis_request}
         ],
         max_tokens=150  # 최대 토큰 수 설정
     )
@@ -143,9 +91,9 @@ def send_graph_description_to_ai(graph_description):
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
     
-    # 최근 730 거래일을 기준으로 시작 날짜 설정
+    # 최근 180 거래일을 기준으로 시작 날짜 설정 (약 6개월)
     today = datetime.today()
-    start_date = today - timedelta(days=730)  # 최근 730 거래일 전 날짜
+    start_date = today - timedelta(days=180)  # 최근 180 거래일 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
@@ -156,19 +104,9 @@ if __name__ == "__main__":
         for i in range(0, len(results), 10):  # 10개씩 나누어 출력
             logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         
-        # 주식 데이터 시각화 (종가 및 거래량 포함)
-        visualize_stock_data(results)  # 전체 주식 데이터 시각화
-
-        # 그래프에 대한 설명
-        graph_description = (
-            "다음은 2년간의 주식 종가 및 거래량 그래프입니다. "
-            "다음 그래프를 보고 다음 거래일에 가장 많이 상승 가능성을 %로 표기하고 "
-            "상위 5개 종목을 이유 20자 내외로 함께 작성해 주세요."
-        )
-
-        # AI에게 그래프 설명 요청
-        insights = send_graph_description_to_ai(graph_description)
-        logging.info("AI의 그래프 분석 결과:")
+        # AI에게 주식 데이터 분석 요청
+        insights = send_stock_analysis_to_ai(results)
+        logging.info("AI의 주식 분석 결과:")
         logging.info(insights)  # AI의 응답 출력
 
         save_results_to_json(results)  # JSON 파일로 저장
