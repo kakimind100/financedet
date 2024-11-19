@@ -16,7 +16,7 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,
+    level=logging.DEBUG,  # DEBUG로 설정하여 모든 로그를 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -93,7 +93,7 @@ def analyze_stocks(data):
         return None
 
 def main():
-    logging.info("스크립트 실행 시작")
+    logging.info("주식 분석 스크립트가 시작되었습니다.")  # 스크립트 시작 로그
 
     today = datetime.today()
     start_date = today - timedelta(days=730)
@@ -114,6 +114,8 @@ def main():
 
     stocks = pd.concat([kospi, kosdaq])
     all_results = []
+
+    logging.info("주식 데이터 수집 시작")  # 데이터 수집 시작 로그
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(fetch_and_store_stock_data, code, start_date): code for code in stocks['Code']}
