@@ -11,3 +11,5 @@ plotly==5.9.0           # 데이터 시각화 라이브러리
 discord.py==2.0.1       # 디스코드 API와 상호작용하기 위한 라이브러리
 mysql-connector-python==8.0.30  # MySQL Connector/Python
 matplotlib
+fonts-nanum
+fonts-dejavu
