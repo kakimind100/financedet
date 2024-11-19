@@ -2,7 +2,7 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
-import mysql.connector
+import sqlite3  # SQLite 모듈 임포트
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -25,22 +25,17 @@ logging.getLogger().addHandler(console_handler)
 
 # 데이터베이스 연결 및 테이블 생성
 def create_database():
-    conn = mysql.connector.connect(
-        host='localhost',  # MySQL 서버 주소
-        user='your_username',  # MySQL 사용자 이름
-        password='your_password',  # MySQL 비밀번호
-        database='your_database'  # 사용할 데이터베이스 이름
-    )
+    conn = sqlite3.connect('stock_data.db')  # SQLite 데이터베이스 파일 생성
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stock_data (
-            code VARCHAR(10),
+            code TEXT,
             date DATE,
-            open FLOAT,
-            high FLOAT,
-            low FLOAT,
-            close FLOAT,
-            volume INT,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
             PRIMARY KEY (code, date)
         )
     ''')
@@ -55,16 +50,11 @@ def create_database():
 def delete_old_data(cursor):
     """730일이 지난 데이터를 삭제하는 함수."""
     cutoff_date = datetime.now() - timedelta(days=730)
-    cursor.execute('DELETE FROM stock_data WHERE date < %s', (cutoff_date,))
+    cursor.execute('DELETE FROM stock_data WHERE date < ?', (cutoff_date.date(),))
     logging.info(f"730일이 지난 데이터 삭제 완료: {cursor.rowcount}개의 레코드 삭제됨.")
 
 def save_to_database(data):
-    conn = mysql.connector.connect(
-        host='localhost',
-        user='your_username',
-        password='your_password',
-        database='your_database'
-    )
+    conn = sqlite3.connect('stock_data.db')  # SQLite 데이터베이스 파일 열기
     cursor = conn.cursor()
     
     for item in data:
@@ -76,18 +66,22 @@ def save_to_database(data):
         close_price = item['Last Close']
         volume = item['Volume']
 
-        cursor.execute('''
-            INSERT INTO stock_data (code, date, open, high, low, close, volume)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                open = VALUES(open),
-                high = VALUES(high),
-                low = VALUES(low),
-                close = VALUES(close),
-                volume = VALUES(volume)
-        ''', (code, date, open_price, high_price, low_price, close_price, volume))
-    
-    conn.commit()
+        try:
+            cursor.execute('''
+                INSERT INTO stock_data (code, date, open, high, low, close, volume)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(code, date) DO UPDATE SET
+                    open = excluded.open,
+                    high = excluded.high,
+                    low = excluded.low,
+                    close = excluded.close,
+                    volume = excluded.volume
+            ''', (code, date, open_price, high_price, low_price, close_price, volume))
+            conn.commit()  # 각 데이터 저장 후 커밋
+            logging.info(f"{code} - {date} 데이터 저장 완료.")
+        except Exception as e:
+            logging.error(f"{code} - {date} 데이터 저장 실패: {e}")  # 오류 발생 시 로그 기록
+
     conn.close()
     logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
 
