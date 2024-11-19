@@ -105,7 +105,11 @@ def visualize_stock_data(code, records):
     plt.xlabel('날짜')
     plt.ylabel('종가')
     ax2.set_ylabel('거래량')
+    
+    # 범례 추가
     plt.legend(loc='upper left')  # 범례에 종목 코드 포함
+    ax2.legend(loc='upper right')  # 두 번째 y축 범례 추가
+
     plt.xticks(rotation=45)
     plt.tight_layout()  # 레이아웃 조정
 
