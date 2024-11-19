@@ -64,7 +64,7 @@ def search_stocks(start_date):
                     logging.error(f"{code}의 데이터에 'Date' 키가 없습니다: {df.head()}")
                     continue  # 날짜 정보가 없으면 다음 종목으로 넘어감
 
-                # 날짜별 데이터 저장
+                # 종목별로 데이터 저장
                 result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
@@ -79,11 +79,6 @@ def visualize_stock_data(stock_data):
     for code, records in stock_data.items():
         if not records:  # records가 비어 있는 경우
             logging.warning(f"{code}의 데이터가 비어 있습니다.")
-            continue
-
-        # Date 키가 있는지 확인
-        if 'Date' not in records[0]:
-            logging.error(f"{code}의 데이터에 'Date' 키가 없습니다: {records}")
             continue
 
         df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
