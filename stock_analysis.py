@@ -1,5 +1,6 @@
 import FinanceDataReader as fdr
 import pandas as pd
+import numpy as np
 import logging
 from datetime import datetime, timedelta
 import os
@@ -182,4 +183,5 @@ if __name__ == "__main__":
     # 결과를 JSON 파일로 저장
     result_filename = os.path.join(json_dir, 'cup_with_handle_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False,
+        json.dump(results, f, ensure_ascii=False, indent=4)
+    logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
