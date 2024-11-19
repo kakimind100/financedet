@@ -74,8 +74,15 @@ def load_stock_data_from_json():
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:  # 최소 60일의 데이터 필요
-        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code']}")
+        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None
+    
+    # 날짜 데이터 확인
+    if df.index.empty:
+        logging.warning(f"종목 코드: {df['Code'].iloc[0]}에 날짜 데이터가 없습니다.")
+        return False, None
+
+    logging.debug(f"종목 코드: {df['Code'].iloc[0]}의 날짜 데이터: {df.index.tolist()}")
     
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
@@ -86,7 +93,7 @@ def is_cup_with_handle(df):
     handle_top = handle['Close'].max()
     
     if handle_top < cup_top and cup_bottom < handle_top:
-        logging.debug(f"패턴 발견! 종목 코드: {df['Code']}")
+        logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0]}")
         return True, df.index[-1]  # 최근 날짜 반환
     return False, None
 
@@ -98,16 +105,28 @@ def search_cup_with_handle(stocks_data):
 
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
+        
+        # 인덱스를 날짜로 설정
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')  # 날짜 형식으로 변환
+        df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
         df['Code'] = code  # 코드 추가
 
+        # 날짜 데이터 확인
+        if df.index.empty:
+            logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
+            continue
+        
+        logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
+
+        # 패턴 찾기
         is_pattern, pattern_date = is_cup_with_handle(df)
         if is_pattern:
-            if recent_date is None or pattern_date > recent_date:
+            if recent_date is None or (pattern_date and pattern_date > recent_date):
                 recent_date = pattern_date
                 recent_cup_with_handle = code
                 results.append({
                     'code': code,
-                    'pattern_date': pattern_date.strftime('%Y-%m-%d')
+                    'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
                 })
     
     return recent_cup_with_handle, recent_date, results
