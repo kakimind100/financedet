@@ -1,4 +1,3 @@
-import platform
 import FinanceDataReader as fdr
 import pandas as pd
 import logging
@@ -7,19 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import json
 import openai
-import matplotlib
-import matplotlib.font_manager as fm
-matplotlib.use('Agg')  # Agg 백엔드 사용
 import matplotlib.pyplot as plt
-
-# 글꼴 설정
-if platform.system() == "Windows":
-    font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows에서 Malgun Gothic 글꼴 사용
-else:
-    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Linux에서 DejaVu Sans 글꼴 사용
-
-font_prop = fm.FontProperties(fname=font_path, size=12)
-plt.rc('font', family=font_prop.get_name())
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -88,6 +75,10 @@ def search_stocks(start_date):
 
 def visualize_stock_data(code, records):
     """주식 데이터를 시각화하여 이미지를 저장하는 함수."""
+    if not records:  # records가 비어 있는 경우
+        logging.warning(f"{code}의 데이터가 비어 있습니다.")
+        return
+
     df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
     df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
     df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
@@ -95,7 +86,7 @@ def visualize_stock_data(code, records):
     plt.figure(figsize=(12, 6))  # 그래프 크기 설정
 
     # 종가 그래프 그리기
-    plt.plot(df.index, df['Close'], label=f'{code} 종가', color='blue')  # 종목 코드 포함
+    plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
 
     # 거래량 그래프 그리기 (second y-axis)
     ax2 = plt.gca().twinx()  # 두 번째 y축 생성
@@ -105,11 +96,7 @@ def visualize_stock_data(code, records):
     plt.xlabel('날짜')
     plt.ylabel('종가')
     ax2.set_ylabel('거래량')
-    
-    # 범례 추가
     plt.legend(loc='upper left')  # 범례에 종목 코드 포함
-    ax2.legend(loc='upper right')  # 두 번째 y축 범례 추가
-
     plt.xticks(rotation=45)
     plt.tight_layout()  # 레이아웃 조정
 
