@@ -1,6 +1,5 @@
 import FinanceDataReader as fdr
 import pandas as pd
-import numpy as np
 import logging
 from datetime import datetime, timedelta
 import os
@@ -52,12 +51,12 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
 
                 # 날짜 정보가 포함되어 있는지 확인
                 if 'Date' not in df.columns:
-                    # 날짜 정보를 추가
+                    # 날짜 정보를 Timestamp 방식으로 추가
                     df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
                     logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
-                
-                # 날짜를 문자열로 변환
-                df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식으로 변환
+
+                # 날짜를 Timestamp로 변환
+                df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식으로 변환
                 all_data[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
@@ -65,7 +64,7 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
     # JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
     with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(all_data, f, ensure_ascii=False, indent=4)
+        json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)  # Timestamp를 문자열로 변환하여 저장
     logging.info(f"주식 데이터를 JSON 파일로 저장했습니다: {filename}")
 
 def load_stock_data_from_json():
