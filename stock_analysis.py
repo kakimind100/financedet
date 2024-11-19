@@ -36,28 +36,29 @@ def fetch_stock_listing(market):
         logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
-def fetch_stock_data(code, start_date, end_date):
-    """주식 데이터를 가져오는 함수."""
-    try:
-        logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
-        df = fdr.DataReader(code, start=start_date, end=end_date)
-        logging.info(f"{code} 데이터 가져오기 성공")
-        return code, df.to_dict(orient='records')
-    except Exception as e:
-        logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")
-        return code, None  # 오류 발생 시 None 반환
-
 def fetch_and_save_stock_data(codes, start_date, end_date):
     """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
     all_data = {}
 
     # 멀티스레딩으로 주식 데이터 가져오기
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        future_to_code = {executor.submit(fetch_stock_data, code, start_date, end_date): code for code in codes}
-        for future in as_completed(future_to_code):
-            code, data = future.result()
-            if data is not None:
-                all_data[code] = data
+    with ThreadPoolExecutor(max_workers=20) as executor:  # 최대 20개의 스레드 사용
+        futures = {executor.submit(fdr.DataReader, code, start_date, end_date): code for code in codes}
+        for future in as_completed(futures):
+            code = futures[future]
+            try:
+                df = future.result()
+                logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
+
+                # 날짜 정보가 포함되어 있는지 확인
+                if 'Date' not in df.columns:
+                    # 날짜 정보를 추가
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
+                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+                
+                # 종목별로 데이터 저장
+                all_data[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
+            except Exception as e:
+                logging.error(f"{code} 처리 중 오류 발생: {e}")
 
     # JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
