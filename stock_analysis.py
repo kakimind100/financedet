@@ -2,7 +2,7 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
-import sqlite3  # SQLite 모듈 임포트
+import sqlite3
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -13,13 +13,13 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,  # DEBUG 레벨로 로그 기록
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # 콘솔에도 로그 출력
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # DEBUG 레벨 이상의 로그 출력
+console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -32,7 +32,7 @@ def create_database():
     # 데이터베이스 파일 경로
     db_path = os.path.join(db_directory, 'stock_data.db')
     
-    conn = sqlite3.connect(db_path)  # SQLite 데이터베이스 파일 생성
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stock_data (
@@ -48,22 +48,22 @@ def create_database():
     ''')
     conn.commit()
     logging.info("데이터베이스 및 테이블 생성 완료.")
-    conn.close()
 
     # 730일이 지난 데이터 삭제
-    delete_old_data(cursor)
-    conn.commit()
+    delete_old_data(conn)
     conn.close()
 
-def delete_old_data(cursor):
+def delete_old_data(conn):
     """730일이 지난 데이터를 삭제하는 함수."""
+    cursor = conn.cursor()
     cutoff_date = datetime.now() - timedelta(days=730)
     cursor.execute('DELETE FROM stock_data WHERE date < ?', (cutoff_date.date(),))
+    conn.commit()
     logging.info(f"730일이 지난 데이터 삭제 완료: {cursor.rowcount}개의 레코드 삭제됨.")
 
 def fetch_existing_data(code):
     """기존 데이터를 조회하여 해당 주식 코드의 모든 데이터를 반환하는 함수."""
-    conn = sqlite3.connect('stock_data.db')
+    conn = sqlite3.connect('data/stock_data.db')
     cursor = conn.cursor()
     
     cursor.execute('SELECT date FROM stock_data WHERE code = ?', (code,))
@@ -71,10 +71,10 @@ def fetch_existing_data(code):
     
     conn.close()
     
-    return {date[0] for date in existing_dates}  # 날짜를 집합으로 반환
+    return {date[0] for date in existing_dates}
 
 def save_to_database(data):
-    conn = sqlite3.connect('stock_data.db')  # SQLite 데이터베이스 파일 열기
+    conn = sqlite3.connect('data/stock_data.db')
     cursor = conn.cursor()
     
     for item in data:
@@ -97,10 +97,10 @@ def save_to_database(data):
                     close = excluded.close,
                     volume = excluded.volume
             ''', (code, date, open_price, high_price, low_price, close_price, volume))
-            conn.commit()  # 각 데이터 저장 후 커밋
+            conn.commit()
             logging.info(f"{code} - {date} 데이터 저장 완료.")
         except Exception as e:
-            logging.error(f"{code} - {date} 데이터 저장 실패: {e}")  # 오류 발생 시 로그 기록
+            logging.error(f"{code} - {date} 데이터 저장 실패: {e}")
 
     conn.close()
     logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
@@ -116,14 +116,12 @@ def fetch_and_store_stock_data(code, start_date):
             logging.warning(f"{code} 데이터가 없습니다.")
             return []
 
-        # 기존 데이터 조회
         existing_dates = fetch_existing_data(code)
 
-        # 데이터 프레임을 리스트로 변환, 기존 데이터와 비교하여 없는 데이터만 선택
         result = []
         for index, row in df.iterrows():
             date_str = index.strftime('%Y-%m-%d')
-            if date_str not in existing_dates:  # 기존 데이터와 비교하여 추가할 데이터만 선택
+            if date_str not in existing_dates:
                 result.append({
                     'Code': str(code),
                     'Date': date_str,
@@ -144,7 +142,7 @@ def fetch_and_store_stock_data(code, start_date):
 
 def initialize_database():
     """데이터베이스를 초기화하는 함수."""
-    if not os.path.exists('stock_data.db'):
+    if not os.path.exists('data/stock_data.db'):
         create_database()
         logging.info("새 데이터베이스를 생성했습니다.")
     else:
@@ -152,10 +150,10 @@ def initialize_database():
 
 def main():
     logging.info("스크립트 실행 시작")
-    initialize_database()  # 데이터베이스 초기화
+    initialize_database()
 
     today = datetime.today()
-    start_date = today - timedelta(days=730)  # 최근 2년(730일) 전 날짜
+    start_date = today - timedelta(days=730)
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
@@ -174,8 +172,7 @@ def main():
     stocks = pd.concat([kospi, kosdaq])
     all_results = []
 
-    # 멀티스레딩으로 각 종목의 데이터를 가져옵니다.
-    with ThreadPoolExecutor(max_workers=20) as executor:  # 동시에 20개의 스레드 사용
+    with ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(fetch_and_store_stock_data, code, start_date): code for code in stocks['Code']}
         for future in as_completed(futures):
             stock_data = future.result()
@@ -183,7 +180,7 @@ def main():
                 all_results.extend(stock_data)
 
     if all_results:
-        save_to_database(all_results)  # 데이터베이스에 저장
+        save_to_database(all_results)
         logging.info(f"총 저장된 데이터 수: {len(all_results)}")
     else:
         logging.info("저장할 데이터가 없습니다.")
