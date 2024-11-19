@@ -1,133 +1,275 @@
 import os
-import json
-import openai
-import requests
 import logging
-from datetime import datetime
+import requests
+import xml.etree.ElementTree as ET
+import re
+from bs4 import BeautifulSoup
+import xmlrpc.client
+from datetime import datetime, timedelta
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# OpenAI API 키 설정
-openai.api_key = os.getenv("OPENAI_API_KEY")  # 환경 변수에서 API 키를 가져옴
-logging.info("OpenAI API 키를 설정했습니다.")
+# 환경변수에서 비밀 키 가져오기
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+WP_URL = os.getenv('WP_URL')
+WP_USERNAME = os.getenv('WP_USERNAME')
+WP_PASSWORD = os.getenv('WP_PASSWORD')
+DISCORD_WEBHOOK_URL_BLOG = os.getenv('DISCORD_WEBHOOK_URL_BLOG')  # 블로그 디스코드 웹훅 URL
+NEWS_RSS_FEED_URL = os.getenv('NEWS_RSS_FEED_URL')  # 뉴스 RSS 피드 URL
+BLOG_RSS_FEED_URL = os.getenv('BLOG_RSS_FEED_URL')  # 블로그 RSS 피드 URL
 
-# 한국의 공휴일을 반환하는 함수
-def get_holidays(year):
-    holidays = [
-        f"{year}-01-01",  # 신정
-        f"{year}-03-01",  # 삼일절
-        f"{year}-05-01",  # 노동절
-        f"{year}-06-06",  # 현충일
-        # 추가 공휴일...
-    ]
-    return holidays
+# API 키가 설정되지 않은 경우 오류 메시지 출력
+if OPENAI_API_KEY is None:
+    logging.error("OPENAI_API_KEY가 설정되지 않았습니다. 환경 변수를 확인하세요.")
+    exit(1)
 
-# 주식 시장이 열리는 날인지 확인하는 함수
-def is_market_open(date, manual_run):
-    if manual_run:
-        return True
-    if date.weekday() >= 5:  # 5: 토요일, 6: 일요일
-        return False
-    holidays = get_holidays(date.year)
-    if date.strftime("%Y-%m-%d") in holidays:
-        return False
-    return True
+if NEWS_RSS_FEED_URL is None:
+    logging.error("NEWS_RSS_FEED_URL이 설정되지 않았습니다. 환경 변수를 확인하세요.")
+    exit(1)
 
-# 웹훅을 통해 메시지를 디스코드 채널로 보내는 함수
-def send_to_discord_webhook(webhook_url, message):
-    data = {"content": message}
-    response = requests.post(webhook_url, json=data)
-    if response.status_code == 204:
-        logging.info("메시지가 성공적으로 전송되었습니다.")
-    else:
-        logging.error(f"메시지 전송 실패: {response.status_code} - {response.text}")
+if BLOG_RSS_FEED_URL is None:
+    logging.error("BLOG_RSS_FEED_URL이 설정되지 않았습니다. 환경 변수를 확인하세요.")
+    exit(1)
 
-# AI를 사용하여 주식 분석 결과를 생성하는 함수
-def generate_ai_response(stock_data):
-    prompt = (
-        "주어진 주식 데이터를 기반으로 다음 거래일에 가장 많이 상승할 가능성이 있는 종목을 우선순위에 따라 추천해 주세요. "
-        "각 종목의 우선순위는 Williams %R(20% 비중), OBV(40% 비중), 가격 변동성(5% 비중), RSI(35% 비중)의 조합에 따라 결정되며, "
-        "각 종목의 상승 가능성을 0에서 100 사이의 점수로 평가하고 추천 이유를 설명해 주세요. "
-        "결과는 종목 코드: [종목 코드], 추천 이유: [이유는 간략하게 10자내외로 작성해 주세요], 상승 가능성: [점수]' 형식으로 줄바꿈 없이 작성해 주세요."
-        "순서는 상승 가능성: [점수] 가 높은 순서를 위에서 부터 정렬 하고 종목은 5개만 보여 주세요."
-    )
-    
-    for stock in stock_data:
-        prompt += (f"종목 코드: {stock['Code']}, "
-                   f"마지막 종가: {stock['Last Close']}, "
-                   f"개장가: {stock['Opening Price']}, "
-                   f"최저가: {stock['Lowest Price']}, "
-                   f"최고가: {stock['Highest Price']}, "
-                   f"Williams %R: {stock['Williams %R']}, "
-                   f"OBV: {stock['OBV']}, "
-                   f"RSI: {stock['RSI']}, "  # RSI 추가
-                   f"지지선 확인: {stock['Support Condition']}, "
-                   f"OBV 세력 확인: {stock['OBV Strength Condition']}\n")
+def send_discord_message(content):
+    """디스코드 웹훅을 통해 메시지를 보냅니다."""
+    if DISCORD_WEBHOOK_URL_BLOG is None:
+        logging.error("DISCORD_WEBHOOK_URL_BLOG이 설정되지 않았습니다.")
+        return
+
+    data = {
+        "content": content
+    }
 
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "이 시스템은 최고의 주식 분석 시스템입니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000,
-            temperature=0.3
-        )
-        logging.info("AI의 응답을 성공적으로 받았습니다.")
-        result = response['choices'][0]['message']['content']
-        
-        return result.replace("\n", "\n")
+        response = requests.post(DISCORD_WEBHOOK_URL_BLOG, json=data)
+        response.raise_for_status()
+        logging.info("디스코드에 메시지를 성공적으로 보냈습니다.")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"디스코드 메시지 전송 중 오류 발생: {e}")
+
+def fetch_latest_analysis_article(feed_url):
+    logging.info(f"RSS 피드 URL: {feed_url}에서 최신 분석 기사 가져오는 중...")
+    try:
+        response = requests.get(feed_url)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+
+        for item in root.findall('.//item'):
+            title = item.find('title').text
+            link = item.find('link').text
+            pub_date = item.find('pubDate').text
+
+            logging.info(f"발행일: {pub_date}, 제목: {title}, 링크: {link}")
+
+            if 'analysis' in link:
+                logging.info(f"분석 기사 발견: {title}")
+                return title, link, pub_date
+
+        logging.warning("분석 기사를 찾을 수 없습니다.")
+        return None, None, None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"페이지를 가져오는 중 오류 발생: {e}")
+        return None, None, None
+    except ET.ParseError as e:
+        logging.error(f"XML 파싱 중 오류 발생: {e}")
+        return None, None, None
     except Exception as e:
-        logging.error(f"API 호출 중 오류 발생: {e}")
+        logging.error(f"알 수 없는 오류 발생: {e}")
+        return None, None, None
+
+def fetch_latest_blog_post(feed_url):
+    """블로그 RSS 피드에서 최신 포스트를 가져옵니다."""
+    logging.info(f"블로그 RSS 피드 URL: {feed_url}에서 최신 포스트 가져오는 중...")
+    try:
+        response = requests.get(feed_url)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+
+        for item in root.findall('.//item'):
+            title = item.find('title').text
+            link = item.find('link').text
+            pub_date = item.find('pubDate').text
+
+            logging.info(f"블로그 발행일: {pub_date}, 제목: {title}, 링크: {link}")
+            return title, link, pub_date  # 블로그 포스트를 반환
+
+        logging.warning("블로그 포스트를 찾을 수 없습니다.")
+        return None, None, None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"페이지를 가져오는 중 오류 발생: {e}")
+        return None, None, None
+    except ET.ParseError as e:
+        logging.error(f"XML 파싱 중 오류 발생: {e}")
+        return None, None, None
+    except Exception as e:
+        logging.error(f"알 수 없는 오류 발생: {e}")
+        return None, None, None
+
+def fetch_article_content(article_url):
+    logging.info(f"기사 내용을 가져오는 중: {article_url}")
+    try:
+        response = requests.get(article_url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        content_div = soup.find('div', class_='article_WYSIWYG__O0uhw')  # 주어진 클래스 이름으로 수정
+
+        if content_div:
+            logging.debug("기사 내용 가져오기 성공.")
+            return clean_article_content(content_div)
+        else:
+            logging.error("기사 내용을 찾을 수 없습니다. content_div가 None입니다.")
+            return None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"기사 내용을 가져오는 중 오류 발생: {e}")
         return None
 
-# 메인 함수
-def main():
-    logging.info("스크립트 실행 시작.")
+def clean_article_content(content_div):
+    """기사 내용에서 불필요한 HTML 태그 및 스크립트 제거"""
+    for script in content_div(['script', 'style']):
+        script.decompose()
+
+    text = content_div.get_text(separator='\n', strip=True)
+    clean_text = re.sub(r'\n+', '\n', text)  # 여러 줄을 한 줄로
+    logging.debug("기사 내용 정리 완료.")
+    return clean_text.strip()
+
+def is_within_12_hours(pub_date_str):
+    """발행일이 현재 시간과 12시간 이내인지 확인합니다."""
+    try:
+        pub_date = datetime.strptime(pub_date_str, '%b %d, %Y %H:%M %Z')  # 포맷 수정
+        current_time = datetime.utcnow()  # UTC 기준으로 현재 시간 가져오기
+        time_difference = current_time - pub_date
+        logging.info(f"발행일과 현재 시간 차이: {time_difference}")
+        return time_difference <= timedelta(hours=12)  # 12시간 이내
+    except ValueError as e:
+        logging.error(f"발행일 포맷 오류: {e}")
+        return False
+
+def generate_prediction_content(content):
+    logging.info("AI가 글 생성 중...")
     
-    today = datetime.today()
-    manual_run = os.getenv("MANUAL_RUN", "false").lower() == "true"
+    headers = {
+        'Authorization': f'Bearer {OPENAI_API_KEY}',
+        'Content-Type': 'application/json'
+    }
 
-    if not is_market_open(today, manual_run):
-        logging.info("오늘은 주식 시장이 열리지 않습니다. 스크립트를 종료합니다.")
-        return
+    system_message = (
+        '당신은 대한민국 최고의 투자 전문 미래예측 전문가입니다. '
+        '다음 기사를 바탕으로 향후 시장 경향과 예측을 작성하십시오. '
+        '내용은 400토큰 내외로 요약하되, 논리적인 흐름이 있도록 자연스럽게 연결해야 합니다. '
+        '예를 들어, "이러한 경향은 다음과 같은 이유로 발생할 것으로 예상됩니다..."와 같은 형식을 따르세요.'
+    )
 
-    filename = 'results.json'
-    if not os.path.exists(filename):
-        logging.error(f"{filename} 파일이 존재하지 않습니다.")
-        return
+    data = {
+        'model': 'gpt-4',
+        'messages': [
+            {'role': 'system', 'content': system_message},
+            {'role': 'user', 'content': content}  # 기사 내용만 사용
+        ],
+        'max_tokens': 600,  # 토큰 수를 600으로 설정
+        'temperature': 0.7  # 약간의 변화와 창의성을 위해 온도를 높임
+    }
 
-    logging.info(f"{filename} 파일을 열고 데이터를 읽고 있습니다.")
-    with open(filename, 'r') as f:
-        results = json.load(f)
+    try:
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()
+        generated_content = response.json()['choices'][0]['message']['content']
+        logging.info("AI가 글을 성공적으로 생성했습니다.")
+        return generated_content.strip()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"미래 예측 글 생성 중 오류 발생: {e}")
+        return None
 
-    if isinstance(results, str):
-        try:
-            results = json.loads(results)
-            logging.info("결과를 문자열에서 JSON으로 변환했습니다.")
-        except json.JSONDecodeError:
-            logging.error("결과가 올바른 JSON 형식이 아닙니다.")
-            return
+def generate_caption(content):
+    logging.info("AI가 캡션 생성 중...")
+    headers = {
+        'Authorization': f'Bearer {OPENAI_API_KEY}',
+        'Content-Type': 'application/json'
+    }
 
-    if not isinstance(results, list):
-        logging.error("결과가 리스트 형식이 아닙니다.")
-        return
+    data = {
+        'model': 'gpt-4',
+        'messages': [
+            {'role': 'system', 'content': '당신은 최고의 캡션 전문입니다. 주어진 내용을 바탕으로 캡션을 생성하세요. 70토큰 이내로 문장이 완성되게 요약해서 작성해줘'},
+            {'role': 'user', 'content': f'내용: {content}'}
+        ],
+        'max_tokens': 70,  # 토큰 수를 70으로 설정
+        'temperature': 0.5
+    }
 
-    logging.info(f"총 {len(results)}개의 종목 데이터가 로드되었습니다.")
-    logging.info(f"로드된 종목 데이터: {json.dumps(results, ensure_ascii=False, indent=2)}")
+    try:
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()
+        caption = response.json()['choices'][0]['message']['content']
+        logging.info("AI가 캡션을 성공적으로 생성했습니다.")
+        return caption.strip()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"캡션 생성 중 오류 발생: {e}")
+        return None
 
-    ai_response = generate_ai_response(results)
+def post_to_wordpress(title, content, link):
+    logging.info(f"워드프레스에 포스팅 중: {title}")
+    wp = xmlrpc.client.ServerProxy(WP_URL)
+    try:
+        final_body = f"""
+{content}
+        """
+        
+        # 포스팅할 내용을 확인
+        logging.info(f"포스팅될 내용: {final_body.strip()}")
+        
+        wp.metaWeblog.newPost('1', WP_USERNAME, WP_PASSWORD, {
+            'title': title,  # 생성된 캡션을 제목으로 사용
+            'description': final_body.strip(),
+            'mt_keywords': '',
+            'categories': ['투자', '예측']
+        }, True)
+        logging.info("포스팅이 성공적으로 완료되었습니다.")
 
-    webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
-    if webhook_url:
-        message = f"AI 분석 결과:\n{ai_response}"
-        logging.info("전송할 메시지 생성 완료.")
-        logging.info(f"전송할 메시지: {message}")
-        send_to_discord_webhook(webhook_url, message)
+    except Exception as e:
+        logging.error(f"워드프레스 포스팅 중 오류 발생: {e}")
+
+def main():
+    logging.info("최신 분석 뉴스에서 콘텐츠 전송을 시작합니다.")
+
+    # 뉴스 RSS 피드에서 최신 분석 기사 가져오기
+    title, link, pub_date = fetch_latest_analysis_article(NEWS_RSS_FEED_URL)
+
+    if title and link:
+        if is_within_12_hours(pub_date):  # 발행일이 12시간 이내인지 확인
+            article_content = fetch_article_content(link)
+            if article_content:
+                logging.info(f"기사 내용을 성공적으로 가져왔습니다: {title}")
+
+                # AI에게 본문 내용만 요청하여 콘텐츠 생성
+                generated_content = generate_prediction_content(article_content)
+                if generated_content:
+                    caption = generate_caption(generated_content)
+                    if caption:
+                        post_to_wordpress(caption, generated_content, link)  # 캡션과 AI 생성 글을 포스팅
+                        # 포스팅이 완료된 후 디스코드 알림 전송
+                        send_discord_message(f"새 포스트가 작성되었습니다: {caption}\n링크: {link}")
+                    else:
+                        logging.error(f"{title}의 캡션 생성에 실패했습니다.")
+                else:
+                    logging.error(f"{title}의 미래 예측 글 생성에 실패했습니다.")
+            else:
+                logging.error(f"{title}의 기사 내용을 가져오는 데 실패했습니다.")
+        else:
+            logging.info(f"{pub_date}의 기사는 12시간 이상 경과하여 글 작성을 건너뜁니다.")
     else:
-        logging.error("웹훅 URL이 설정되어 있지 않습니다.")
+        logging.warning("최신 분석 기사를 찾을 수 없습니다.")
 
-if __name__ == "__main__":
+    # 블로그 RSS 피드에서 최신 포스트 가져오기
+    blog_title, blog_link, blog_pub_date = fetch_latest_blog_post(BLOG_RSS_FEED_URL)
+
+    if blog_title and blog_link:
+        logging.info(f"블로그에서 최신 포스트를 가져왔습니다: {blog_title}")
+        # 블로그 포스트가 성공적으로 가져와졌을 때만 디스코드 알림 전송
+        send_discord_message(f"새 블로그 포스트가 작성되었습니다: {blog_title}\n링크: {blog_link}")
+
+if __name__ == '__main__':
     main()
+
