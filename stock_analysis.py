@@ -90,23 +90,41 @@ def is_cup_with_handle(df):
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
 
+    # cup_bottom_index가 유효한지 확인
+    if pd.isna(cup_bottom_index) or cup_bottom_index < 0 or cup_bottom_index >= len(df):
+        logging.warning(f"컵 바닥 인덱스가 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
+        return False, None
+
     cup_top = df['Close'][:cup_bottom_index].max()
 
+    # cup_top이 유효한지 확인
+    if pd.isna(cup_top):
+        logging.warning(f"컵 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
+        return False, None
+
     # 핸들 데이터 (10일) 가져오기
-    handle_start_date = df.index[cup_bottom_index] + pd.DateOffset(days=1)  # 핸들은 컵 바닥 다음 날부터 시작
-    handle_end_date = handle_start_date + pd.DateOffset(days=9)  # 10일치 데이터
+    handle_start_index = cup_bottom_index + 1  # 핸들은 컵 바닥 다음 날부터 시작
+    handle_end_index = handle_start_index + 10  # 10일치 데이터
 
     # 핸들 데이터가 유효한 인덱스 범위 내에 있는지 확인
-    if handle_end_date in df.index:
-        handle = df.loc[handle_start_date:handle_end_date]  # 핸들 데이터
+    if handle_end_index <= len(df):
+        handle = df.iloc[handle_start_index:handle_end_index]  # 핸들 데이터
         handle_top = handle['Close'].max()
+        
+        # 핸들 데이터가 유효한지 확인
+        if pd.isna(handle_top):
+            logging.warning(f"핸들 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}")
+            return False, None
     else:
-        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다.")
+        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다. handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}, 데이터 길이: {len(df)}")
         return False, None
 
     if handle_top < cup_top and cup_bottom < handle_top:
         logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0]}")
         return True, df.index[-1]  # 최근 날짜 반환
+    else:
+        logging.debug(f"패턴 미발견. 종목 코드: {df['Code'].iloc[0]}, handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
+    
     return False, None
 
 def search_cup_with_handle(stocks_data):
@@ -185,3 +203,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
+
