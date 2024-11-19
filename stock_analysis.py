@@ -4,7 +4,6 @@ import logging
 import os
 import sqlite3
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -48,7 +47,7 @@ def save_to_database(data):
         high_price = item['Highest Price']
         low_price = item['Lowest Price']
         close_price = item['Last Close']
-        volume = item.get('Volume', 0)  # 거래량이 없는 경우 기본값 0
+        volume = item['Volume']
 
         cursor.execute('''
             INSERT OR REPLACE INTO stock_data (code, date, open, high, low, close, volume)
@@ -57,20 +56,20 @@ def save_to_database(data):
     
     conn.commit()
     conn.close()
-    logging.info(f"{len(data)}개의 {data[0]['Code']} 데이터가 데이터베이스에 저장 완료.")
+    logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
 
-def analyze_stock(code, start_date):
-    """주식 데이터를 분석하고 데이터베이스에 저장하는 함수."""
-    logging.info(f"{code} 데이터 분석 시작")
+def fetch_and_store_stock_data(code, start_date):
+    """주식 데이터를 가져와서 데이터베이스에 저장하는 함수."""
+    logging.info(f"{code} 데이터 가져오기 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
         if len(df) < 1:
             logging.warning(f"{code} 데이터가 없습니다.")
-            return None
+            return []
 
-        # 최근 데이터 저장
+        # 데이터 프레임을 리스트로 변환
         result = []
         for index, row in df.iterrows():
             result.append({
@@ -80,50 +79,17 @@ def analyze_stock(code, start_date):
                 'Highest Price': float(row['High']),
                 'Lowest Price': float(row['Low']),
                 'Last Close': float(row['Close']),
-                'Volume': int(row['Volume'])  # 거래량
+                'Volume': int(row['Volume'])
             })
-            # 각 종목의 데이터 로그 추가
-            logging.info(f"{code} - 날짜: {index.strftime('%Y-%m-%d')}, "
-                         f"시가: {row['Open']}, 최고가: {row['High']}, "
-                         f"최저가: {row['Low']}, 종가: {row['Close']}, "
-                         f"거래량: {row['Volume']}")
 
         logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
-        return result  # 결과 반환
+        return result
 
     except Exception as e:
         logging.error(f"{code} 처리 중 오류 발생: {e}")
-        return None
-
-def search_stocks(start_date):
-    """주식 종목을 검색하고 데이터를 데이터베이스에 저장하는 함수."""
-    logging.info("주식 검색 시작")
-
-    try:
-        kospi = fdr.StockListing('KOSPI')
-        logging.info("코스피 종목 목록 가져오기 성공")
-        
-        kosdaq = fdr.StockListing('KOSDAQ')
-        logging.info("코스닥 종목 목록 가져오기 성공")
-    except Exception as e:
-        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
-    stocks = pd.concat([kospi, kosdaq])
-    all_results = []
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        futures = {executor.submit(analyze_stock, code, start_date): code for code in stocks['Code']}
-        for future in as_completed(futures):
-            result_data = future.result()
-            if result_data:
-                all_results.extend(result_data)
-
-    logging.info("주식 검색 완료")
-    return all_results
-
-# 메인 실행 블록
-if __name__ == "__main__":
+def main():
     logging.info("스크립트 실행 시작")
     create_database()  # 데이터베이스 및 테이블 생성
 
@@ -133,10 +99,31 @@ if __name__ == "__main__":
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    results = search_stocks(start_date_str)  # 결과를 변수에 저장
-    if results:  # 결과가 있을 때만 데이터베이스에 저장
-        save_to_database(results)  # 데이터베이스에 저장
-        logging.info(f"저장된 종목 수: {len(results)}")
-        logging.info("모든 데이터가 성공적으로 데이터베이스에 저장되었습니다.")
+    # KOSPI와 KOSDAQ 종목 목록 가져오기
+    try:
+        kospi = fdr.StockListing('KOSPI')
+        logging.info("코스피 종목 목록 가져오기 성공")
+        
+        kosdaq = fdr.StockListing('KOSDAQ')
+        logging.info("코스닥 종목 목록 가져오기 성공")
+    except Exception as e:
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
+        return
+
+    stocks = pd.concat([kospi, kosdaq])
+    all_results = []
+
+    # 각 종목에 대해 데이터를 가져와서 데이터베이스에 저장
+    for code in stocks['Code']:
+        stock_data = fetch_and_store_stock_data(code, start_date)
+        if stock_data:
+            all_results.extend(stock_data)
+
+    if all_results:
+        save_to_database(all_results)  # 데이터베이스에 저장
+        logging.info(f"총 저장된 데이터 수: {len(all_results)}")
     else:
-        logging.info("조건을 만족하는 종목이 없습니다.")
+        logging.info("저장할 데이터가 없습니다.")
+
+if __name__ == "__main__":
+    main()
