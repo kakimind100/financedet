@@ -75,7 +75,9 @@ if __name__ == "__main__":
 
     results = search_stocks(start_date_str)  # 결과를 변수에 저장
     if results:  # 결과가 있을 때만 출력
-        logging.info(f"가져온 종목 리스트: {[code for code in results.keys()]}")
+        logging.info("가져온 종목 리스트:")
+        for i in range(0, len(results), 10):  # 10개씩 나누어 출력
+            logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         save_results_to_json(results)  # JSON 파일로 저장
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
