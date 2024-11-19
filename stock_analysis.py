@@ -7,6 +7,13 @@ import os
 import json
 import openai
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# 한글 글꼴 설정
+font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows에서 Malgun Gothic 글꼴 사용
+# font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Linux에서 DejaVu Sans 글꼴 사용
+font_prop = fm.FontProperties(fname=font_path, size=12)
+plt.rc('font', family=font_prop.get_name())
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -67,11 +74,11 @@ def fetch_and_visualize_stock_data(code, start_date):
         plt.figure(figsize=(12, 6))  # 그래프 크기 설정
 
         # 종가 그래프 그리기
-        plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
+        plt.plot(df.index, df['Close'], label=f'{code} 종가', color='blue')  # 종목 코드 포함
 
         # 거래량 그래프 그리기 (second y-axis)
         ax2 = plt.gca().twinx()  # 두 번째 y축 생성
-        ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+        ax2.bar(df.index, df['Volume'], label=f'{code} 거래량', alpha=0.3, color='gray')
 
         plt.title(f'{code} 주식 종가 및 거래량 (2년간)')
         plt.xlabel('날짜')
