@@ -8,6 +8,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # OpenAI API 설정
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 시크릿에서 API 키를 가져옵니다.
+if OPENAI_API_KEY is None:
+    print("Error: OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+    exit(1)
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -54,6 +57,10 @@ def fetch_and_store_stock_data(code, start_date):
 
 def analyze_stocks(data):
     """OpenAI API를 사용하여 기술적 분석을 수행하고 상승 예측을 반환하는 함수."""
+    if not data:
+        logging.warning("분석할 데이터가 없습니다.")
+        return None
+
     data_string = "\n".join([f"종목 코드: {item['Code']}, 날짜: {item['Date']}, "
                               f"시가: {item['Opening Price']}, 종가: {item['Last Close']}, "
                               f"거래량: {item['Volume']}" for item in data])
