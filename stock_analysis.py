@@ -2,14 +2,13 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import json
 import openai
 import matplotlib
 matplotlib.use('Agg')  # Agg 백엔드 사용
 import matplotlib.pyplot as plt
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -36,18 +35,8 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
-def fetch_stock_data(code, start_date):
-    """주식 데이터를 가져오는 함수."""
-    try:
-        df = fdr.DataReader(code, start_date)
-        logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
-        return code, df
-    except Exception as e:
-        logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")
-        return code, None
-
-async def search_stocks(start_date):
-    """주식 종목을 비동기적으로 검색하는 함수."""
+def search_stocks(start_date):
+    """주식 종목을 검색하는 함수."""
     logging.info("주식 검색 시작")
 
     try:
@@ -58,19 +47,20 @@ async def search_stocks(start_date):
         logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        return {}
+        return []
 
     stocks = pd.concat([kospi, kosdaq])
     result = {}
 
-    # 멀티스레딩을 이용하여 주식 데이터 처리
-    loop = asyncio.get_event_loop()
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {loop.run_in_executor(executor, fetch_stock_data, code, start_date): code for code in stocks['Code']}
-        for future in asyncio.as_completed(futures):
+    # 멀티스레딩으로 주식 데이터 처리
+    with ThreadPoolExecutor(max_workers=20) as executor:  # 최대 20개의 스레드 사용
+        futures = {executor.submit(fdr.DataReader, code, start_date): code for code in stocks['Code']}
+        for future in as_completed(futures):
             code = futures[future]
-            code, df = await future
-            if df is not None:
+            try:
+                df = future.result()
+                logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
+
                 # 날짜 정보가 포함되어 있는지 확인
                 if 'Date' not in df.columns:
                     # 날짜 정보를 추가
@@ -79,6 +69,8 @@ async def search_stocks(start_date):
                 
                 # 종목별로 데이터 저장
                 result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
+            except Exception as e:
+                logging.error(f"{code} 처리 중 오류 발생: {e}")
 
     logging.info("주식 검색 완료")
     return result
@@ -144,10 +136,7 @@ if __name__ == "__main__":
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    # 비동기 루프 실행
-    loop = asyncio.get_event_loop()
-    results = loop.run_until_complete(search_stocks(start_date_str))  # 결과를 변수에 저장
-
+    results = search_stocks(start_date_str)  # 결과를 변수에 저장
     if results:  # 결과가 있을 때만 출력
         logging.info("가져온 종목 리스트:")
         for i in range(0, len(results), 10):  # 10개씩 나누어 출력
