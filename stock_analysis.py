@@ -76,6 +76,7 @@ def search_stocks(start_date):
 def visualize_stock_data(stock_data):
     """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
     plt.figure(figsize=(12, 6))  # 그래프 크기 설정
+    logging.info("그래프 이미지화 시작")
 
     for code, records in stock_data.items():
         if not records:  # records가 비어 있는 경우
@@ -103,6 +104,7 @@ def visualize_stock_data(stock_data):
 
     # 그래프를 이미지 파일로 저장
     plt.savefig('stock_prices_and_volume.png')
+    logging.info("그래프 이미지 저장 완료: 'stock_prices_and_volume.png'")
     plt.close()  # 그래프 닫기
 
 def send_graph_description_to_ai(graph_description):
