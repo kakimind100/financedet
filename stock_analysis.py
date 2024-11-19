@@ -55,7 +55,8 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                     df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
                     logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
                 
-                # 종목별로 데이터 저장
+                # 날짜를 문자열로 변환
+                df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식으로 변환
                 all_data[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
@@ -77,22 +78,22 @@ def is_cup_with_handle(df):
     if len(df) < 60:  # 최소 60일의 데이터 필요
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None
-    
+
     # 날짜 데이터 확인
     if df.index.empty:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]}에 날짜 데이터가 없습니다.")
         return False, None
 
     logging.debug(f"종목 코드: {df['Code'].iloc[0]}의 날짜 데이터: {df.index.tolist()}")
-    
+
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
-    
+
     cup_top = df['Close'][:cup_bottom_index].max()
-    
+
     handle = df.iloc[cup_bottom_index:cup_bottom_index + 10]  # 핸들 데이터 (10일)
     handle_top = handle['Close'].max()
-    
+
     if handle_top < cup_top and cup_bottom < handle_top:
         logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0]}")
         return True, df.index[-1]  # 최근 날짜 반환
@@ -106,7 +107,7 @@ def search_cup_with_handle(stocks_data):
 
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
-        
+
         # 인덱스를 날짜로 설정
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')  # 날짜 형식으로 변환
         df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
@@ -116,7 +117,7 @@ def search_cup_with_handle(stocks_data):
         if df.index.empty:
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
             continue
-        
+
         logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
 
         # 패턴 찾기
@@ -129,13 +130,13 @@ def search_cup_with_handle(stocks_data):
                     'code': code,
                     'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
                 })
-    
+
     return recent_cup_with_handle, recent_date, results
 
 # 메인 실행 블록
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
-    
+
     today = datetime.today()
     start_date = today - timedelta(days=365)  # 최근 1년 전 날짜
     end_date = today.strftime('%Y-%m-%d')  # 오늘 날짜
