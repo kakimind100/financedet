@@ -66,6 +66,9 @@ def search_stocks(start_date):
         try:
             logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
             df = fdr.DataReader(code, start_date)
+            # 'Code' 컬럼을 DataFrame에 추가
+            df['Code'] = code
+            
             is_pattern, pattern_date = is_cup_with_handle(df)
             if is_pattern:
                 if recent_date is None or pattern_date > recent_date:
