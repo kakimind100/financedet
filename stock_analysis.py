@@ -18,13 +18,13 @@ os.makedirs(json_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # 콘솔에도 로그 출력
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상만 출력
+console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -41,8 +41,7 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
     """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
     all_data = {}
 
-    # 멀티스레딩으로 주식 데이터 가져오기
-    with ThreadPoolExecutor(max_workers=20) as executor:  # 최대 20개의 스레드 사용
+    with ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(fdr.DataReader, code, start_date, end_date): code for code in codes}
         for future in as_completed(futures):
             code = futures[future]
@@ -50,22 +49,18 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                 df = future.result()
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
-                # 날짜 정보가 포함되어 있는지 확인
                 if 'Date' not in df.columns:
-                    # 날짜 정보를 Timestamp 방식으로 추가
-                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
                     logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
 
-                # 날짜를 Timestamp로 변환
-                df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식으로 변환
-                all_data[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
+                df['Date'] = pd.to_datetime(df['Date'])
+                all_data[code] = df.to_dict(orient='records')
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
 
-    # JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
     with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)  # Timestamp를 문자열로 변환하여 저장
+        json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)
     logging.info(f"주식 데이터를 JSON 파일로 저장했습니다: {filename}")
 
 def load_stock_data_from_json():
@@ -76,11 +71,10 @@ def load_stock_data_from_json():
 
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
-    if len(df) < 60:  # 최소 60일의 데이터 필요
+    if len(df) < 60:
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None
 
-    # 날짜 데이터 확인
     if df.index.empty:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]}에 날짜 데이터가 없습니다.")
         return False, None
@@ -90,31 +84,25 @@ def is_cup_with_handle(df):
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
 
-    # cup_bottom_index를 정수로 변환
     cup_bottom_index = df.index.get_loc(cup_bottom_index)
 
-    # cup_bottom_index가 유효한지 확인
     if cup_bottom_index < 0 or cup_bottom_index >= len(df):
         logging.warning(f"컵 바닥 인덱스가 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
         return False, None
 
     cup_top = df['Close'][:cup_bottom_index].max()
 
-    # cup_top이 유효한지 확인
     if pd.isna(cup_top):
         logging.warning(f"컵 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
         return False, None
 
-    # 핸들 데이터 (10일) 가져오기
-    handle_start_index = cup_bottom_index + 1  # 핸들은 컵 바닥 다음 날부터 시작
-    handle_end_index = handle_start_index + 10  # 10일치 데이터
+    handle_start_index = cup_bottom_index + 1
+    handle_end_index = handle_start_index + 10
 
-    # 핸들 데이터가 유효한 인덱스 범위 내에 있는지 확인
     if handle_end_index <= len(df):
-        handle = df.iloc[handle_start_index:handle_end_index]  # 핸들 데이터
+        handle = df.iloc[handle_start_index:handle_end_index]
         handle_top = handle['Close'].max()
-        
-        # 핸들 데이터가 유효한지 확인
+
         if pd.isna(handle_top):
             logging.warning(f"핸들 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}")
             return False, None
@@ -122,20 +110,19 @@ def is_cup_with_handle(df):
         logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다. handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}, 데이터 길이: {len(df)}")
         return False, None
 
-    # 매수 조건 확인
     if handle_top < cup_top and cup_bottom < handle_top:
         buy_price = cup_top * 1.01  # 매수 가격 설정 (컵 상단의 1% 상승)
-        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]  # 두 번째 고점 시점의 거래량
-        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]  # 최근 5일 평균 거래량
+        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]
+        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]
 
         if recent_volume > average_volume:
             logging.info(f"매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
-            return True, df.index[-1]  # 최근 날짜 반환
+            return True, df.index[-1]
         else:
             logging.warning("거래량이 충분하지 않아 매수 신호가 없습니다.")
     else:
         logging.debug(f"패턴 미발견. 종목 코드: {df['Code'].iloc[0]}, handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
-    
+
     return False, None
 
 def search_cup_with_handle(stocks_data):
@@ -147,19 +134,16 @@ def search_cup_with_handle(stocks_data):
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
 
-        # 인덱스를 날짜로 설정
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')  # 날짜 형식으로 변환
-        df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
-        df['Code'] = code  # 코드 추가
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df.set_index('Date', inplace=True)
+        df['Code'] = code
 
-        # 날짜 데이터 확인
         if df.index.empty:
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
             continue
 
         logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
 
-        # 패턴 찾기
         is_pattern, pattern_date = is_cup_with_handle(df)
         if is_pattern:
             if recent_date is None or (pattern_date and pattern_date > recent_date):
@@ -177,11 +161,10 @@ if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
 
     today = datetime.today()
-    start_date = today - timedelta(days=365)  # 최근 1년 전 날짜
-    end_date = today.strftime('%Y-%m-%d')  # 오늘 날짜
+    start_date = today - timedelta(days=365)
+    end_date = today.strftime('%Y-%m-%d')
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    # 멀티스레딩으로 종목 목록 가져오기
     markets = ['KOSPI', 'KOSDAQ']
     all_codes = []
 
@@ -196,22 +179,17 @@ if __name__ == "__main__":
             except Exception as e:
                 logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
 
-    # 주식 데이터 가져와 JSON으로 저장
     fetch_and_save_stock_data(all_codes, start_date_str, end_date)
 
-    # JSON 파일에서 주식 데이터 로드
     stocks_data = load_stock_data_from_json()
 
-    # Cup with Handle 패턴 찾기
     recent_stock, date_found, results = search_cup_with_handle(stocks_data)
-    if recent_stock:  # 최근 패턴이 발견된 경우
+    if recent_stock:
         logging.info(f"가장 최근 Cup with Handle 패턴이 발견된 종목: {recent_stock} (완성 날짜: {date_found})")
     else:
         logging.info("Cup with Handle 패턴을 가진 종목이 없습니다.")
 
-    # 결과를 JSON 파일로 저장
     result_filename = os.path.join(json_dir, 'cup_with_handle_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
-
