@@ -62,7 +62,9 @@ def search_stocks(start_date):
                 # 날짜 정보가 포함되어 있는지 확인
                 if 'Date' not in df.columns:
                     logging.error(f"{code}의 데이터에 'Date' 키가 없습니다: {df.head()}")
-                    continue  # 날짜 정보가 없으면 다음 종목으로 넘어감
+                    # 날짜 정보를 추가
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
+                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
 
                 # 종목별로 데이터 저장
                 result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
@@ -82,7 +84,7 @@ def visualize_stock_data(stock_data):
             continue
 
         df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
-        df['Date'] = pd.to_datetime([record['Date'] for record in records])  # 날짜 형식 변환
+        df['Date'] = pd.to_datetime(df['Date'])
         df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
 
         # 종가 그래프 그리기
