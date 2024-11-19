@@ -72,12 +72,21 @@ def visualize_stock_data(stock_data):
     plt.figure(figsize=(12, 6))  # 그래프 크기 설정
 
     for code, records in stock_data.items():
+        if not records:  # records가 비어 있는 경우
+            logging.warning(f"{code}의 데이터가 비어 있습니다.")
+            continue
+
+        # Date 키가 있는지 확인
+        if 'Date' not in records[0]:
+            logging.error(f"{code}의 데이터에 'Date' 키가 없습니다: {records}")
+            continue
+
         df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
         df['Date'] = pd.to_datetime([record['Date'] for record in records])  # 날짜 형식 변환
         df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
 
         # 종가 그래프 그리기
-        plt.plot(df.index, df['Close'], label=f'{code} 종가')
+        plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
 
         # 거래량 그래프 그리기 (second y-axis)
         ax2 = plt.gca().twinx()  # 두 번째 y축 생성
@@ -87,7 +96,7 @@ def visualize_stock_data(stock_data):
     plt.xlabel('날짜')
     plt.ylabel('종가')
     ax2.set_ylabel('거래량')
-    plt.legend(loc='upper left')
+    plt.legend(loc='upper left')  # 범례에 종목 코드 포함
     plt.xticks(rotation=45)
     plt.tight_layout()  # 레이아웃 조정
 
