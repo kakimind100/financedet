@@ -71,48 +71,20 @@ def search_stocks(start_date):
     logging.info("주식 검색 완료")
     return result  # 결과 반환
 
-def calculate_summary(stock_data):
-    """주식 데이터의 요약 정보를 계산하는 함수."""
-    summary = {}
+def send_stock_analysis_to_ai(stock_data):
+    """AI에게 주식 데이터 분석을 요청하는 함수."""
+    analysis_request = (
+        "다음은 최근 40일간의 주식 데이터입니다:\n"
+    )
+    
     for code, data in stock_data.items():
-        closing_prices = [record['Close'] for record in data]  # 종가
-        volumes = [record['Volume'] for record in data]  # 거래량
-
-        # 요약 정보 계산
-        average_close = sum(closing_prices) / len(closing_prices) if closing_prices else 0
-        max_close = max(closing_prices) if closing_prices else 0
-        min_close = min(closing_prices) if closing_prices else 0
-        total_volume = sum(volumes)
-
-        # 최근 40일의 데이터
+        # 최근 40일의 종가 정보만 포함
         recent_40_days = data[-40:]  # 최근 40일의 데이터
         recent_dates = [record['Date'] for record in recent_40_days]
         recent_closes = [record['Close'] for record in recent_40_days]
 
-        # 요약 정보 추가
-        summary[code] = {
-            'average_close': average_close,
-            'max_close': max_close,
-            'min_close': min_close,
-            'total_volume': total_volume,
-            'recent_closes': {date: close for date, close in zip(recent_dates, recent_closes)}
-        }
-    
-    return summary
-
-def send_stock_analysis_to_ai(stock_data, summary_data):
-    """AI에게 주식 데이터 분석을 요청하는 함수."""
-    analysis_request = (
-        "다음은 최근 2년간의 주식 데이터 요약입니다:\n"
-    )
-    
-    for code, summary in summary_data.items():
         analysis_request += (
-            f"{code}: 평균 종가: {summary['average_close']:.2f}, "
-            f"최고가: {summary['max_close']:.2f}, "
-            f"최저가: {summary['min_close']:.2f}, "
-            f"총 거래량: {summary['total_volume']}, "
-            f"최근 40일 종가: {', '.join([f'{date}: {close:.2f}' for date, close in summary['recent_closes'].items()])}\n"
+            f"{code}: 최근 40일 종가: {', '.join([f'{date}: {close:.2f}' for date, close in zip(recent_dates, recent_closes)])}\n"
         )
     
     analysis_request += (
@@ -133,9 +105,9 @@ def send_stock_analysis_to_ai(stock_data, summary_data):
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
     
-    # 최근 2년을 기준으로 시작 날짜 설정
+    # 최근 40일을 기준으로 시작 날짜 설정
     today = datetime.today()
-    start_date = today - timedelta(days=730)  # 최근 2년 전 날짜
+    start_date = today - timedelta(days=40)  # 최근 40일 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
@@ -146,11 +118,8 @@ if __name__ == "__main__":
         for i in range(0, len(results), 10):  # 10개씩 나누어 출력
             logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         
-        # 요약 정보 계산
-        summary_data = calculate_summary(results)
-        
         # AI에게 주식 데이터 분석 요청
-        insights = send_stock_analysis_to_ai(results, summary_data)  # results가 stock_data로 전달됨
+        insights = send_stock_analysis_to_ai(results)  # results가 stock_data로 전달됨
         logging.info("AI의 주식 분석 결과:")
         logging.info(insights)  # AI의 응답 출력
 
