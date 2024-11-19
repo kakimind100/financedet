@@ -74,10 +74,34 @@ def search_stocks(start_date):
 
 def send_stock_analysis_to_ai(stock_data):
     """AI에게 주식 데이터 분석을 요청하는 함수."""
+    # stock_data에서 필요한 정보를 문자열로 변환
+    stock_info = ""
+    total_stocks = len(stock_data)  # 전체 종목 수
+    for index, (code, data) in enumerate(stock_data.items()):
+        stock_info += f"{code}: "
+        recent_data = data[-10:]  # 최근 10일의 데이터만 포함
+        for record in recent_data:
+            stock_info += (
+                f"날짜: {record['Date']}, "
+                f"시가: {record.get('Open', 'N/A')}, "
+                f"고가: {record.get('High', 'N/A')}, "
+                f"저가: {record.get('Low', 'N/A')}, "
+                f"종가: {record['Close']}, "
+                f"거래량: {record['Volume']} | "
+            )
+        stock_info += "\n"
+
+        # 진행 상황 표시
+        progress = (index + 1) / total_stocks * 100
+        print(f"진행 상황: {progress:.2f}% ({index + 1}/{total_stocks})")
+
+    # 요청 메시지 구성 (for 루프 밖)
     analysis_request = (
-        "다음은 최근 6개월간의 주식 데이터입니다. "
+        f"다음은 최근 6개월간의 주식 데이터입니다:\n{stock_info}\n"
         "주식의 상승 가능성을 %로 표기하고, 상위 5개 종목의 이유를 20자 내외로 작성해 주세요."
     )
+    
+    # AI에게 요청 (for 루프 밖)
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
