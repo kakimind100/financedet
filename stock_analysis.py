@@ -77,10 +77,15 @@ def search_stocks(start_date):
 
 def visualize_stock_data(stock_data):
     """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
-    total_stocks = len(stock_data)  # 전체 종목 수
     logging.info("그래프 이미지화 시작")
+    
+    plt.figure(figsize=(14, 8))  # 그래프 크기 설정
 
-    for idx, (code, records) in enumerate(stock_data.items()):
+    # 종가와 거래량을 저장할 데이터프레임 초기화
+    combined_data = pd.DataFrame()
+
+    # 각 종목의 데이터를 가져와서 combined_data에 추가
+    for code, records in stock_data.items():
         if not records:  # records가 비어 있는 경우
             logging.warning(f"{code}의 데이터가 비어 있습니다.")
             continue
@@ -89,17 +94,20 @@ def visualize_stock_data(stock_data):
         df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
         df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
 
-        # 종가 그래프 그리기
-        plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
+        # 종가와 거래량을 combined_data에 추가
+        combined_data[code + '_Close'] = df['Close']  # 종가
+        combined_data[code + '_Volume'] = df['Volume']  # 거래량
 
-        # 거래량 그래프 그리기 (second y-axis)
-        ax2 = plt.gca().twinx()  # 두 번째 y축 생성
-        ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+    # 종가 그래프 그리기
+    for code in stock_data.keys():
+        if f'{code}_Close' in combined_data.columns:
+            plt.plot(combined_data.index, combined_data[f'{code}_Close'], label=f'{code} 종가', alpha=0.7)
 
-        # 진행 상태 로그
-        percent_complete = (idx + 1) / total_stocks * 100
-        if percent_complete.is_integer():  # 정수일 때만 로그 출력
-            logging.info(f"{code} 그래프 이미지화 진행 중: {int(percent_complete)}% 완료")
+    # 거래량 그래프 그리기 (second y-axis)
+    ax2 = plt.gca().twinx()  # 두 번째 y축 생성
+    for code in stock_data.keys():
+        if f'{code}_Volume' in combined_data.columns:
+            ax2.bar(combined_data.index, combined_data[f'{code}_Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
 
     plt.title('주식 종가 및 거래량 (2년간)')
     plt.xlabel('날짜')
