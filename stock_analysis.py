@@ -2,9 +2,12 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
-import sqlite3
+import requests
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# OpenAI API 설정
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 시크릿에서 API 키를 가져옵니다.
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -17,97 +20,17 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# 콘솔에도 로그 출력
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logging.getLogger().addHandler(console_handler)
-
-# 데이터베이스 연결 및 테이블 생성
-def create_database():
-    db_directory = 'data'
-    os.makedirs(db_directory, exist_ok=True)  # 디렉토리 생성
-
-    db_path = os.path.join(db_directory, 'stock_data.db')
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS stock_data (
-            code TEXT,
-            date DATE,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            volume INTEGER,
-            PRIMARY KEY (code, date)
-        )
-    ''')
-    conn.commit()
-    logging.info("데이터베이스 및 테이블 생성 완료.")
-
-    delete_old_data(conn)
-    conn.close()
-
-def delete_old_data(conn):
-    """730일이 지난 데이터를 삭제하는 함수."""
-    cursor = conn.cursor()
-    cutoff_date = datetime.now() - timedelta(days=730)
-    cursor.execute('DELETE FROM stock_data WHERE date < ?', (cutoff_date.date(),))
-    conn.commit()
-    logging.info(f"730일이 지난 데이터 삭제 완료: {cursor.rowcount}개의 레코드 삭제됨.")
-
-def fetch_existing_data(code):
-    """기존 데이터를 조회하여 해당 주식 코드의 모든 데이터를 반환하는 함수."""
-    conn = sqlite3.connect('data/stock_data.db')
-    cursor = conn.cursor()
-    
-    cursor.execute('SELECT date FROM stock_data WHERE code = ?', (code,))
-    existing_dates = cursor.fetchall()
-    
-    conn.close()
-    
-    return {date[0] for date in existing_dates}
-
-def save_to_database(data):
-    conn = None
-    try:
-        conn = sqlite3.connect('data/stock_data.db')
-        cursor = conn.cursor()
-        
-        for item in data:
-            code = item['Code']
-            date = item['Date']
-            open_price = item['Opening Price']
-            high_price = item['Highest Price']
-            low_price = item['Lowest Price']
-            close_price = item['Last Close']
-            volume = item['Volume']
-
-            cursor.execute('''
-                INSERT INTO stock_data (code, date, open, high, low, close, volume)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(code, date) DO UPDATE SET
-                    open = excluded.open,
-                    high = excluded.high,
-                    low = excluded.low,
-                    close = excluded.close,
-                    volume = excluded.volume
-            ''', (code, date, open_price, high_price, low_price, close_price, volume))
-            conn.commit()
-            logging.info(f"{code} - {date} 데이터 저장 완료.")
-        
-        logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
-
-    except Exception as e:
-        logging.error(f"데이터 저장 중 오류 발생: {e}")
-    finally:
-        if conn:
-            conn.close()  # 연결을 안전하게 종료
+# CSV 파일에 데이터 저장
+def save_to_csv(data, filename='stock_data.csv'):
+    df = pd.DataFrame(data)
+    if os.path.exists(filename):
+        df.to_csv(filename, mode='a', header=False, index=False)  # 기존 파일에 추가
+    else:
+        df.to_csv(filename, index=False)  # 새 파일 생성
+    logging.info(f"{len(data)}개의 데이터를 {filename}에 저장 완료.")
 
 def fetch_and_store_stock_data(code, start_date):
-    """주식 데이터를 가져와서 데이터베이스에 저장하는 함수."""
+    """주식 데이터를 가져와서 CSV 파일에 저장하는 함수."""
     logging.info(f"{code} 데이터 가져오기 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
@@ -117,22 +40,18 @@ def fetch_and_store_stock_data(code, start_date):
             logging.warning(f"{code} 데이터가 없습니다.")
             return []
 
-        existing_dates = fetch_existing_data(code)
-
         result = []
         for index, row in df.iterrows():
-            date_str = index.strftime('%Y-%m-%d')
-            if date_str not in existing_dates:
-                result.append({
-                    'Code': str(code),
-                    'Date': date_str,
-                    'Opening Price': float(row['Open']),
-                    'Highest Price': float(row['High']),
-                    'Lowest Price': float(row['Low']),
-                    'Last Close': float(row['Close']),
-                    'Volume': int(row['Volume'])
-                })
-                logging.info(f"{code} - {date_str} 데이터 추가 대상.")
+            result.append({
+                'Code': str(code),
+                'Date': index.strftime('%Y-%m-%d'),
+                'Opening Price': float(row['Open']),
+                'Highest Price': float(row['High']),
+                'Lowest Price': float(row['Low']),
+                'Last Close': float(row['Close']),
+                'Volume': int(row['Volume'])
+            })
+            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 대상.")
 
         logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
         return result
@@ -141,23 +60,32 @@ def fetch_and_store_stock_data(code, start_date):
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return []
 
-def initialize_database():
-    """데이터베이스를 초기화하는 함수."""
-    if not os.path.exists('data/stock_data.db'):
-        create_database()
-        logging.info("새 데이터베이스를 생성했습니다.")
-    else:
-        logging.info("기존 데이터베이스를 사용합니다.")
+def analyze_stocks(data):
+    """OpenAI API를 사용하여 기술적 분석을 수행하고 상승 예측을 반환하는 함수."""
+    messages = [
+        {"role": "system", "content": "당신은 금융 분석가입니다."},
+        {"role": "user", "content": (
+            "다음은 주식 데이터입니다:\n"
+            f"{data}\n\n"
+            "이 데이터를 분석하여 다음 거래일에 가장 많이 상승할 것으로 예상되는 "
+            "종목을 0%~100%까지의 비율로 순위를 매기고, "
+            "상위 5개 주식에 대해 각 종목의 종목 코드와 추천 이유를 20자 내외로 작성해 주세요."
+        )}
+    ]
 
-    logging.info(f"현재 작업 디렉토리: {os.getcwd()}")
-    if os.path.exists('data/stock_data.db'):
-        logging.info("데이터베이스 파일이 존재합니다.")
+    response = requests.post('https://api.openai.com/v1/chat/completions', headers={
+        'Authorization': f'Bearer {OPENAI_API_KEY}',
+        'Content-Type': 'application/json'
+    }, json={"model": "gpt-3.5-turbo", "messages": messages})
+
+    if response.status_code == 200:
+        return response.json()['choices'][0]['message']['content']
     else:
-        logging.warning("데이터베이스 파일이 존재하지 않습니다.")
+        logging.error(f"OpenAI API 요청 실패: {response.status_code}, {response.text}")
+        return None
 
 def main():
     logging.info("스크립트 실행 시작")
-    initialize_database()
 
     today = datetime.today()
     start_date = today - timedelta(days=730)
@@ -187,8 +115,15 @@ def main():
                 all_results.extend(stock_data)
 
     if all_results:
-        save_to_database(all_results)
+        save_to_csv(all_results)
         logging.info(f"총 저장된 데이터 수: {len(all_results)}")
+
+        # OpenAI API를 통한 기술적 분석 및 상승 예측
+        analysis_result = analyze_stocks(all_results)
+        if analysis_result:
+            logging.info(f"상승 예측 결과:\n{analysis_result}")
+        else:
+            logging.info("분석 결과를 가져오는 데 실패했습니다.")
     else:
         logging.info("저장할 데이터가 없습니다.")
 
