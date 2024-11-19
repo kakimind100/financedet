@@ -66,23 +66,28 @@ def search_stocks(start_date):
     logging.info("주식 검색 완료")
     return result
 
-def visualize_stock_data(code, records):
-    """주식 데이터를 시각화하여 이미지를 저장하는 함수."""
+def visualize_stock_data(stock_data):
+    """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
     plt.figure(figsize=(12, 6))  # 그래프 크기 설정
-    logging.info(f"{code} 그래프 이미지화 시작")
+    logging.info("그래프 이미지화 시작")
 
-    df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
-    df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
-    df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
+    for code, records in stock_data.items():
+        if not records:  # records가 비어 있는 경우
+            logging.warning(f"{code}의 데이터가 비어 있습니다.")
+            continue
 
-    # 종가 그래프 그리기
-    plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
+        df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
+        df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
+        df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
 
-    # 거래량 그래프 그리기 (second y-axis)
-    ax2 = plt.gca().twinx()  # 두 번째 y축 생성
-    ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+        # 종가 그래프 그리기
+        plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
 
-    plt.title(f'{code} 주식 종가 및 거래량 (2년간)')
+        # 거래량 그래프 그리기 (second y-axis)
+        ax2 = plt.gca().twinx()  # 두 번째 y축 생성
+        ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+
+    plt.title('주식 종가 및 거래량 (2년간)')
     plt.xlabel('날짜')
     plt.ylabel('종가')
     ax2.set_ylabel('거래량')
@@ -91,8 +96,8 @@ def visualize_stock_data(code, records):
     plt.tight_layout()  # 레이아웃 조정
 
     # 그래프를 이미지 파일로 저장
-    plt.savefig(f'{code}_stock_prices_and_volume.png')
-    logging.info(f"{code} 그래프 이미지 저장 완료: '{code}_stock_prices_and_volume.png'")
+    plt.savefig('stock_prices_and_volume.png')
+    logging.info("그래프 이미지 저장 완료: 'stock_prices_and_volume.png'")
     plt.close()  # 그래프 닫기
 
 def send_graph_description_to_ai(graph_description):
@@ -118,20 +123,13 @@ if __name__ == "__main__":
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
     results = search_stocks(start_date_str)  # 결과를 변수에 저장
-
     if results:  # 결과가 있을 때만 출력
         logging.info("가져온 종목 리스트:")
         for i in range(0, len(results), 10):  # 10개씩 나누어 출력
             logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         
-        # 멀티스레딩으로 주식 데이터 시각화
-        with ThreadPoolExecutor(max_workers=20) as executor:
-            futures = {executor.submit(visualize_stock_data, code, records): code for code, records in results.items()}
-            for future in as_completed(futures):
-                try:
-                    future.result()  # 각 스레드의 작업 완료 대기
-                except Exception as e:
-                    logging.error(f"그래프 이미지화 중 오류 발생: {e}")
+        # 주식 데이터 시각화 (종가 및 거래량 포함)
+        visualize_stock_data(results)  # 전체 주식 데이터 시각화
 
         # 그래프에 대한 설명
         graph_description = (
