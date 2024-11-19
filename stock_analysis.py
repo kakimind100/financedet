@@ -82,7 +82,8 @@ def analyze_stocks(stock_codes):
         model="gpt-3.5-turbo",
         messages=[
             {"role": "user", "content": prompt}
-        ]
+        ],
+        max_tokens=30  # 최대 토큰 수 설정
     )
 
     # AI의 응답을 recommendations 리스트에 바로 추가
