@@ -36,18 +36,28 @@ def fetch_stock_listing(market):
         logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
+def fetch_stock_data(code, start_date, end_date):
+    """주식 데이터를 가져오는 함수."""
+    try:
+        logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
+        df = fdr.DataReader(code, start=start_date, end=end_date)
+        logging.info(f"{code} 데이터 가져오기 성공")
+        return code, df.to_dict(orient='records')
+    except Exception as e:
+        logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")
+        return code, None  # 오류 발생 시 None 반환
+
 def fetch_and_save_stock_data(codes, start_date, end_date):
     """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
     all_data = {}
-    
-    for code in codes:
-        try:
-            logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
-            df = fdr.DataReader(code, start=start_date, end=end_date)
-            all_data[code] = df.to_dict(orient='records')
-            logging.info(f"{code} 데이터 가져오기 성공")
-        except Exception as e:
-            logging.error(f"{code} 처리 중 오류 발생: {e}")
+
+    # 멀티스레딩으로 주식 데이터 가져오기
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        future_to_code = {executor.submit(fetch_stock_data, code, start_date, end_date): code for code in codes}
+        for future in as_completed(future_to_code):
+            code, data = future.result()
+            if data is not None:
+                all_data[code] = data
 
     # JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
