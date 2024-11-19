@@ -21,6 +21,14 @@ console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상만 출
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
+def add_date_column(df):
+    """주식 데이터프레임에 날짜 열을 추가하는 함수."""
+    if 'Date' not in df.columns:
+        # 비즈니스 일 기준으로 날짜 생성
+        df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
+        df.set_index('Date', inplace=True)
+        logging.debug("날짜 정보를 데이터프레임에 추가했습니다.")
+
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:  # 최소 60일의 데이터 필요
@@ -69,6 +77,9 @@ def search_stocks(start_date, end_date):
             
             # 'Code' 컬럼을 DataFrame에 추가
             df['Code'] = code
+            
+            # 날짜 열 추가
+            add_date_column(df)
             
             is_pattern, pattern_date = is_cup_with_handle(df)
             if is_pattern:
