@@ -21,10 +21,15 @@ jobs:
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'  # 사용할 Node.js 버전 설정
+
       - name: Run stock analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
-          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}  # 수동 실행 여부 설정
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}  # 수동 실행 여부 설정
         run: |
           echo "주식 분석 스크립트 실행 중..."  # 실행 시작 메시지
           python stock_analysis.py  # 주식 분석 스크립트 실행
@@ -38,4 +43,4 @@ jobs:
 
       - name: Get Korean Time
         run: |
-          echo "한국 시간: $(node -e 'const getKoreaTime = () => { const now = new Date(); const diffConfig = now.getTimezoneOffset() * 60 * 1000; const diffKorea = 9 * 60 * 60 * 1000; const koreaTime = new Date(now.getTime() + diffConfig + diffKorea); return koreaTime.getFullYear() + \"년 \" + (koreaTime.getMonth() + 1) + \"월 \" + koreaTime.getDate() + \"일 \" + koreaTime.getHours() + \"시 \"; }; console.log(getKoreaTime());')"  # 한국 시간 출력
+          echo "한국 시간: $(node -e 'const getKoreaTime = () => { const now = new Date(); const diffConfig = now.getTimezoneOffset() * 60 * 1000; const diffKorea = 9 * 60 * 60 * 1000; const koreaTime = new Date(now.getTime() + diffConfig + diffKorea); return koreaTime.getFullYear() + \"년 \" + (koreaTime.getMonth() + 1) + \"월 \" + koreaTime.getDate() + \"일 \" + koreaTime.getHours() + \"시 \"; }; console.log(getKoreaTime());')"
