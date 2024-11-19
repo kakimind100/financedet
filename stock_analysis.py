@@ -91,8 +91,17 @@ def is_cup_with_handle(df):
 
     cup_top = df['Close'][:cup_bottom_index].max()
 
-    handle = df.iloc[cup_bottom_index:cup_bottom_index + 10]  # 핸들 데이터 (10일)
-    handle_top = handle['Close'].max()
+    # 핸들 데이터 (10일) 가져오기
+    handle_start_index = cup_bottom_index + 1  # 핸들은 컵 바닥 다음 날부터 시작
+    handle_end_index = handle_start_index + 10  # 10일치 데이터
+
+    # 핸들 데이터가 유효한 인덱스 범위 내에 있는지 확인
+    if handle_end_index <= len(df):
+        handle = df.iloc[handle_start_index:handle_end_index]  # 핸들 데이터
+        handle_top = handle['Close'].max()
+    else:
+        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다.")
+        return False, None
 
     if handle_top < cup_top and cup_bottom < handle_top:
         logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0]}")
