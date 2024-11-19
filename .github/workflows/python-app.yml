@@ -23,6 +23,7 @@ jobs:
 
       - name: Run stock analysis
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
           MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}  # 수동 실행 여부 설정
         run: |
           echo "주식 분석 스크립트 실행 중..."  # 실행 시작 메시지
@@ -33,7 +34,7 @@ jobs:
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
         with:
           name: stock-analysis-log  # 업로드할 아티팩트의 이름
-          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로 (필요한 경우)
+          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로
 
       - name: Get Korean Time
         run: |
