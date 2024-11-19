@@ -25,7 +25,14 @@ logging.getLogger().addHandler(console_handler)
 
 # 데이터베이스 연결 및 테이블 생성
 def create_database():
-    conn = sqlite3.connect('stock_data.db')  # SQLite 데이터베이스 파일 생성
+    # 데이터베이스를 저장할 디렉토리 경로
+    db_directory = 'data'
+    os.makedirs(db_directory, exist_ok=True)  # 디렉토리가 없으면 생성
+
+    # 데이터베이스 파일 경로
+    db_path = os.path.join(db_directory, 'stock_data.db')
+    
+    conn = sqlite3.connect(db_path)  # SQLite 데이터베이스 파일 생성
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stock_data (
@@ -41,6 +48,7 @@ def create_database():
     ''')
     conn.commit()
     logging.info("데이터베이스 및 테이블 생성 완료.")
+    conn.close()
 
     # 730일이 지난 데이터 삭제
     delete_old_data(cursor)
