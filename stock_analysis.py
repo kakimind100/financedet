@@ -2,8 +2,9 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
-import sqlite3
+import mysql.connector
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -24,26 +25,46 @@ logging.getLogger().addHandler(console_handler)
 
 # 데이터베이스 연결 및 테이블 생성
 def create_database():
-    conn = sqlite3.connect('stocks.db')
+    conn = mysql.connector.connect(
+        host='localhost',  # MySQL 서버 주소
+        user='your_username',  # MySQL 사용자 이름
+        password='your_password',  # MySQL 비밀번호
+        database='your_database'  # 사용할 데이터베이스 이름
+    )
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS stock_data (
-            code TEXT,
-            date TEXT,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            volume INTEGER,
+            code VARCHAR(10),
+            date DATE,
+            open FLOAT,
+            high FLOAT,
+            low FLOAT,
+            close FLOAT,
+            volume INT,
             PRIMARY KEY (code, date)
         )
     ''')
     conn.commit()
-    conn.close()
     logging.info("데이터베이스 및 테이블 생성 완료.")
 
+    # 730일이 지난 데이터 삭제
+    delete_old_data(cursor)
+    conn.commit()
+    conn.close()
+
+def delete_old_data(cursor):
+    """730일이 지난 데이터를 삭제하는 함수."""
+    cutoff_date = datetime.now() - timedelta(days=730)
+    cursor.execute('DELETE FROM stock_data WHERE date < %s', (cutoff_date,))
+    logging.info(f"730일이 지난 데이터 삭제 완료: {cursor.rowcount}개의 레코드 삭제됨.")
+
 def save_to_database(data):
-    conn = sqlite3.connect('stocks.db')
+    conn = mysql.connector.connect(
+        host='localhost',
+        user='your_username',
+        password='your_password',
+        database='your_database'
+    )
     cursor = conn.cursor()
     
     for item in data:
@@ -56,8 +77,14 @@ def save_to_database(data):
         volume = item['Volume']
 
         cursor.execute('''
-            INSERT OR REPLACE INTO stock_data (code, date, open, high, low, close, volume)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO stock_data (code, date, open, high, low, close, volume)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                open = VALUES(open),
+                high = VALUES(high),
+                low = VALUES(low),
+                close = VALUES(close),
+                volume = VALUES(volume)
         ''', (code, date, open_price, high_price, low_price, close_price, volume))
     
     conn.commit()
@@ -119,11 +146,13 @@ def main():
     stocks = pd.concat([kospi, kosdaq])
     all_results = []
 
-    # 각 종목에 대해 데이터를 가져와서 데이터베이스에 저장
-    for code in stocks['Code']:
-        stock_data = fetch_and_store_stock_data(code, start_date)
-        if stock_data:
-            all_results.extend(stock_data)
+    # 멀티스레딩으로 각 종목의 데이터를 가져옵니다.
+    with ThreadPoolExecutor(max_workers=20) as executor:  # 동시에 20개의 스레드 사용
+        futures = {executor.submit(fetch_and_store_stock_data, code, start_date): code for code in stocks['Code']}
+        for future in as_completed(futures):
+            stock_data = future.result()
+            if stock_data:
+                all_results.extend(stock_data)
 
     if all_results:
         save_to_database(all_results)  # 데이터베이스에 저장
