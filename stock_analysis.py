@@ -25,8 +25,10 @@ def save_to_csv(data, filename='stock_data.csv'):
     df = pd.DataFrame(data)
     if os.path.exists(filename):
         df.to_csv(filename, mode='a', header=False, index=False)  # 기존 파일에 추가
+        logging.info(f"{filename}에 기존 데이터 추가 완료.")
     else:
         df.to_csv(filename, index=False)  # 새 파일 생성
+        logging.info(f"{filename} 새 파일 생성 완료.")
     logging.info(f"{len(data)}개의 데이터를 {filename}에 저장 완료.")
 
 def fetch_and_store_stock_data(code, start_date):
@@ -51,13 +53,13 @@ def fetch_and_store_stock_data(code, start_date):
                 'Last Close': float(row['Close']),
                 'Volume': int(row['Volume'])
             })
-            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 대상.")
+            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 완료.")
 
         logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
         return result
 
     except Exception as e:
-        logging.error(f"{code} 처리 중 오류 발생: {e}")
+        logging.error(f"{code} 처리 중 오류 발생: {e}", exc_info=True)
         return []
 
 def analyze_stocks(data):
@@ -73,15 +75,20 @@ def analyze_stocks(data):
         )}
     ]
 
-    response = requests.post('https://api.openai.com/v1/chat/completions', headers={
-        'Authorization': f'Bearer {OPENAI_API_KEY}',
-        'Content-Type': 'application/json'
-    }, json={"model": "gpt-3.5-turbo", "messages": messages})
+    try:
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers={
+            'Authorization': f'Bearer {OPENAI_API_KEY}',
+            'Content-Type': 'application/json'
+        }, json={"model": "gpt-3.5-turbo", "messages": messages})
 
-    if response.status_code == 200:
-        return response.json()['choices'][0]['message']['content']
-    else:
-        logging.error(f"OpenAI API 요청 실패: {response.status_code}, {response.text}")
+        if response.status_code == 200:
+            logging.info("OpenAI API 요청 성공.")
+            return response.json()['choices'][0]['message']['content']
+        else:
+            logging.error(f"OpenAI API 요청 실패: {response.status_code}, {response.text}")
+            return None
+    except Exception as e:
+        logging.error(f"OpenAI API 요청 중 오류 발생: {e}", exc_info=True)
         return None
 
 def main():
@@ -96,12 +103,12 @@ def main():
     # KOSPI와 KOSDAQ 종목 목록 가져오기
     try:
         kospi = fdr.StockListing('KOSPI')
-        logging.info("코스피 종목 목록 가져오기 성공")
+        logging.info("코스피 종목 목록 가져오기 성공, 종목 수: {}".format(len(kospi)))
         
         kosdaq = fdr.StockListing('KOSDAQ')
-        logging.info("코스닥 종목 목록 가져오기 성공")
+        logging.info("코스닥 종목 목록 가져오기 성공, 종목 수: {}".format(len(kosdaq)))
     except Exception as e:
-        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}", exc_info=True)
         return
 
     stocks = pd.concat([kospi, kosdaq])
