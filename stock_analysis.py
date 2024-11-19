@@ -66,24 +66,26 @@ def search_stocks(start_date):
     logging.info("주식 검색 완료")
     return result
 
-def analyze_stocks(stock_codes):
-    """주식 데이터를 AI에게 분석하여 상승 가능성이 높은 종목 추천."""
+def analyze_stocks(stock_data):
+    """주식 데이터를 AI에게 분석하여 다음 거래일에 상승 가능성이 높은 종목 추천."""
     
-    # AI에게 전체 종목 코드를 요청
+    # AI에게 데이터를 요청할 프롬프트 생성
     prompt = (
-        "다음은 전체 주식 종목 코드입니다. "
+        "다음은 전체 주식 데이터입니다. "
         "각 종목의 상승 가능성을 0%에서 100%로 점수화하고, "
         "이유를 20자 내외로 작성한 후, 점수를 기준으로 상위 5개 종목을 추천해 주세요:\n\n"
-        + "\n".join(stock_codes)  # 모든 종목 코드를 한 번에 추가
     )
-    
+
+    # 전체 stock_data를 문자열로 변환하여 프롬프트에 추가
+    prompt += json.dumps(stock_data, ensure_ascii=False, indent=2)  # JSON 형식으로 변환하여 추가
+
     # OpenAI API를 통해 분석 요청
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
             {"role": "user", "content": prompt}
         ],
-        max_tokens=30  # 최대 토큰 수 설정
+        max_tokens=150  # 최대 토큰 수 설정 (응답이 길어질 수 있으므로 150으로 설정)
     )
 
     # AI의 응답을 recommendations 리스트에 바로 추가
