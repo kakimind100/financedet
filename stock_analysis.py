@@ -10,7 +10,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 시크릿에서 API 키를 가져옵니다.
 if OPENAI_API_KEY is None:
     print("Error: OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+    logging.error("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")  # 로그에 기록
     exit(1)
+else:
+    logging.info("OPENAI_API_KEY 환경 변수가 정상적으로 설정되었습니다.")  # API 키가 설정되었음을 로그에 기록
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -96,6 +99,8 @@ def analyze_stocks(data):
 
 def main():
     logging.info("주식 분석 스크립트가 시작되었습니다.")  # 스크립트 시작 로그
+    print("주식 분석 스크립트가 시작되었습니다.")  # 콘솔 출력 추가
+    logging.info("주식 분석 프로세스 시작...")  # 시작 메시지 추가
 
     today = datetime.today()
     start_date = today - timedelta(days=730)
