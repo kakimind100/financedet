@@ -1,19 +1,15 @@
 import FinanceDataReader as fdr
 import pandas as pd
 import logging
-import os
-import requests
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+import json
 
-# OpenAI API 설정
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # 시크릿에서 API 키를 가져옵니다.
-if OPENAI_API_KEY is None:
-    print("Error: OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
-    logging.error("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")  # 로그에 기록
-    exit(1)
-else:
-    logging.info("OPENAI_API_KEY 환경 변수가 정상적으로 설정되었습니다.")  # API 키가 설정되었음을 로그에 기록
+# JSON 파일로 결과를 저장하는 함수
+def save_results_to_json(data, filename='results.json'):
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=4)
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -22,133 +18,64 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.DEBUG,  # DEBUG로 설정하여 모든 로그를 기록
+    level=logging.INFO,  # INFO 레벨로 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def fetch_and_store_stock_data(code, start_date):
-    """주식 데이터를 가져오는 함수."""
-    logging.info(f"{code} 데이터 가져오기 시작")
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # 콘솔에서도 INFO 레벨 이상의 로그 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
+def search_stocks(start_date):
+    """주식 종목을 검색하는 함수."""
+    logging.info("주식 검색 시작")
+
     try:
-        df = fdr.DataReader(code, start=start_date)
-        logging.info(f"{code} 데이터 가져오기 성공, 데이터 길이: {len(df)}")
-
-        if len(df) < 1:
-            logging.warning(f"{code} 데이터가 없습니다.")
-            return []
-
-        result = []
-        for index, row in df.iterrows():
-            result.append({
-                'Code': str(code),
-                'Date': index.strftime('%Y-%m-%d'),
-                'Opening Price': float(row['Open']),
-                'Highest Price': float(row['High']),
-                'Lowest Price': float(row['Low']),
-                'Last Close': float(row['Close']),
-                'Volume': int(row['Volume'])
-            })
-            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 완료. "
-                         f"시가: {row['Open']}, 종가: {row['Close']}, 거래량: {row['Volume']}")
-
-        logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
-        return result
-
+        kospi = fdr.StockListing('KOSPI')  # KRX 코스피 종목 목록
+        logging.info("코스피 종목 목록 가져오기 성공")
+        
+        kosdaq = fdr.StockListing('KOSDAQ')  # KRX 코스닥 종목 목록
+        logging.info("코스닥 종목 목록 가져오기 성공")
     except Exception as e:
-        logging.error(f"{code} 처리 중 오류 발생: {e}", exc_info=True)
+        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
-def analyze_stocks(data):
-    """OpenAI API를 사용하여 기술적 분석을 수행하고 상승 예측을 반환하는 함수."""
-    if not data:
-        logging.warning("분석할 데이터가 없습니다.")
-        return None
+    stocks = pd.concat([kospi, kosdaq])
+    result = {}
 
-    data_string = "\n".join([f"종목 코드: {item['Code']}, 날짜: {item['Date']}, "
-                              f"시가: {item['Opening Price']}, 종가: {item['Last Close']}, "
-                              f"거래량: {item['Volume']}" for item in data])
+    # 멀티스레딩으로 주식 데이터 처리
+    with ThreadPoolExecutor(max_workers=20) as executor:  # 최대 20개의 스레드 사용
+        futures = {executor.submit(fdr.DataReader, code, start_date): code for code in stocks['Code']}
+        for future in as_completed(futures):
+            code = futures[future]
+            try:
+                df = future.result()
+                logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
+                
+                # 날짜별 데이터 저장
+                result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
+            except Exception as e:
+                logging.error(f"{code} 처리 중 오류 발생: {e}")
 
-    messages = [
-        {"role": "system", "content": "당신은 금융 분석가입니다."},
-        {"role": "user", "content": (
-            "이 데이터를 분석하여 다음 거래일에 가장 많이 상승할 것으로 예상되는 "
-            "종목을 0%~100%까지의 비율로 순위를 매기고, "
-            "상위 5개 주식에 대해 각 종목의 종목 코드와 추천 이유를 20자 내외로 작성해 주세요."
-        )}
-    ]
-
-    try:
-        logging.info("OpenAI API 요청 시작...")
-        response = requests.post('https://api.openai.com/v1/chat/completions', headers={
-            'Authorization': f'Bearer {OPENAI_API_KEY}',
-            'Content-Type': 'application/json'
-        }, json={
-            "model": "gpt-3.5-turbo",
-            "messages": messages,
-            "max_tokens": 30  # 최대 토큰 수를 30으로 설정
-        })
-
-        if response.status_code == 200:
-            logging.info("OpenAI API 요청 성공.")
-            return response.json()['choices'][0]['message']['content']
-        else:
-            logging.error(f"OpenAI API 요청 실패: {response.status_code}, {response.text}")
-            return None
-    except Exception as e:
-        logging.error(f"OpenAI API 요청 중 오류 발생: {e}", exc_info=True)
-        return None
-
-def main():
-    logging.info("주식 분석 스크립트가 시작되었습니다.")  # 스크립트 시작 로그
-    print("주식 분석 스크립트가 시작되었습니다.")  # 콘솔 출력 추가
-    logging.info("주식 분석 프로세스 시작...")  # 시작 메시지 추가
-
+    logging.info("주식 검색 완료")
+    return result
+    
+# 메인 실행 블록에서 결과 저장 호출 추가
+if __name__ == "__main__":
+    logging.info("스크립트 실행 시작")
+    
+    # 최근 730 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
-    start_date = today - timedelta(days=730)
+    start_date = today - timedelta(days=730)  # 최근 730 거래일 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    # KOSPI와 KOSDAQ 종목 목록 가져오기
-    try:
-        logging.info("KOSPI 종목 목록 가져오기 시작")
-        kospi = fdr.StockListing('KOSPI')
-        logging.info(f"코스피 종목 목록 가져오기 성공, 종목 수: {len(kospi)}")
-        
-        logging.info("KOSDAQ 종목 목록 가져오기 시작")
-        kosdaq = fdr.StockListing('KOSDAQ')
-        logging.info(f"코스닥 종목 목록 가져오기 성공, 종목 수: {len(kosdaq)}")
-    except Exception as e:
-        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}", exc_info=True)
-        return
-
-    # 종목 데이터 결합
-    stocks = pd.concat([kospi, kosdaq])
-    all_results = []
-
-    logging.info("주식 데이터 수집 시작")  # 데이터 수집 시작 로그
-
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {executor.submit(fetch_and_store_stock_data, code, start_date): code for code in stocks['Code']}
-        for future in as_completed(futures):
-            stock_data = future.result()
-            if stock_data:
-                logging.info(f"수집된 데이터: {len(stock_data)}개, 종목 코드: {stock_data[0]['Code']}")  # 수집된 데이터 로그
-                all_results.extend(stock_data)
-            else:
-                logging.warning("수집된 데이터가 없습니다.")
-
-    if all_results:
-        logging.info(f"총 수집된 데이터 수: {len(all_results)}")
-
-        # OpenAI API를 통한 기술적 분석 및 상승 예측
-        analysis_result = analyze_stocks(all_results)
-        if analysis_result:
-            logging.info(f"상승 예측 결과:\n{analysis_result}")
-        else:
-            logging.info("분석 결과를 가져오는 데 실패했습니다.")
+    results = search_stocks(start_date_str)  # 결과를 변수에 저장
+    if results:  # 결과가 있을 때만 출력
+        logging.info(f"가져온 종목 리스트: {[code for code in results.keys()]}")
+        save_results_to_json(results)  # JSON 파일로 저장
     else:
-        logging.info("저장할 데이터가 없습니다.")
-
-if __name__ == "__main__":
-    main()
+        logging.info("조건을 만족하는 종목이 없습니다.")
