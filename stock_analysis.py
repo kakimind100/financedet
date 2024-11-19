@@ -12,9 +12,15 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG 레벨로 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)  # DEBUG 레벨 이상의 로그 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 # 데이터베이스 연결 및 테이블 생성
 def create_database():
