@@ -36,8 +36,8 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
-async def fetch_stock_data(code, start_date):
-    """주식 데이터를 비동기적으로 가져오는 함수."""
+def fetch_stock_data(code, start_date):
+    """주식 데이터를 가져오는 함수."""
     try:
         df = fdr.DataReader(code, start_date)
         logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
@@ -63,23 +63,22 @@ async def search_stocks(start_date):
     stocks = pd.concat([kospi, kosdaq])
     result = {}
 
-    # 비동기적으로 주식 데이터 처리
-    tasks = []
-    for code in stocks['Code']:
-        tasks.append(fetch_stock_data(code, start_date))
-
-    results = await asyncio.gather(*tasks)
-
-    for code, df in results:
-        if df is not None:
-            # 날짜 정보가 포함되어 있는지 확인
-            if 'Date' not in df.columns:
-                # 날짜 정보를 추가
-                df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
-                logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
-            
-            # 종목별로 데이터 저장
-            result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
+    # 멀티스레딩을 이용하여 주식 데이터 처리
+    loop = asyncio.get_event_loop()
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {loop.run_in_executor(executor, fetch_stock_data, code, start_date): code for code in stocks['Code']}
+        for future in asyncio.as_completed(futures):
+            code = futures[future]
+            code, df = await future
+            if df is not None:
+                # 날짜 정보가 포함되어 있는지 확인
+                if 'Date' not in df.columns:
+                    # 날짜 정보를 추가
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 비즈니스 일 기준으로 날짜 추가
+                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+                
+                # 종목별로 데이터 저장
+                result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
 
     logging.info("주식 검색 완료")
     return result
@@ -145,6 +144,7 @@ if __name__ == "__main__":
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
+    # 비동기 루프 실행
     loop = asyncio.get_event_loop()
     results = loop.run_until_complete(search_stocks(start_date_str))  # 결과를 변수에 저장
 
