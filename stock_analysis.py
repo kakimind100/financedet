@@ -116,12 +116,12 @@ def is_cup_with_handle(df):
         average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]
 
         if recent_volume > average_volume:
-            logging.info(f"매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
+            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
             return True, df.index[-1]
         else:
-            logging.warning("거래량이 충분하지 않아 매수 신호가 없습니다.")
+            logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 거래량이 충분하지 않아 매수 신호가 없습니다.")
     else:
-        logging.debug(f"패턴 미발견. 종목 코드: {df['Code'].iloc[0]}, handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
+        logging.debug(f"종목 코드: {df['Code'].iloc[0]} - 패턴 미발견. handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
 
     return False, None
 
