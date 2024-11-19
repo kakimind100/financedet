@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timedelta
 import os
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # 로그 디렉토리 생성
 log_dir = 'logs'
@@ -26,6 +27,15 @@ console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상만 출
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
+def fetch_stock_listing(market):
+    """주식 종목 목록을 가져오는 함수."""
+    try:
+        logging.debug(f"{market} 종목 목록 가져오는 중...")
+        return fdr.StockListing(market)['Code'].tolist()
+    except Exception as e:
+        logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
+        return []
+
 def fetch_and_save_stock_data(codes, start_date, end_date):
     """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
     all_data = {}
@@ -34,7 +44,6 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
         try:
             logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
             df = fdr.DataReader(code, start=start_date, end=end_date)
-            # DataFrame을 JSON 형식으로 변환하여 저장
             all_data[code] = df.to_dict(orient='records')
             logging.info(f"{code} 데이터 가져오기 성공")
         except Exception as e:
@@ -58,18 +67,14 @@ def is_cup_with_handle(df):
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code']}")
         return False, None
     
-    # 컵의 저점과 핸들의 저점 찾기
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
     
-    # 컵의 높이
     cup_top = df['Close'][:cup_bottom_index].max()
     
-    # 핸들 형성 여부 확인 (컵 끝에서 약간의 조정)
     handle = df.iloc[cup_bottom_index:cup_bottom_index + 10]  # 핸들 데이터 (10일)
     handle_top = handle['Close'].max()
     
-    # 컵과 핸들 패턴 조건
     if handle_top < cup_top and cup_bottom < handle_top:
         logging.debug(f"패턴 발견! 종목 코드: {df['Code']}")
         return True, df.index[-1]  # 최근 날짜 반환
@@ -101,21 +106,25 @@ def search_cup_with_handle(stocks_data):
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
     
-    # 최근 1년을 기준으로 시작 날짜 설정
     today = datetime.today()
     start_date = today - timedelta(days=365)  # 최근 1년 전 날짜
     end_date = today.strftime('%Y-%m-%d')  # 오늘 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    # KOSPI 및 KOSDAQ 종목 목록 가져오기
-    try:
-        kospi = fdr.StockListing('KOSPI')['Code'].tolist()
-        kosdaq = fdr.StockListing('KOSDAQ')['Code'].tolist()
-        all_codes = kospi + kosdaq
-        logging.info("종목 목록 가져오기 성공")
-    except Exception as e:
-        logging.error(f"종목 목록 가져오기 중 오류 발생: {e}")
-        exit()
+    # 멀티스레딩으로 종목 목록 가져오기
+    markets = ['KOSPI', 'KOSDAQ']
+    all_codes = []
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        future_to_market = {executor.submit(fetch_stock_listing, market): market for market in markets}
+        for future in as_completed(future_to_market):
+            market = future_to_market[future]
+            try:
+                codes = future.result()
+                all_codes.extend(codes)
+                logging.info(f"{market} 종목 목록 가져오기 성공")
+            except Exception as e:
+                logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
 
     # 주식 데이터 가져와 JSON으로 저장
     fetch_and_save_stock_data(all_codes, start_date_str, end_date)
