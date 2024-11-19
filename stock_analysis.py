@@ -81,6 +81,7 @@ def send_stock_analysis_to_ai(stock_data):
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
+            {"role": "system", "content": "당신은 최고의 주식 전문 투자자입니다."},
             {"role": "user", "content": analysis_request}
         ],
         max_tokens=150  # 최대 토큰 수 설정
