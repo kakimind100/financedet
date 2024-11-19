@@ -90,8 +90,11 @@ def is_cup_with_handle(df):
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
 
+    # cup_bottom_index를 정수로 변환
+    cup_bottom_index = df.index.get_loc(cup_bottom_index)
+
     # cup_bottom_index가 유효한지 확인
-    if pd.isna(cup_bottom_index) or cup_bottom_index < 0 or cup_bottom_index >= len(df):
+    if cup_bottom_index < 0 or cup_bottom_index >= len(df):
         logging.warning(f"컵 바닥 인덱스가 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
         return False, None
 
