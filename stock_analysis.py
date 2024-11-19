@@ -148,6 +148,13 @@ def initialize_database():
     else:
         logging.info("기존 데이터베이스를 사용합니다.")
 
+    # 현재 작업 디렉토리 출력
+    logging.info(f"현재 작업 디렉토리: {os.getcwd()}")
+    if os.path.exists('data/stock_data.db'):
+        logging.info("데이터베이스 파일이 존재합니다.")
+    else:
+        logging.warning("데이터베이스 파일이 존재하지 않습니다.")
+
 def main():
     logging.info("스크립트 실행 시작")
     initialize_database()
