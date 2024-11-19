@@ -134,9 +134,17 @@ def fetch_and_store_stock_data(code, start_date):
         logging.error(f"{code} 처리 중 오류 발생: {e}")
         return []
 
+def initialize_database():
+    """데이터베이스를 초기화하는 함수."""
+    if not os.path.exists('stock_data.db'):
+        create_database()
+        logging.info("새 데이터베이스를 생성했습니다.")
+    else:
+        logging.info("기존 데이터베이스를 사용합니다.")
+
 def main():
     logging.info("스크립트 실행 시작")
-    create_database()  # 데이터베이스 및 테이블 생성
+    initialize_database()  # 데이터베이스 초기화
 
     today = datetime.today()
     start_date = today - timedelta(days=730)  # 최근 2년(730일) 전 날짜
