@@ -25,11 +25,9 @@ logging.getLogger().addHandler(console_handler)
 
 # 데이터베이스 연결 및 테이블 생성
 def create_database():
-    # 데이터베이스를 저장할 디렉토리 경로
     db_directory = 'data'
-    os.makedirs(db_directory, exist_ok=True)  # 디렉토리가 없으면 생성
+    os.makedirs(db_directory, exist_ok=True)  # 디렉토리 생성
 
-    # 데이터베이스 파일 경로
     db_path = os.path.join(db_directory, 'stock_data.db')
     
     conn = sqlite3.connect(db_path)
@@ -49,7 +47,6 @@ def create_database():
     conn.commit()
     logging.info("데이터베이스 및 테이블 생성 완료.")
 
-    # 730일이 지난 데이터 삭제
     delete_old_data(conn)
     conn.close()
 
@@ -74,19 +71,20 @@ def fetch_existing_data(code):
     return {date[0] for date in existing_dates}
 
 def save_to_database(data):
-    conn = sqlite3.connect('data/stock_data.db')
-    cursor = conn.cursor()
-    
-    for item in data:
-        code = item['Code']
-        date = item['Date']
-        open_price = item['Opening Price']
-        high_price = item['Highest Price']
-        low_price = item['Lowest Price']
-        close_price = item['Last Close']
-        volume = item['Volume']
+    conn = None
+    try:
+        conn = sqlite3.connect('data/stock_data.db')
+        cursor = conn.cursor()
+        
+        for item in data:
+            code = item['Code']
+            date = item['Date']
+            open_price = item['Opening Price']
+            high_price = item['Highest Price']
+            low_price = item['Lowest Price']
+            close_price = item['Last Close']
+            volume = item['Volume']
 
-        try:
             cursor.execute('''
                 INSERT INTO stock_data (code, date, open, high, low, close, volume)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -99,11 +97,14 @@ def save_to_database(data):
             ''', (code, date, open_price, high_price, low_price, close_price, volume))
             conn.commit()
             logging.info(f"{code} - {date} 데이터 저장 완료.")
-        except Exception as e:
-            logging.error(f"{code} - {date} 데이터 저장 실패: {e}")
+        
+        logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
 
-    conn.close()
-    logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
+    except Exception as e:
+        logging.error(f"데이터 저장 중 오류 발생: {e}")
+    finally:
+        if conn:
+            conn.close()  # 연결을 안전하게 종료
 
 def fetch_and_store_stock_data(code, start_date):
     """주식 데이터를 가져와서 데이터베이스에 저장하는 함수."""
@@ -148,7 +149,6 @@ def initialize_database():
     else:
         logging.info("기존 데이터베이스를 사용합니다.")
 
-    # 현재 작업 디렉토리 출력
     logging.info(f"현재 작업 디렉토리: {os.getcwd()}")
     if os.path.exists('data/stock_data.db'):
         logging.info("데이터베이스 파일이 존재합니다.")
@@ -158,24 +158,6 @@ def initialize_database():
 def main():
     logging.info("스크립트 실행 시작")
     initialize_database()
-
-    # 데이터베이스 연결 및 테이블 생성
-    conn = sqlite3.connect('data/stock_data.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS stock_data (
-            code TEXT,
-            date DATE,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            volume INTEGER,
-            PRIMARY KEY (code, date)
-        )
-    ''')
-    conn.commit()
-    conn.close()
 
     today = datetime.today()
     start_date = today - timedelta(days=730)
