@@ -54,7 +54,6 @@ def fetch_and_store_stock_data(code, start_date):
 
 def analyze_stocks(data):
     """OpenAI API를 사용하여 기술적 분석을 수행하고 상승 예측을 반환하는 함수."""
-    # 데이터 문자열 변환
     data_string = "\n".join([f"종목 코드: {item['Code']}, 날짜: {item['Date']}, "
                               f"시가: {item['Opening Price']}, 종가: {item['Last Close']}, "
                               f"거래량: {item['Volume']}" for item in data])
@@ -72,7 +71,11 @@ def analyze_stocks(data):
         response = requests.post('https://api.openai.com/v1/chat/completions', headers={
             'Authorization': f'Bearer {OPENAI_API_KEY}',
             'Content-Type': 'application/json'
-        }, json={"model": "gpt-3.5-turbo", "messages": messages})
+        }, json={
+            "model": "gpt-3.5-turbo",
+            "messages": messages,
+            "max_tokens": 30  # 최대 토큰 수를 30으로 설정
+        })
 
         if response.status_code == 200:
             logging.info("OpenAI API 요청 성공.")
@@ -95,9 +98,11 @@ def main():
 
     # KOSPI와 KOSDAQ 종목 목록 가져오기
     try:
+        logging.info("KOSPI 종목 목록 가져오기 시작")
         kospi = fdr.StockListing('KOSPI')
         logging.info(f"코스피 종목 목록 가져오기 성공, 종목 수: {len(kospi)}")
         
+        logging.info("KOSDAQ 종목 목록 가져오기 시작")
         kosdaq = fdr.StockListing('KOSDAQ')
         logging.info(f"코스닥 종목 목록 가져오기 성공, 종목 수: {len(kosdaq)}")
     except Exception as e:
