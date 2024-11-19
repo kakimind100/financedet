@@ -131,6 +131,7 @@ def main():
         for future in as_completed(futures):
             stock_data = future.result()
             if stock_data:
+                logging.info(f"수집된 데이터: {len(stock_data)}개 종목 코드 {stock_data[0]['Code']}")  # 수집된 데이터 로그
                 all_results.extend(stock_data)
 
     if all_results:
