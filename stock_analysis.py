@@ -44,7 +44,7 @@ def is_cup_with_handle(df):
         return True, df.index[-1]  # 최근 날짜 반환
     return False, None
 
-def search_stocks(start_date):
+def search_stocks(start_date, end_date):
     """주식 종목을 검색하고 가장 최근 Cup with Handle 패턴을 찾는 함수."""
     logging.info("주식 검색 시작")
 
@@ -65,7 +65,8 @@ def search_stocks(start_date):
     for code in stocks['Code']:
         try:
             logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
-            df = fdr.DataReader(code, start_date)
+            df = fdr.DataReader(code, start=start_date, end=end_date)  # 시작 및 종료 날짜를 사용하여 데이터 가져오기
+            
             # 'Code' 컬럼을 DataFrame에 추가
             df['Code'] = code
             
@@ -90,11 +91,12 @@ if __name__ == "__main__":
     # 최근 1년을 기준으로 시작 날짜 설정
     today = datetime.today()
     start_date = today - timedelta(days=365)  # 최근 1년 전 날짜
+    end_date = today.strftime('%Y-%m-%d')  # 오늘 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
 
-    recent_stock, date_found = search_stocks(start_date_str)  # 결과를 변수에 저장
+    recent_stock, date_found = search_stocks(start_date_str, end_date)  # 결과를 변수에 저장
     if recent_stock:  # 최근 패턴이 발견된 경우
         logging.info(f"가장 최근 Cup with Handle 패턴이 발견된 종목: {recent_stock} (완성 날짜: {date_found})")
     else:
