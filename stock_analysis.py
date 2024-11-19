@@ -95,7 +95,7 @@ def visualize_stock_data(stock_data):
     plt.savefig('stock_prices_and_volume.png')
     plt.close()  # 그래프 닫기
 
-def analyze_stocks(stock_data):
+def send_graph_to_ai():
     """주식 데이터를 AI에게 분석하여 다음 거래일에 상승 가능성이 높은 종목 추천."""
     
     # AI에게 데이터를 요청할 프롬프트 생성
@@ -108,9 +108,9 @@ def analyze_stocks(stock_data):
     # 전체 stock_data를 문자열로 변환하여 프롬프트에 추가
     prompt += json.dumps(stock_data, ensure_ascii=False, indent=2)  # JSON 형식으로 변환하여 추가
 
-    # OpenAI API를 통해 분석 요청
+    # OpenAI API를 통해 분석 요청 (모델을 GPT-4로 변경)
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=[
             {"role": "user", "content": prompt}
         ],
@@ -121,19 +121,6 @@ def analyze_stocks(stock_data):
     recommendations = response['choices'][0]['message']['content'].strip().split('\n')
 
     return recommendations
-
-def send_graph_to_ai():
-    """그래프 이미지를 AI에게 설명 요청하는 함수."""
-    # AI에게 그래프에 대한 설명 요청
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "user", "content": "다음 이미지는 2년간의 주식 종가 및 거래량 그래프입니다. 이 그래프를 분석하고 주요 통찰력을 제공해 주세요."}
-        ],
-        max_tokens=150  # 최대 토큰 수 설정
-    )
-
-    return response['choices'][0]['message']['content']
 
 # 메인 실행 블록에서 결과 저장 호출 추가
 if __name__ == "__main__":
@@ -173,9 +160,6 @@ if __name__ == "__main__":
 
         # 주식 데이터 시각화 (종가 및 거래량 포함)
         visualize_stock_data(results)  # 전체 주식 데이터 시각화
-        insights = send_graph_to_ai()  # AI에게 그래프 설명 요청
-        logging.info("AI의 그래프 분석 결과:")
-        logging.info(insights)  # AI의 응답 출력
 
         save_results_to_json(results)  # JSON 파일로 저장
     else:
