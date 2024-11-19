@@ -77,10 +77,10 @@ def search_stocks(start_date):
 
 def visualize_stock_data(stock_data):
     """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
-    plt.figure(figsize=(12, 6))  # 그래프 크기 설정
+    total_stocks = len(stock_data)  # 전체 종목 수
     logging.info("그래프 이미지화 시작")
 
-    for code, records in stock_data.items():
+    for idx, (code, records) in enumerate(stock_data.items()):
         if not records:  # records가 비어 있는 경우
             logging.warning(f"{code}의 데이터가 비어 있습니다.")
             continue
@@ -95,6 +95,10 @@ def visualize_stock_data(stock_data):
         # 거래량 그래프 그리기 (second y-axis)
         ax2 = plt.gca().twinx()  # 두 번째 y축 생성
         ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+
+        # 진행 상태 로그
+        percent_complete = (idx + 1) / total_stocks * 100
+        logging.info(f"{code} 그래프 이미지화 진행 중: {percent_complete:.2f}% 완료")
 
     plt.title('주식 종가 및 거래량 (2년간)')
     plt.xlabel('날짜')
