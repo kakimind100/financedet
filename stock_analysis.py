@@ -78,6 +78,7 @@ def analyze_stocks(data):
     ]
 
     try:
+        logging.info("OpenAI API 요청 시작...")
         response = requests.post('https://api.openai.com/v1/chat/completions', headers={
             'Authorization': f'Bearer {OPENAI_API_KEY}',
             'Content-Type': 'application/json'
@@ -131,8 +132,10 @@ def main():
         for future in as_completed(futures):
             stock_data = future.result()
             if stock_data:
-                logging.info(f"수집된 데이터: {len(stock_data)}개 종목 코드 {stock_data[0]['Code']}")  # 수집된 데이터 로그
+                logging.info(f"수집된 데이터: {len(stock_data)}개, 종목 코드: {stock_data[0]['Code']}")  # 수집된 데이터 로그
                 all_results.extend(stock_data)
+            else:
+                logging.warning("수집된 데이터가 없습니다.")
 
     if all_results:
         logging.info(f"총 수집된 데이터 수: {len(all_results)}")
