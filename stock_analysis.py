@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import json
 import openai
+import matplotlib.pyplot as plt
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -66,6 +67,34 @@ def search_stocks(start_date):
     logging.info("주식 검색 완료")
     return result
 
+def visualize_stock_data(stock_data):
+    """주식 데이터를 시각화하는 함수 (종가 및 거래량 포함)."""
+    plt.figure(figsize=(12, 6))  # 그래프 크기 설정
+
+    for code, records in stock_data.items():
+        df = pd.DataFrame(records)  # 리스트를 데이터프레임으로 변환
+        df['Date'] = pd.to_datetime([record['Date'] for record in records])  # 날짜 형식 변환
+        df.set_index('Date', inplace=True)  # 날짜를 인덱스로 설정
+
+        # 종가 그래프 그리기
+        plt.plot(df.index, df['Close'], label=f'{code} 종가')
+
+        # 거래량 그래프 그리기 (second y-axis)
+        ax2 = plt.gca().twinx()  # 두 번째 y축 생성
+        ax2.bar(df.index, df['Volume'], alpha=0.3, label=f'{code} 거래량', color='gray')
+
+    plt.title('주식 종가 및 거래량 (2년간)')
+    plt.xlabel('날짜')
+    plt.ylabel('종가')
+    ax2.set_ylabel('거래량')
+    plt.legend(loc='upper left')
+    plt.xticks(rotation=45)
+    plt.tight_layout()  # 레이아웃 조정
+
+    # 그래프를 이미지 파일로 저장
+    plt.savefig('stock_prices_and_volume.png')
+    plt.close()  # 그래프 닫기
+
 def analyze_stocks(stock_data):
     """주식 데이터를 AI에게 분석하여 다음 거래일에 상승 가능성이 높은 종목 추천."""
     
@@ -85,13 +114,26 @@ def analyze_stocks(stock_data):
         messages=[
             {"role": "user", "content": prompt}
         ],
-        max_tokens=150  # 최대 토큰 수 설정 (응답이 길어질 수 있으므로 150으로 설정)
+        max_tokens=150  # 최대 토큰 수 설정
     )
 
     # AI의 응답을 recommendations 리스트에 바로 추가
     recommendations = response['choices'][0]['message']['content'].strip().split('\n')
 
     return recommendations
+
+def send_graph_to_ai():
+    """그래프 이미지를 AI에게 설명 요청하는 함수."""
+    # AI에게 그래프에 대한 설명 요청
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": "다음 이미지는 2년간의 주식 종가 및 거래량 그래프입니다. 이 그래프를 분석하고 주요 통찰력을 제공해 주세요."}
+        ],
+        max_tokens=150  # 최대 토큰 수 설정
+    )
+
+    return response['choices'][0]['message']['content']
 
 # 메인 실행 블록에서 결과 저장 호출 추가
 if __name__ == "__main__":
@@ -128,6 +170,12 @@ if __name__ == "__main__":
                 logging.info(f"{code}는 원본 데이터에 포함되어 있습니다.")
             else:
                 logging.warning(f"{code}는 원본 데이터에 포함되어 있지 않습니다.")
+
+        # 주식 데이터 시각화 (종가 및 거래량 포함)
+        visualize_stock_data(results)  # 전체 주식 데이터 시각화
+        insights = send_graph_to_ai()  # AI에게 그래프 설명 요청
+        logging.info("AI의 그래프 분석 결과:")
+        logging.info(insights)  # AI의 응답 출력
 
         save_results_to_json(results)  # JSON 파일로 저장
     else:
