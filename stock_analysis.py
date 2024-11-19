@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
 # 한글 글꼴 설정
-font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows에서 Malgun Gothic 글꼴 사용
-# font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Linux에서 DejaVu Sans 글꼴 사용
+font_path = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf"  # Linux에서 Nanum Gothic 글꼴 경로
 font_prop = fm.FontProperties(fname=font_path, size=12)
 plt.rc('font', family=font_prop.get_name())
 
