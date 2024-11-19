@@ -84,8 +84,10 @@ def visualize_stock_data(stock_data):
     # 종가와 거래량을 저장할 데이터프레임 초기화
     combined_data = pd.DataFrame()
 
+    total_stocks = len(stock_data)  # 전체 종목 수
+
     # 각 종목의 데이터를 가져와서 combined_data에 추가
-    for code, records in stock_data.items():
+    for idx, (code, records) in enumerate(stock_data.items()):
         if not records:  # records가 비어 있는 경우
             logging.warning(f"{code}의 데이터가 비어 있습니다.")
             continue
@@ -97,6 +99,10 @@ def visualize_stock_data(stock_data):
         # 종가와 거래량을 combined_data에 추가
         combined_data[code + '_Close'] = df['Close']  # 종가
         combined_data[code + '_Volume'] = df['Volume']  # 거래량
+
+        # 진행 상태 로그
+        percent_complete = (idx + 1) / total_stocks * 100
+        logging.info(f"{code} 데이터 처리 완료: {percent_complete:.2f}% 완료")
 
     # 종가 그래프 그리기
     for code in stock_data.keys():
