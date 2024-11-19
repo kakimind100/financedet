@@ -92,7 +92,7 @@ def send_stock_analysis_to_ai(stock_data):
     )
     
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model="gpt-4-o",  # GPT-4O 미니 모델로 변경
         messages=[
             {"role": "system", "content": "당신은 최고의 주식 전문 투자자입니다."},
             {"role": "user", "content": analysis_request}
