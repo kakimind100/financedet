@@ -53,6 +53,18 @@ def delete_old_data(cursor):
     cursor.execute('DELETE FROM stock_data WHERE date < ?', (cutoff_date.date(),))
     logging.info(f"730일이 지난 데이터 삭제 완료: {cursor.rowcount}개의 레코드 삭제됨.")
 
+def fetch_existing_data(code):
+    """기존 데이터를 조회하여 해당 주식 코드의 모든 데이터를 반환하는 함수."""
+    conn = sqlite3.connect('stock_data.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT date FROM stock_data WHERE code = ?', (code,))
+    existing_dates = cursor.fetchall()
+    
+    conn.close()
+    
+    return {date[0] for date in existing_dates}  # 날짜를 집합으로 반환
+
 def save_to_database(data):
     conn = sqlite3.connect('stock_data.db')  # SQLite 데이터베이스 파일 열기
     cursor = conn.cursor()
@@ -96,18 +108,24 @@ def fetch_and_store_stock_data(code, start_date):
             logging.warning(f"{code} 데이터가 없습니다.")
             return []
 
-        # 데이터 프레임을 리스트로 변환
+        # 기존 데이터 조회
+        existing_dates = fetch_existing_data(code)
+
+        # 데이터 프레임을 리스트로 변환, 기존 데이터와 비교하여 없는 데이터만 선택
         result = []
         for index, row in df.iterrows():
-            result.append({
-                'Code': str(code),
-                'Date': index.strftime('%Y-%m-%d'),
-                'Opening Price': float(row['Open']),
-                'Highest Price': float(row['High']),
-                'Lowest Price': float(row['Low']),
-                'Last Close': float(row['Close']),
-                'Volume': int(row['Volume'])
-            })
+            date_str = index.strftime('%Y-%m-%d')
+            if date_str not in existing_dates:  # 기존 데이터와 비교하여 추가할 데이터만 선택
+                result.append({
+                    'Code': str(code),
+                    'Date': date_str,
+                    'Opening Price': float(row['Open']),
+                    'Highest Price': float(row['High']),
+                    'Lowest Price': float(row['Low']),
+                    'Last Close': float(row['Close']),
+                    'Volume': int(row['Volume'])
+                })
+                logging.info(f"{code} - {date_str} 데이터 추가 대상.")
 
         logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
         return result
