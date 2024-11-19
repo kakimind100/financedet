@@ -122,6 +122,7 @@ def main():
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}", exc_info=True)
         return
 
+    # 종목 데이터 결합
     stocks = pd.concat([kospi, kosdaq])
     all_results = []
 
