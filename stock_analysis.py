@@ -1,3 +1,4 @@
+import platform
 import FinanceDataReader as fdr
 import pandas as pd
 import logging
@@ -11,8 +12,12 @@ import matplotlib.font_manager as fm
 matplotlib.use('Agg')  # Agg 백엔드 사용
 import matplotlib.pyplot as plt
 
-# 한글 글꼴 설정
-font_path = "C:/Windows/Fonts/malgun.ttf"  # 본인의 환경에 맞는 경로로 수정
+# 글꼴 설정
+if platform.system() == "Windows":
+    font_path = "C:/Windows/Fonts/malgun.ttf"  # Windows에서 Malgun Gothic 글꼴 사용
+else:
+    font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"  # Linux에서 DejaVu Sans 글꼴 사용
+
 font_prop = fm.FontProperties(fname=font_path, size=12)
 plt.rc('font', family=font_prop.get_name())
 
