@@ -159,6 +159,24 @@ def main():
     logging.info("스크립트 실행 시작")
     initialize_database()
 
+    # 데이터베이스 연결 및 테이블 생성
+    conn = sqlite3.connect('data/stock_data.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS stock_data (
+            code TEXT,
+            date DATE,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            volume INTEGER,
+            PRIMARY KEY (code, date)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
     today = datetime.today()
     start_date = today - timedelta(days=730)
     start_date_str = start_date.strftime('%Y-%m-%d')
