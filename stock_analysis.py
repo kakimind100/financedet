@@ -95,36 +95,20 @@ def visualize_stock_data(stock_data):
     plt.savefig('stock_prices_and_volume.png')
     plt.close()  # 그래프 닫기
 
-def send_graph_to_ai():
-    """주식 데이터를 AI에게 분석하여 다음 거래일에 상승 가능성이 높은 종목 추천."""
-    
-    # AI에게 데이터를 요청할 프롬프트 생성
-    prompt = (
-        "다음은 전체 주식 데이터입니다. "
-        "각 종목의 상승 가능성을 0%에서 100%로 점수화하고, "
-        "이유를 20자 내외로 작성한 후, 점수를 기준으로 상위 5개 종목을 추천해 주세요:\n\n"
-    )
-
-    # 전체 stock_data를 문자열로 변환하여 프롬프트에 추가
-    prompt += json.dumps(stock_data, ensure_ascii=False, indent=2)  # JSON 형식으로 변환하여 추가
-
-    # OpenAI API를 통해 분석 요청 (모델을 GPT-4로 변경)
+def send_graph_description_to_ai(graph_description):
+    """AI에게 그래프 설명을 요청하는 함수."""
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": graph_description}
         ],
         max_tokens=150  # 최대 토큰 수 설정
     )
-
-    # AI의 응답을 recommendations 리스트에 바로 추가
-    recommendations = response['choices'][0]['message']['content'].strip().split('\n')
-
-    return recommendations
+    return response['choices'][0]['message']['content']
 
 # 메인 실행 블록에서 결과 저장 호출 추가
 if __name__ == "__main__":
-    logging.info("스크립트 실행 시작")
+    logging.info("주식 분석 스크립트 실행 중...")
     
     # 최근 730 거래일을 기준으로 시작 날짜 설정
     today = datetime.today()
@@ -139,27 +123,20 @@ if __name__ == "__main__":
         for i in range(0, len(results), 10):  # 10개씩 나누어 출력
             logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         
-        # AI 분석 및 추천
-        recommendations = analyze_stocks(results)  # AI에게 추천 요청
-        logging.info("AI 추천 종목:")
-        
-        # 추천된 종목과 원본 데이터의 일치 여부 확인
-        recommended_codes = []
-        for rec in recommendations:
-            logging.info(rec)  # 추천 종목 출력
-            # 예를 들어, 추천 형식이 "종목코드: 이유"라면
-            code = rec.split(':')[0].strip()  # 종목 코드 추출
-            recommended_codes.append(code)
-        
-        # 추천된 종목 코드가 원본 데이터에 포함되어 있는지 확인
-        for code in recommended_codes:
-            if code in results:
-                logging.info(f"{code}는 원본 데이터에 포함되어 있습니다.")
-            else:
-                logging.warning(f"{code}는 원본 데이터에 포함되어 있지 않습니다.")
-
         # 주식 데이터 시각화 (종가 및 거래량 포함)
         visualize_stock_data(results)  # 전체 주식 데이터 시각화
+
+        # 그래프에 대한 설명
+        graph_description = (
+            "다음은 2년간의 주식 종가 및 거래량 그래프입니다. "
+            "다음 그래프를 보고 다음 거래일에 가장 많이 상승 가능성을 %로 표기하고 "
+            "상위 5개 종목을 이유 20자 내외로 함께 작성해 주세요."
+        )
+
+        # AI에게 그래프 설명 요청
+        insights = send_graph_description_to_ai(graph_description)
+        logging.info("AI의 그래프 분석 결과:")
+        logging.info(insights)  # AI의 응답 출력
 
         save_results_to_json(results)  # JSON 파일로 저장
     else:
