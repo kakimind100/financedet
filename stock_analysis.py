@@ -10,6 +10,9 @@ import matplotlib
 matplotlib.use('Agg')  # Agg 백엔드 사용
 import matplotlib.pyplot as plt
 
+# OpenAI API 키 설정
+openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
+
 # JSON 파일로 결과를 저장하는 함수
 def save_results_to_json(data, filename='results.json'):
     with open(filename, 'w') as f:
@@ -25,6 +28,12 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 def search_stocks(start_date):
     """주식 종목을 검색하는 함수."""
