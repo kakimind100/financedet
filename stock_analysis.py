@@ -122,7 +122,7 @@ if __name__ == "__main__":
             try:
                 codes = future.result()
                 all_codes.extend(codes)
-                logging.info(f"{market} 종목 목록 가져오기 성공")
+                logging.info(f"{market} 종목 목록 가져오기 성공: {len(codes)}개")
             except Exception as e:
                 logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
 
