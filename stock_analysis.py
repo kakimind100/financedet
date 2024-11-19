@@ -58,7 +58,12 @@ def search_stocks(start_date):
             try:
                 df = future.result()
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
-                
+
+                # 날짜 정보가 포함되어 있는지 확인
+                if 'Date' not in df.columns:
+                    logging.error(f"{code}의 데이터에 'Date' 키가 없습니다: {df.head()}")
+                    continue  # 날짜 정보가 없으면 다음 종목으로 넘어감
+
                 # 날짜별 데이터 저장
                 result[code] = df.to_dict(orient='records')  # 리스트 형태의 딕셔너리로 변환
             except Exception as e:
