@@ -36,7 +36,7 @@ def fetch_and_store_stock_data(code, start_date):
     logging.info(f"{code} 데이터 가져오기 시작")
     try:
         df = fdr.DataReader(code, start=start_date)
-        logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
+        logging.info(f"{code} 데이터 가져오기 성공, 데이터 길이: {len(df)}")
 
         if len(df) < 1:
             logging.warning(f"{code} 데이터가 없습니다.")
@@ -53,7 +53,8 @@ def fetch_and_store_stock_data(code, start_date):
                 'Last Close': float(row['Close']),
                 'Volume': int(row['Volume'])
             })
-            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 완료.")
+            logging.info(f"{code} - {index.strftime('%Y-%m-%d')} 데이터 추가 완료. "
+                         f"시가: {row['Open']}, 종가: {row['Close']}, 거래량: {row['Volume']}")
 
         logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
         return result
@@ -103,10 +104,10 @@ def main():
     # KOSPI와 KOSDAQ 종목 목록 가져오기
     try:
         kospi = fdr.StockListing('KOSPI')
-        logging.info("코스피 종목 목록 가져오기 성공, 종목 수: {}".format(len(kospi)))
+        logging.info(f"코스피 종목 목록 가져오기 성공, 종목 수: {len(kospi)}")
         
         kosdaq = fdr.StockListing('KOSDAQ')
-        logging.info("코스닥 종목 목록 가져오기 성공, 종목 수: {}".format(len(kosdaq)))
+        logging.info(f"코스닥 종목 목록 가져오기 성공, 종목 수: {len(kosdaq)}")
     except Exception as e:
         logging.error(f"종목 목록 가져오기 중 오류 발생: {e}", exc_info=True)
         return
