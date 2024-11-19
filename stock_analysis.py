@@ -103,7 +103,7 @@ def calculate_summary(stock_data):
 def send_stock_analysis_to_ai(stock_data, summary_data):
     """AI에게 주식 데이터 분석을 요청하는 함수."""
     analysis_request = (
-        "다음은 최근 6개월간의 주식 데이터 요약입니다:\n"
+        "다음은 최근 2년간의 주식 데이터 요약입니다:\n"
     )
     
     for code, summary in summary_data.items():
@@ -133,9 +133,9 @@ def send_stock_analysis_to_ai(stock_data, summary_data):
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
     
-    # 최근 180 거래일을 기준으로 시작 날짜 설정 (약 6개월)
+    # 최근 2년을 기준으로 시작 날짜 설정
     today = datetime.today()
-    start_date = today - timedelta(days=180)  # 최근 180 거래일 전 날짜
+    start_date = today - timedelta(days=730)  # 최근 2년 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
