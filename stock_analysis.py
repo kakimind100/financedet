@@ -35,6 +35,7 @@ def create_database():
     ''')
     conn.commit()
     conn.close()
+    logging.info("데이터베이스 및 테이블 생성 완료.")
 
 def save_to_database(data):
     conn = sqlite3.connect('stocks.db')
@@ -56,6 +57,7 @@ def save_to_database(data):
     
     conn.commit()
     conn.close()
+    logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
 
 def analyze_stock(code, start_date):
     """주식 데이터를 분석하고 데이터베이스에 저장하는 함수."""
@@ -80,7 +82,13 @@ def analyze_stock(code, start_date):
                 'Last Close': float(row['Close']),
                 'Volume': int(row['Volume'])  # 거래량
             })
-        
+            # 각 종목의 데이터 로그 추가
+            logging.info(f"{code} - 날짜: {index.strftime('%Y-%m-%d')}, "
+                         f"시가: {row['Open']}, 최고가: {row['High']}, "
+                         f"최저가: {row['Low']}, 종가: {row['Close']}, "
+                         f"거래량: {row['Volume']}")
+
+        logging.info(f"{code} 데이터 처리 완료: {len(result)}개 항목.")
         return result  # 결과 반환
 
     except Exception as e:
@@ -120,7 +128,7 @@ if __name__ == "__main__":
     create_database()  # 데이터베이스 및 테이블 생성
 
     today = datetime.today()
-    start_date = today - timedelta(days=40)  # 최근 40 거래일 전 날짜
+    start_date = today - timedelta(days=730)  # 최근 2년(730일) 전 날짜
     start_date_str = start_date.strftime('%Y-%m-%d')
 
     logging.info(f"주식 분석 시작 날짜: {start_date_str}")
