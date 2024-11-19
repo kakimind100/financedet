@@ -122,9 +122,17 @@ def is_cup_with_handle(df):
         logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다. handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}, 데이터 길이: {len(df)}")
         return False, None
 
+    # 매수 조건 확인
     if handle_top < cup_top and cup_bottom < handle_top:
-        logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0]}")
-        return True, df.index[-1]  # 최근 날짜 반환
+        buy_price = cup_top * 1.01  # 매수 가격 설정 (컵 상단의 1% 상승)
+        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]  # 두 번째 고점 시점의 거래량
+        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]  # 최근 5일 평균 거래량
+
+        if recent_volume > average_volume:
+            logging.info(f"매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
+            return True, df.index[-1]  # 최근 날짜 반환
+        else:
+            logging.warning("거래량이 충분하지 않아 매수 신호가 없습니다.")
     else:
         logging.debug(f"패턴 미발견. 종목 코드: {df['Code'].iloc[0]}, handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
     
