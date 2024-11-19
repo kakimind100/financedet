@@ -7,8 +7,14 @@ import os
 import json
 import openai
 import matplotlib
+import matplotlib.font_manager as fm
 matplotlib.use('Agg')  # Agg 백엔드 사용
 import matplotlib.pyplot as plt
+
+# 한글 글꼴 설정
+font_path = "C:/Windows/Fonts/malgun.ttf"  # 본인의 환경에 맞는 경로로 수정
+font_prop = fm.FontProperties(fname=font_path, size=12)
+plt.rc('font', family=font_prop.get_name())
 
 # OpenAI API 키 설정
 openai.api_key = os.getenv('OPENAI_API_KEY')  # 환경 변수에서 API 키 가져오기
@@ -84,7 +90,7 @@ def visualize_stock_data(code, records):
     plt.figure(figsize=(12, 6))  # 그래프 크기 설정
 
     # 종가 그래프 그리기
-    plt.plot(df.index, df['Close'], label=f'{code} 종가')  # 종목 코드 포함
+    plt.plot(df.index, df['Close'], label=f'{code} 종가', color='blue')  # 종목 코드 포함
 
     # 거래량 그래프 그리기 (second y-axis)
     ax2 = plt.gca().twinx()  # 두 번째 y축 생성
