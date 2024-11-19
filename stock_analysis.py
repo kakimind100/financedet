@@ -111,11 +111,23 @@ if __name__ == "__main__":
             logging.info(list(results.keys())[i:i+10])  # 종목 코드 리스트에서 10개씩 출력
         
         # AI 분석 및 추천
-        stock_codes = list(results.keys())  # 종목 코드 리스트
-        recommendations = analyze_stocks(stock_codes)  # AI에게 추천 요청
+        recommendations = analyze_stocks(results)  # AI에게 추천 요청
         logging.info("AI 추천 종목:")
+        
+        # 추천된 종목과 원본 데이터의 일치 여부 확인
+        recommended_codes = []
         for rec in recommendations:
             logging.info(rec)  # 추천 종목 출력
+            # 예를 들어, 추천 형식이 "종목코드: 이유"라면
+            code = rec.split(':')[0].strip()  # 종목 코드 추출
+            recommended_codes.append(code)
+        
+        # 추천된 종목 코드가 원본 데이터에 포함되어 있는지 확인
+        for code in recommended_codes:
+            if code in results:
+                logging.info(f"{code}는 원본 데이터에 포함되어 있습니다.")
+            else:
+                logging.warning(f"{code}는 원본 데이터에 포함되어 있지 않습니다.")
 
         save_results_to_json(results)  # JSON 파일로 저장
     else:
