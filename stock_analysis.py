@@ -11,13 +11,20 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG 레벨로 모든 로그 기록
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)  # 콘솔에는 INFO 레벨 이상만 출력
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:  # 최소 60일의 데이터 필요
+        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0] if 'Code' in df.columns else 'N/A'}")
         return False, None
     
     # 컵의 저점과 핸들의 저점 찾기
@@ -33,6 +40,7 @@ def is_cup_with_handle(df):
     
     # 컵과 핸들 패턴 조건
     if handle_top < cup_top and cup_bottom < handle_top:
+        logging.debug(f"패턴 발견! 종목 코드: {df['Code'].iloc[0] if 'Code' in df.columns else 'N/A'}")
         return True, df.index[-1]  # 최근 날짜 반환
     return False, None
 
@@ -56,6 +64,7 @@ def search_stocks(start_date):
 
     for code in stocks['Code']:
         try:
+            logging.debug(f"종목 코드 {code} 데이터 가져오는 중...")
             df = fdr.DataReader(code, start_date)
             is_pattern, pattern_date = is_cup_with_handle(df)
             if is_pattern:
@@ -63,6 +72,8 @@ def search_stocks(start_date):
                     recent_date = pattern_date
                     recent_cup_with_handle = code
                     logging.info(f"{code}에서 최근 Cup with Handle 패턴 발견 (완성 날짜: {pattern_date})")
+            else:
+                logging.debug(f"{code}에서 Cup with Handle 패턴 발견하지 못함.")
         except Exception as e:
             logging.error(f"{code} 처리 중 오류 발생: {e}")
 
