@@ -57,7 +57,7 @@ def save_to_database(data):
     
     conn.commit()
     conn.close()
-    logging.info(f"{len(data)}개의 데이터를 데이터베이스에 저장 완료.")
+    logging.info(f"{len(data)}개의 {data[0]['Code']} 데이터가 데이터베이스에 저장 완료.")
 
 def analyze_stock(code, start_date):
     """주식 데이터를 분석하고 데이터베이스에 저장하는 함수."""
@@ -137,5 +137,6 @@ if __name__ == "__main__":
     if results:  # 결과가 있을 때만 데이터베이스에 저장
         save_to_database(results)  # 데이터베이스에 저장
         logging.info(f"저장된 종목 수: {len(results)}")
+        logging.info("모든 데이터가 성공적으로 데이터베이스에 저장되었습니다.")
     else:
         logging.info("조건을 만족하는 종목이 없습니다.")
