@@ -18,22 +18,21 @@ jobs:
         with:
           python-version: '3.8'  # 사용할 Python 버전 설정
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y fonts-nanum fonts-dejavu  # 한글 글꼴 설치
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
+
+      - name: Create directories
+        run: |
+          mkdir -p logs json_results  # logs 및 json_results 디렉토리 생성
 
       - name: Check current directory
         run: |
           echo "현재 디렉토리:"
           pwd
           echo "현재 디렉토리의 파일 목록:"
-          ls -al json_results  # json_results 폴더의 파일 목록 확인
+          ls -al  # 현재 디렉토리의 파일 목록 확인
 
       - name: Run Stock Analysis
         env:
