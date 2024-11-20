@@ -3,7 +3,7 @@ import json
 import logging
 import requests
 import openai
-import yaml
+import os
 from datetime import datetime, timedelta
 
 # 로깅 설정
@@ -11,12 +11,6 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
-
-def load_config():
-    """YAML 파일에서 설정을 로드하는 함수."""
-    with open("config.yml", 'r') as file:
-        config = yaml.safe_load(file)
-    return config
 
 def send_discord_message(webhook_url, message):
     """Discord 웹훅으로 메시지를 전송하는 함수."""
@@ -45,10 +39,9 @@ def get_ai_response(api_key, prompt):
         return None
 
 def main():
-    # 설정 로드
-    config = load_config()
-    discord_webhook_url = config['discord']['webhook_url']
-    openai_api_key = config['openai']['api_key']
+    # 환경 변수에서 설정 로드
+    discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
+    openai_api_key = os.getenv('OPENAI_API_KEY')
 
     # 인수로 전달된 파일 경로 확인
     if len(sys.argv) < 2:
