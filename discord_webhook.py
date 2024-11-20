@@ -4,7 +4,7 @@ import logging
 
 # 로깅 설정
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,  # 로그 레벨을 INFO로 변경하여 DEBUG 로그를 숨깁니다.
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -24,15 +24,15 @@ def main():
 
         top_stocks = data.get('top_stocks', [])
         logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
-        logging.debug(f"읽어온 데이터: {data}")  # 데이터 내용 로그
 
         # 데이터 확인을 위한 출력
         for stock in top_stocks:
             logging.info(f"종목 코드: {stock['code']}, 컵: {stock['cup']}, 다이버전스: {stock['divergence']}, 원형 바닥: {stock['round_bottom']}")
 
-            # 추가적인 데이터 로그
-            for record in stock['data']:
-                logging.debug(f"데이터: {record}")
+            # 필요한 경우 데이터의 특정 부분만 로그로 출력
+            # 예를 들어, 종목 코드와 마지막 종가만 출력
+            last_record = stock['data'][-1]  # 마지막 데이터 포인트
+            logging.info(f"종목 코드: {stock['code']}, 마지막 종가: {last_record['Close']}")
 
     except FileNotFoundError:
         logging.error(f"파일을 찾을 수 없습니다: {filename}")
