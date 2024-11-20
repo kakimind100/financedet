@@ -91,30 +91,6 @@ def is_cup_with_handle(df):
     
     return False, None
 
-def is_golden_cross(df):
-    """골든 크로스 패턴을 찾는 함수."""
-    if len(df) < 200:  # 200일 이동 평균을 위해 최소 200일의 데이터 필요
-        logging.debug(f"거래일 기준 데이터 길이가 200일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
-        return False, None
-
-    df['SMA50'] = df['Close'].rolling(window=50).mean()
-    df['SMA200'] = df['Close'].rolling(window=200).mean()
-
-    # 이동 평균이 계산되지 않은 경우 경고
-    if df['SMA50'].isnull().all() or df['SMA200'].isnull().all():
-        logging.warning(f"종목 코드: {df['Code'].iloc[0]}의 이동 평균 데이터가 없습니다.")
-        return False, None
-
-    last_sma50 = df['SMA50'].iloc[-1]
-    last_sma200 = df['SMA200'].iloc[-1]
-    prev_sma50 = df['SMA50'].iloc[-2]
-    prev_sma200 = df['SMA200'].iloc[-2]
-
-    if prev_sma50 < prev_sma200 and last_sma50 > last_sma200:
-        return True, df.index[-1]
-
-    return False, None
-
 def is_bullish_divergence(df):
     """다이버전스 패턴을 찾는 함수."""
     if len(df) < 15:  # 충분한 데이터가 필요
@@ -193,24 +169,22 @@ def search_patterns_and_find_top(stocks_data):
 
         # 각 패턴 탐지
         is_cup, cup_date = is_cup_with_handle(df)
-        is_golden, cross_date = is_golden_cross(df)
         is_divergence, divergence_date = is_bullish_divergence(df)
-        is_round_bottom_found, round_bottom_date = is_round_bottom(df)  # 수정된 부분
+        is_round_bottom_found, round_bottom_date = is_round_bottom(df)
 
         # 패턴 결과 저장
         pattern_info = {
             'code': code,
             'cup': is_cup,
-            'golden_cross': is_golden,
             'divergence': is_divergence,
-            'round_bottom': is_round_bottom_found,  # 수정된 부분
+            'round_bottom': is_round_bottom_found,
             'data': df.to_dict(orient='records')
         }
 
         results.append(pattern_info)
 
     # 모든 패턴이 발견된 종목 필터링
-    all_patterns_found = [res for res in results if res['cup'] and res['golden_cross'] and res['divergence'] and res['round_bottom']]
+    all_patterns_found = [res for res in results if res['cup'] and res['divergence'] and res['round_bottom']]
 
     # 종목 평가 및 점수 계산
     for item in all_patterns_found:
