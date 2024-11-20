@@ -83,6 +83,7 @@ def main():
 
         if ai_response:
             logging.info(f"AI 응답: {ai_response}")
+            # AI의 응답을 Discord 웹훅으로 전송
             send_discord_message(discord_webhook_url, f"상승 가능성 예측:\n{ai_response}")
 
     except FileNotFoundError:
