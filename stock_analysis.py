@@ -168,24 +168,29 @@ def search_patterns(stocks_data):
         df['RSI'] = calculate_rsi(df)
 
         # Cup with Handle 패턴 확인
-        is_pattern, pattern_date = is_cup_with_handle(df)
-        if is_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때 매수 신호 추가
-            results.append({
-                'code': code,
-                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
-            })
+        is_cup_handle, pattern_date = is_cup_with_handle(df)
+        
+        # 돌파 패턴 확인
+        is_breakout_pattern = is_breakout(df)
 
-        # 추가 패턴 확인
-        if is_golden_cross(df):
+        # 조건이 모두 만족할 경우
+        if is_cup_handle and is_breakout_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
             results.append({
                 'code': code,
-                'pattern_date': df.index[-1].strftime('%Y-%m-%d')
+                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
+                'type': 'Cup with Handle and Breakout'
             })
-
-        if is_breakout(df):
+        elif is_cup_handle:
             results.append({
                 'code': code,
-                'pattern_date': df.index[-1].strftime('%Y-%m-%d')
+                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
+                'type': 'Cup with Handle'
+            })
+        elif is_breakout_pattern:
+            results.append({
+                'code': code,
+                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
+                'type': 'Breakout'
             })
 
     return results  # 결과를 제한하지 않음
@@ -222,7 +227,7 @@ if __name__ == "__main__":
     # 최근 발견된 패턴을 가진 종목을 로그로 기록
     if results:
         for result in results:
-            logging.info(f"발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']})")
+            logging.info(f"발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']}, 유형: {result['type']})")
     else:
         logging.info("발견된 패턴이 없습니다.")
 
