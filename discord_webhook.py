@@ -9,7 +9,11 @@ logging.basicConfig(
 )
 
 def main():
-    # 인수로 전달된 파일 경로
+    # 인수로 전달된 파일 경로 확인
+    if len(sys.argv) < 2:
+        logging.error("파일 경로가 제공되지 않았습니다. 사용법: python discord_webhook.py <파일경로>")
+        return
+
     filename = sys.argv[1]
     logging.info(f"전달받은 파일 경로: {filename}")
 
@@ -28,8 +32,6 @@ def main():
         # 데이터 확인을 위한 출력
         for stock in top_stocks:
             logging.info(f"종목 코드: {stock['code']}, 점수: {stock['score']}")
-            # 필요한 경우 더 많은 데이터 출력 가능
-            # 예: logging.info(f"데이터: {stock['data']}")
 
     except FileNotFoundError:
         logging.error(f"파일을 찾을 수 없습니다: {filename}")
