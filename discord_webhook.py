@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime, timedelta
+import pandas as pd  # pandas 임포트 추가
 
 def load_results():
     """저장된 JSON 파일에서 결과를 로드하는 함수."""
