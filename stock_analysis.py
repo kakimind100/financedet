@@ -251,9 +251,13 @@ def search_patterns_and_find_top(stocks_data):
         if buy_signal:
             logging.info(f"종목 코드: {stock['code']} - 매수 신호 발생 (RSI: {rsi_value})")
 
-    # Discord 웹훅 스크립트로 데이터 전달
-    if top_50_stocks:
-        subprocess.run(["python", "discord_webhook.py", json.dumps(top_50_stocks)])
+    # top_50_stocks를 JSON 파일로 저장
+    filename = os.path.join(json_dir, 'top_50_stocks.json')
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(top_50_stocks, f, default=str, ensure_ascii=False, indent=4)
+
+    # Discord 웹훅 스크립트로 데이터 전달 (파일 경로 전달)
+    subprocess.run(["python", "discord_webhook.py", filename])
 
     return top_50_stocks
 
@@ -291,4 +295,3 @@ if __name__ == "__main__":
             logging.info(f"종목 코드: {stock['code']} - 점수: {stock['score']}")
     else:
         logging.info("모든 패턴을 만족하는 종목이 없습니다.")
-
