@@ -69,6 +69,15 @@ def load_stock_data_from_json():
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def calculate_rsi(df, window=14):
+    """상대 강도 지수 (RSI)를 계산하는 함수."""
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:
@@ -96,7 +105,6 @@ def is_cup_with_handle(df):
     cup_depth = (cup_top - cup_bottom) / cup_top  # 컵 깊이 비율
     handle_depth = (handle_top - cup_bottom) / cup_top  # 핸들 깊이 비율
 
-    # 컵 깊이는 10% 이상, 핸들 깊이는 5% 미만이어야 함
     if cup_depth < 0.10 or handle_depth > 0.05:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음. 컵 깊이: {cup_depth}, 핸들 깊이: {handle_depth}")
         return False, None
@@ -134,8 +142,11 @@ def search_cup_with_handle(stocks_data):
 
         logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
 
+        # RSI 계산
+        df['RSI'] = calculate_rsi(df)
+
         is_pattern, pattern_date = is_cup_with_handle(df)
-        if is_pattern:
+        if is_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때 매수 신호 추가
             results.append({
                 'code': code,
                 'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
