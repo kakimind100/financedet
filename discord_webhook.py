@@ -70,8 +70,13 @@ def main():
                         record['Date'] = (datetime.today() - timedelta(days=index)).strftime('%Y-%m-%d')
                         logging.info(f"종목 코드: {code} - 날짜 추가: {record['Date']}")
 
-        # 상승 가능성 예측을 위한 프롬프트 생성
-        analysis_prompt = "다음 거래일에 상승 가능성을 %로 예측하고 상위 5종목에 대해 20자 내외의 이유를 작성해 주세요."
+        # AI에게 JSON 파일의 데이터를 기반으로 분석 요청
+        analysis_prompt = (
+            f"다음 거래일에 상승 가능성이 높은 5개 종목을 분석해 주세요.\n"
+            f"주식 데이터는 다음과 같습니다:\n{json.dumps(top_stocks, ensure_ascii=False)}\n"
+            f"각 종목에 대한 상승 가능성을 %로 예측하고, 간단한 이유를 20자 내외로 작성해 주세요."
+        )
+        
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
 
         if ai_response:
