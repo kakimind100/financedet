@@ -7,11 +7,10 @@ import os
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# 로그 디렉토리 생성
+# 로그 및 JSON 파일 디렉토리 설정
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
-# JSON 파일 저장 디렉토리 생성
 json_dir = 'json_results'
 os.makedirs(json_dir, exist_ok=True)
 
@@ -22,7 +21,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# 콘솔에도 로그 출력
+# 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -115,8 +114,37 @@ def is_golden_cross(df):
 
     return False, None
 
+def is_bullish_divergence(df):
+    """다이버전스 패턴을 찾는 함수."""
+    if len(df) < 15:  # 충분한 데이터가 필요
+        return False, None
+
+    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff(1).clip(lower=0).rolling(window=14).mean() /
+                                      df['Close'].diff(1).clip(upper=0).abs().rolling(window=14).mean())))
+
+    # 최근 두 개의 종가와 RSI를 비교
+    if (df['Close'].iloc[-1] < df['Close'].iloc[-2] and 
+        df['RSI'].iloc[-1] > df['RSI'].iloc[-2]):
+        return True, df.index[-1]
+    
+    return False, None
+
+def is_round_bottom(df):
+    """원형 바닥 패턴을 찾는 함수."""
+    if len(df) < 30:  # 충분한 데이터가 필요
+        return False, None
+
+    # 바닥 형성을 위한 간단한 기준
+    recent_low = df['Low'].rolling(window=10).min().iloc[-1]
+    recent_high = df['High'].rolling(window=10).max().iloc[-1]
+
+    if df['Close'].iloc[-1] > recent_low and df['Close'].iloc[-1] < recent_high:
+        return True, df.index[-1]
+
+    return False, None
+
 def search_patterns(stocks_data):
-    """컵과 핸들 및 골든 크로스 패턴을 찾는 함수."""
+    """컵과 핸들, 골든 크로스, 다이버전스 및 원형 바닥 패턴을 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
@@ -132,10 +160,11 @@ def search_patterns(stocks_data):
         # 패턴 탐지
         is_cup, cup_date = is_cup_with_handle(df)
         is_golden, cross_date = is_golden_cross(df)
+        is_divergence, divergence_date = is_bullish_divergence(df)
+        is_round_bottom, round_bottom_date = is_round_bottom(df)
 
         # 컵과 핸들 패턴이 발견된 경우
         if is_cup:
-            # 전체 데이터 저장
             results.append({
                 'code': code,
                 'pattern': 'Cup with Handle',
@@ -145,11 +174,28 @@ def search_patterns(stocks_data):
 
         # 골든 크로스 패턴이 발견된 경우
         if is_golden:
-            # 전체 데이터 저장
             results.append({
                 'code': code,
                 'pattern': 'Golden Cross',
                 'pattern_date': cross_date.strftime('%Y-%m-%d'),
+                'data': df.to_dict(orient='records')  # 전체 데이터 저장
+            })
+
+        # 다이버전스 패턴이 발견된 경우
+        if is_divergence:
+            results.append({
+                'code': code,
+                'pattern': 'Bullish Divergence',
+                'pattern_date': divergence_date.strftime('%Y-%m-%d'),
+                'data': df.to_dict(orient='records')  # 전체 데이터 저장
+            })
+
+        # 원형 바닥 패턴이 발견된 경우
+        if is_round_bottom:
+            results.append({
+                'code': code,
+                'pattern': 'Round Bottom',
+                'pattern_date': round_bottom_date.strftime('%Y-%m-%d'),
                 'data': df.to_dict(orient='records')  # 전체 데이터 저장
             })
 
@@ -175,7 +221,7 @@ if __name__ == "__main__":
                 codes = future.result()
                 all_codes.extend(codes)
                 logging.info(f"{market} 종목 목록 가져오기 성공: {len(codes)}개")
-            except
+            except Exception as e:
                 logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
 
     fetch_and_save_stock_data(all_codes, start_date_str, end_date)
@@ -188,5 +234,5 @@ if __name__ == "__main__":
         for result in results:
             logging.info(f"종목 코드: {result['code']} - 패턴: {result['pattern']} (완성 날짜: {result['pattern_date']})")
     else:
-        logging.info("Cup with Handle 또는 Golden Cross 패턴을 가진 종목이 없습니다.")
+        logging.info("Cup with Handle, Golden Cross, Bullish Divergence 또는 Round Bottom 패턴을 가진 종목이 없습니다.")
 
