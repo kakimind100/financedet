@@ -105,8 +105,8 @@ def is_cup_with_handle(df):
     cup_depth = (cup_top - cup_bottom) / cup_top  # 컵 깊이 비율
     handle_depth = (handle_top - cup_bottom) / cup_top  # 핸들 깊이 비율
 
-    # 조건 완화: 컵 깊이를 0.15 이상으로 설정하고 핸들 깊이를 0.1 이하로 설정
-    if cup_depth < 0.15 or handle_depth > 0.1:
+    # 조건 완화: 컵 깊이를 0.1 이상으로 설정하고 핸들 깊이를 0.15 이하로 설정
+    if cup_depth < 0.1 or handle_depth > 0.15:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음. 컵 깊이: {cup_depth}, 핸들 깊이: {handle_depth}")
         return False, None
 
@@ -169,12 +169,16 @@ def search_patterns(stocks_data):
             })
         
         # 골든 크로스 패턴이 발견된 경우 추가
-        elif is_golden_cross_pattern:
+        if is_golden_cross_pattern:
             results.append({
                 'code': code,
                 'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
                 'type': 'Golden Cross'
             })
+
+        # 두 패턴이 모두 발견된 경우 로그 기록
+        if is_cup_handle and is_golden_cross_pattern:
+            logging.info(f"종목 코드: {code} - 컵 위드 핸들 및 골든 크로스 조건 모두 만족!")
 
     return results  # 모든 패턴 확인 후 결과 반환
 
