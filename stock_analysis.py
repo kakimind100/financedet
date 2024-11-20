@@ -47,6 +47,12 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
             code = futures[future]
             try:
                 df = future.result()
+
+                # 거래 정지 여부 확인 (여기서는 'Status' 열이 있다고 가정)
+                if 'Status' in df.columns and '거래 정지' in df['Status'].values:
+                    logging.info(f"{code}는 거래 정지 상태입니다. 제외합니다.")
+                    continue
+
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
                 if 'Date' not in df.columns:
@@ -193,3 +199,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
+
