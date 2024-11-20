@@ -20,18 +20,19 @@ def main():
     try:
         # JSON 파일 읽기
         with open(filename, 'r', encoding='utf-8') as f:
-            top_stocks = json.load(f)
+            data = json.load(f)
 
-        if not top_stocks:
-            logging.error("주식 데이터가 없습니다.")
-            return
-
+        top_stocks = data.get('top_stocks', [])
         logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
-        logging.debug(f"읽어온 데이터: {top_stocks}")  # 데이터 내용 로그
+        logging.debug(f"읽어온 데이터: {data}")  # 데이터 내용 로그
 
         # 데이터 확인을 위한 출력
         for stock in top_stocks:
-            logging.info(f"종목 코드: {stock['code']}, 점수: {stock['score']}")
+            logging.info(f"종목 코드: {stock['code']}, 컵: {stock['cup']}, 다이버전스: {stock['divergence']}, 원형 바닥: {stock['round_bottom']}")
+
+            # 추가적인 데이터 로그
+            for record in stock['data']:
+                logging.debug(f"데이터: {record}")
 
     except FileNotFoundError:
         logging.error(f"파일을 찾을 수 없습니다: {filename}")
