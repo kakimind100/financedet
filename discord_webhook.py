@@ -1,7 +1,18 @@
 import json
-import requests
 import os
+import logging
 from datetime import datetime, timedelta
+
+# 로그 디렉토리 생성
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
+
+# 로깅 설정
+logging.basicConfig(
+    filename=os.path.join(log_dir, 'discord_webhook.log'),
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def filter_recent_data(data, days=40):
     """최근 n일의 데이터만 필터링하는 함수."""
@@ -14,6 +25,11 @@ def filter_recent_data(data, days=40):
             recent_data.append(item)
 
     return recent_data
+
+def log_recent_data(data):
+    """최근 데이터를 로그에 기록하는 함수."""
+    for item in data:
+        logging.info(f"종목 코드: {item['code']}, 완성 날짜: {item['pattern_date']}, 유형: {item['type']}")
 
 def send_to_discord(data):
     """Discord 웹훅으로 데이터를 전송하는 함수."""
@@ -59,6 +75,7 @@ if __name__ == "__main__":
     if results:
         recent_results = filter_recent_data(results)  # 최근 40일 데이터 필터링
         if recent_results:
+            log_recent_data(recent_results)  # 최근 데이터 로그 기록
             # 웹훅 전송 부분은 주석 처리
             # send_to_discord(recent_results)  # Discord로 전송
             print("최근 40일 데이터:", recent_results)  # 필터링된 데이터 출력
