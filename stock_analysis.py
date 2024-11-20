@@ -79,9 +79,9 @@ def calculate_rsi(df, window=14):
     return rsi
 
 def is_cup_with_handle(df):
-    """컵과 핸들 패턴을 찾는 함수."""
-    if len(df) < 60:
-        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+    """컵과 핸들 패턴을 찾는 함수. 조건을 완화했습니다."""
+    if len(df) < 40:  # 데이터 길이를 40으로 완화
+        logging.debug(f"데이터 길이가 40일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None
 
     cup_bottom = df['Low'].min()
@@ -91,8 +91,8 @@ def is_cup_with_handle(df):
     cup_top = df['Close'][:cup_bottom_index].max()
     handle_start_index = cup_bottom_index + 1
 
-    # 핸들 정의: 길이를 5일에서 15일로 유연하게 설정
-    handle_length = min(15, len(df) - handle_start_index)
+    # 핸들 정의: 길이를 5일에서 10일로 유연하게 설정
+    handle_length = min(10, len(df) - handle_start_index)
     handle = df.iloc[handle_start_index:handle_start_index + handle_length]
 
     if handle.empty:
@@ -105,7 +105,8 @@ def is_cup_with_handle(df):
     cup_depth = (cup_top - cup_bottom) / cup_top  # 컵 깊이 비율
     handle_depth = (handle_top - cup_bottom) / cup_top  # 핸들 깊이 비율
 
-    if cup_depth < 0.10 or handle_depth > 0.05:
+    # 조건 완화: 컵 깊이를 0.15 이상으로 설정하고 핸들 깊이를 0.1 이하로 설정
+    if cup_depth < 0.15 or handle_depth > 0.1:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음. 컵 깊이: {cup_depth}, 핸들 깊이: {handle_depth}")
         return False, None
 
