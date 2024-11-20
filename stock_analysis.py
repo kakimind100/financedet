@@ -49,6 +49,10 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                 df = future.result()
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
+                # 마지막 10일 데이터 로그 출력
+                if len(df) >= 10:
+                    logging.info(f"{code}의 마지막 10일 간 데이터:\n{df.tail(10)}")
+
                 if 'Date' not in df.columns:
                     df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
                     logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
@@ -183,6 +187,14 @@ if __name__ == "__main__":
 
     stocks_data = load_stock_data_from_json()
 
+    # 마지막 10일 데이터 로그 출력
+    for code, data in stocks_data.items():
+        df = pd.DataFrame(data)
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df.set_index('Date', inplace=True)
+        if len(df) >= 10:
+            logging.info(f"{code}의 마지막 10일 간 데이터:\n{df.tail(10)}")
+
     recent_stock, date_found, results = search_cup_with_handle(stocks_data)
     if recent_stock:
         logging.info(f"가장 최근 Cup with Handle 패턴이 발견된 종목: {recent_stock} (완성 날짜: {date_found})")
@@ -193,3 +205,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
+
