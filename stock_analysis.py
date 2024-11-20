@@ -79,7 +79,7 @@ def calculate_rsi(df, window=14):
     return rsi
 
 def is_cup_with_handle(df):
-    """컵과 핸들 패턴을 찾는 함수. 조건을 완화했습니다."""
+    """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 40:  # 데이터 길이를 40으로 완화
         logging.debug(f"데이터 길이가 40일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False
@@ -91,7 +91,6 @@ def is_cup_with_handle(df):
     cup_top = df['Close'][:cup_bottom_index].max()
     handle_start_index = cup_bottom_index + 1
 
-    # 핸들 정의: 길이를 5일에서 10일로 유연하게 설정
     handle_length = min(10, len(df) - handle_start_index)
     handle = df.iloc[handle_start_index:handle_start_index + handle_length]
 
@@ -100,30 +99,15 @@ def is_cup_with_handle(df):
         return False
 
     handle_top = handle['Close'].max()
+    cup_depth = (cup_top - cup_bottom) / cup_top
+    handle_depth = (handle_top - cup_bottom) / cup_top
 
-    # 컵과 핸들 조건 강화
-    cup_depth = (cup_top - cup_bottom) / cup_top  # 컵 깊이 비율
-    handle_depth = (handle_top - cup_bottom) / cup_top  # 핸들 깊이 비율
-
-    # 조건 완화: 컵 깊이를 0.1 이상으로 설정하고 핸들 깊이를 0.15 이하로 설정
     if cup_depth < 0.1 or handle_depth > 0.15:
-        logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음. 컵 깊이: {cup_depth}, 핸들 깊이: {handle_depth}")
+        logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음.")
         return False
 
-    # 매수 신호 조건 강화
     if handle_top < cup_top and cup_bottom < handle_top:
-        buy_price = cup_top * 1.02  # 매수 가격을 컵 상단의 2% 상승으로 설정
-        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]
-        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]
-
-        if recent_volume > average_volume * 1.5:  # 거래량이 평균의 1.5배 이상이어야 매수 신호
-            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
-            return True
-        else:
-            logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 거래량이 충분하지 않아 매수 신호가 없습니다.")
-    else:
-        logging.debug(f"종목 코드: {df['Code'].iloc[0]} - 패턴 미발견. handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
-
+        return True
     return False
 
 def is_golden_cross(df):
@@ -160,9 +144,8 @@ def search_patterns(stocks_data):
         is_cup_handle = is_cup_with_handle(df)
         is_golden_cross_pattern = is_golden_cross(df)
 
-        # 컵 위드 핸들 조건이 만족하는 경우
-        if is_cup_handle and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
-            # 필요한 정보 추가
+        # 패턴이 발견된 경우
+        if is_cup_handle or is_golden_cross_pattern:
             results.append({
                 'code': code,
                 'low': df['Low'].min(),  # 전체 데이터의 최저가
@@ -171,21 +154,6 @@ def search_patterns(stocks_data):
                 'close': df['Close'].iloc[-1],  # 종가
                 'volume': df['Volume'].sum()  # 거래량 합계
             })
-        
-        # 골든 크로스 패턴이 발견된 경우 추가
-        if is_golden_cross_pattern:
-            results.append({
-                'code': code,
-                'low': df['Low'].min(),  # 전체 데이터의 최저가
-                'high': df['High'].max(),  # 전체 데이터의 최고가
-                'open': df['Open'].iloc[0],  # 시작가
-                'close': df['Close'].iloc[-1],  # 종가
-                'volume': df['Volume'].sum()  # 거래량 합계
-            })
-
-        # 두 패턴이 모두 발견된 경우 로그 기록
-        if is_cup_handle and is_golden_cross_pattern:
-            logging.info(f"종목 코드: {code} - 컵 위드 핸들 및 골든 크로스 조건 모두 만족!")
 
     return results  # 모든 패턴 확인 후 결과 반환
 
@@ -218,16 +186,10 @@ if __name__ == "__main__":
 
     results = search_patterns(stocks_data)
 
-    # 최근 발견된 패턴을 가진 종목을 로그로 기록
-    if results:
-        for result in results:
-            logging.info(f"발견된 종목: {result['code']} (최저가: {result['low']}, 최고가: {result['high']}, "
-                         f"시작가: {result['open']}, 종가: {result['close']}, 거래량: {result['volume']})")
-    else:
-        logging.info("발견된 패턴이 없습니다.")
-
+    # 결과를 JSON 파일로 저장
     result_filename = os.path.join(json_dir, 'pattern_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
 
+    # Discord 웹훅으로 전송하는 부분은 discord_webhook.py에서 처리
