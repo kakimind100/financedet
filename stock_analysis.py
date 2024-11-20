@@ -49,22 +49,15 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                 df = future.result()
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
-                # 데이터프레임이 비어 있지 않은 경우
-                if not df.empty:
-                    # 날짜 열이 없으면 추가
-                    if 'Date' not in df.columns:
-                        df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 날짜 열 추가
-                        logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+                if 'Date' not in df.columns:
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
+                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
 
-                    df['Date'] = pd.to_datetime(df['Date'])  # 날짜 열이 있는 경우 변환
-
-                    all_data[code] = df.to_dict(orient='records')
-                else:
-                    logging.warning(f"{code}에 대한 데이터가 비어 있습니다.")
+                df['Date'] = pd.to_datetime(df['Date'])
+                all_data[code] = df.to_dict(orient='records')
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
 
-    # 주식 데이터를 JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)
@@ -76,97 +69,91 @@ def load_stock_data_from_json():
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def calculate_rsi(df, window=14):
-    """상대 강도 지수 (RSI)를 계산하는 함수."""
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
-
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
-    if len(df) < 40:  # 데이터 길이를 40으로 완화
-        logging.debug(f"데이터 길이가 40일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
-        return False
+    if len(df) < 60:
+        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+        return False, None
 
     cup_bottom = df['Low'].min()
-    cup_bottom_index = df['Low'].idxmin()  # 컵의 바닥 인덱스
-    cup_top = df['Close'][:cup_bottom_index].max()  # 컵의 상단
+    cup_bottom_index = df['Low'].idxmin()
+    cup_bottom_index = df.index.get_loc(cup_bottom_index)
 
-    # 핸들 시작 인덱스
-    handle_start_index = df.index.get_loc(cup_bottom_index) + 1  # 정수 인덱스 위치로 변환
-    handle_length = min(10, len(df) - handle_start_index)
-    handle = df.iloc[handle_start_index:handle_start_index + handle_length]
+    cup_top = df['Close'][:cup_bottom_index].max()
+    handle_start_index = cup_bottom_index + 1
+    handle_end_index = handle_start_index + 10
 
-    if handle.empty:
-        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다.")
-        return False
+    if handle_end_index <= len(df):
+        handle = df.iloc[handle_start_index:handle_end_index]
+        handle_top = handle['Close'].max()
 
-    handle_top = handle['Close'].max()
-    cup_depth = (cup_top - cup_bottom) / cup_top
-    handle_depth = (handle_top - cup_bottom) / cup_top
-
-    # 컵 깊이와 핸들 깊이에 대한 조건 완화
-    if cup_depth < 0.05 or handle_depth > 0.2:  # 조건 완화
-        logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음.")
-        return False
-
-    # 핸들이 컵의 상단보다 낮아야 하며 컵의 바닥 위에 있어야 함
-    if handle_top < cup_top and handle_top > cup_bottom:
-        return True
-
-    return False
+        if handle_top < cup_top and cup_bottom < handle_top:
+            return True, df.index[-1]
+    
+    return False, None
 
 def is_golden_cross(df):
-    """골든 크로스 조건을 확인하는 함수."""
-    df['MA50'] = df['Close'].rolling(window=50).mean()
-    df['MA200'] = df['Close'].rolling(window=200).mean()
-    if len(df) > 200:
-        if df['MA50'].iloc[-2] < df['MA200'].iloc[-2] and df['MA50'].iloc[-1] > df['MA200'].iloc[-1]:
-            logging.info(f"{df['Code'].iloc[0]} - 골든 크로스 발생!")
-            return True
-    return False
+    """골든 크로스 패턴을 찾는 함수."""
+    if len(df) < 50:
+        logging.debug(f"데이터 길이가 50일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+        return False, None
+
+    df['SMA50'] = df['Close'].rolling(window=50).mean()
+    df['SMA200'] = df['Close'].rolling(window=200).mean()
+
+    if df['SMA50'].isnull().all() or df['SMA200'].isnull().all():
+        logging.warning(f"종목 코드: {df['Code'].iloc[0]}의 이동 평균 데이터가 없습니다.")
+        return False, None
+
+    last_sma50 = df['SMA50'].iloc[-1]
+    last_sma200 = df['SMA200'].iloc[-1]
+    prev_sma50 = df['SMA50'].iloc[-2]
+    prev_sma200 = df['SMA200'].iloc[-2]
+
+    if prev_sma50 < prev_sma200 and last_sma50 > last_sma200:
+        return True, df.index[-1]
+
+    return False, None
 
 def search_patterns(stocks_data):
-    """저장된 주식 데이터에서 패턴을 찾는 함수."""
+    """컵과 핸들 및 골든 크로스 패턴을 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
-
-        # 날짜 데이터 확인
-        if 'Date' in df.columns:
-            # 날짜 확인 로그 생략
-            pass
-        else:
-            print(f"{code}의 날짜 정보가 없습니다.")
-            logging.warning(f"{code}의 날짜 정보가 없습니다.")
-            continue  # 날짜 정보가 없으면 다음 종목으로 넘어감
-
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df.set_index('Date', inplace=True)
         df['Code'] = code
 
         if df.index.empty:
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
-            continue  # 유효한 날짜 데이터가 없으면 다음 종목으로 넘어감
+            continue
 
-        logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
+        is_cup, cup_date = is_cup_with_handle(df)
+        is_golden, cross_date = is_golden_cross(df)
 
-        # RSI 계산
-        df['RSI'] = calculate_rsi(df)
+        if is_cup:
+            if is_golden and (cross_date - cup_date).days <= 10:  # 컵과 핸들 이후 10일 이내에 골든 크로스
+                results.append({
+                    'code': code,
+                    'pattern': 'Cup with Handle & Golden Cross',
+                    'pattern_date': cup_date.strftime('%Y-%m-%d'),
+                    'data': df.loc[cup_date].to_dict()
+                })
+            else:
+                results.append({
+                    'code': code,
+                    'pattern': 'Cup with Handle',
+                    'pattern_date': cup_date.strftime('%Y-%m-%d'),
+                    'data': df.loc[cup_date].to_dict()
+                })
 
-        # 패턴 확인
-        is_cup_handle = is_cup_with_handle(df)
-        is_golden_cross_pattern = is_golden_cross(df)
-
-        # 하나라도 만족하는 경우
-        if is_cup_handle or is_golden_cross_pattern:
+        elif is_golden:
             results.append({
                 'code': code,
-                'data': df.astype(object).to_dict(orient='records')  # 데이터 전체를 JSON 직렬화 가능한 형식으로 변환
+                'pattern': 'Golden Cross',
+                'pattern_date': cross_date.strftime('%Y-%m-%d'),
+                'data': df.loc[cross_date].to_dict()
             })
 
     return results
@@ -176,11 +163,11 @@ if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
 
     today = datetime.today()
-    start_date = today - timedelta(days=730)  # 2년으로 설정
+    start_date = today - timedelta(days=365)
     end_date = today.strftime('%Y-%m-%d')
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    markets = ['KOSPI', 'KOSDAQ']  # 필요한 경우 다른 시장 추가 가능
+    markets = ['KOSPI', 'KOSDAQ']
     all_codes = []
 
     with ThreadPoolExecutor(max_workers=20) as executor:
@@ -199,12 +186,9 @@ if __name__ == "__main__":
     stocks_data = load_stock_data_from_json()
 
     results = search_patterns(stocks_data)
-    
-    # 결과를 JSON 파일로 저장
-    result_filename = os.path.join(json_dir, 'pattern_results.json')
-    with open(result_filename, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=4)
-    logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
 
-    # Discord 웹훅으로 전송하는 부분은 여기에 추가할 수 있습니다.
-
+    if results:
+        for result in results:
+            logging.info(f"종목 코드: {result['code']} - 패턴: {result['pattern']} (완성 날짜: {result['pattern_date']})")
+    else:
+        logging.info("Cup with Handle 또는 Golden Cross 패턴을 가진 종목이 없습니다.")
