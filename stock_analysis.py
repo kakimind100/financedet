@@ -93,13 +93,14 @@ def is_cup_with_handle(df):
 
 def is_golden_cross(df):
     """골든 크로스 패턴을 찾는 함수."""
-    if len(df) < 50:
-        logging.debug(f"데이터 길이가 50일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+    if len(df) < 200:  # 200일 이동 평균을 위해 최소 200일의 데이터 필요
+        logging.debug(f"거래일 기준 데이터 길이가 200일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None
 
     df['SMA50'] = df['Close'].rolling(window=50).mean()
     df['SMA200'] = df['Close'].rolling(window=200).mean()
 
+    # 이동 평균이 계산되지 않은 경우 경고
     if df['SMA50'].isnull().all() or df['SMA200'].isnull().all():
         logging.warning(f"종목 코드: {df['Code'].iloc[0]}의 이동 평균 데이터가 없습니다.")
         return False, None
@@ -143,8 +144,41 @@ def is_round_bottom(df):
 
     return False, None
 
-def search_patterns(stocks_data):
-    """컵과 핸들, 골든 크로스, 다이버전스 및 원형 바닥 패턴을 찾는 함수."""
+def evaluate_stock(stock_data):
+    """주어진 종목 데이터에 대해 평가 기준을 적용하여 점수를 매기는 함수."""
+    df = pd.DataFrame(stock_data)
+
+    # 최근 상승폭
+    if len(df) >= 11:
+        recent_gain = (df['Close'].iloc[-1] - df['Close'].iloc[-10]) / df['Close'].iloc[-10] * 100
+    else:
+        recent_gain = float('-inf')  # 데이터 부족
+
+    # 거래량 증가
+    if len(df) >= 10:
+        avg_volume = df['Volume'].iloc[-11:-1].mean()  # 최근 10일 평균 거래량
+        current_volume = df['Volume'].iloc[-1]
+        volume_increase = (current_volume - avg_volume) / avg_volume * 100
+    else:
+        volume_increase = float('-inf')  # 데이터 부족
+
+    # RSI 계산
+    if len(df) >= 15:
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs)).iloc[-1]
+    else:
+        rsi = float('-inf')  # 데이터 부족
+
+    # 평가 점수 계산 (가중치 조정 가능)
+    score = recent_gain + volume_increase + (rsi - 50)  # RSI는 50을 기준으로 점수화
+
+    return score
+
+def search_patterns_and_find_top(stocks_data):
+    """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목 50개를 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
@@ -157,49 +191,36 @@ def search_patterns(stocks_data):
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
             continue
 
-        # 패턴 탐지
+        # 각 패턴 탐지
         is_cup, cup_date = is_cup_with_handle(df)
         is_golden, cross_date = is_golden_cross(df)
         is_divergence, divergence_date = is_bullish_divergence(df)
-        round_bottom_found, round_bottom_date = is_round_bottom(df)
+        is_round_bottom, round_bottom_date = is_round_bottom(df)
 
-        # 컵과 핸들 패턴이 발견된 경우
-        if is_cup:
-            results.append({
-                'code': code,
-                'pattern': 'Cup with Handle',
-                'pattern_date': cup_date.strftime('%Y-%m-%d'),
-                'data': df.to_dict(orient='records')  # 전체 데이터 저장
-            })
+        # 패턴 결과 저장
+        pattern_info = {
+            'code': code,
+            'cup': is_cup,
+            'golden_cross': is_golden,
+            'divergence': is_divergence,
+            'round_bottom': is_round_bottom,
+            'data': df.to_dict(orient='records')
+        }
 
-        # 골든 크로스 패턴이 발견된 경우
-        if is_golden:
-            results.append({
-                'code': code,
-                'pattern': 'Golden Cross',
-                'pattern_date': cross_date.strftime('%Y-%m-%d'),
-                'data': df.to_dict(orient='records')  # 전체 데이터 저장
-            })
+        results.append(pattern_info)
 
-        # 다이버전스 패턴이 발견된 경우
-        if is_divergence:
-            results.append({
-                'code': code,
-                'pattern': 'Bullish Divergence',
-                'pattern_date': divergence_date.strftime('%Y-%m-%d'),
-                'data': df.to_dict(orient='records')  # 전체 데이터 저장
-            })
+    # 모든 패턴이 발견된 종목 필터링
+    all_patterns_found = [res for res in results if res['cup'] and res['golden_cross'] and res['divergence'] and res['round_bottom']]
 
-        # 원형 바닥 패턴이 발견된 경우
-        if round_bottom_found:  # 수정된 변수 이름 사용
-            results.append({
-                'code': code,
-                'pattern': 'Round Bottom',
-                'pattern_date': round_bottom_date.strftime('%Y-%m-%d'),
-                'data': df.to_dict(orient='records')  # 전체 데이터 저장
-            })
+    # 종목 평가 및 점수 계산
+    for item in all_patterns_found:
+        score = evaluate_stock(item['data'])
+        item['score'] = score
 
-    return results
+    # 점수 기준으로 정렬하고 상위 50개 선택
+    top_50_stocks = sorted(all_patterns_found, key=lambda x: x['score'], reverse=True)[:50]
+
+    return top_50_stocks
 
 # 메인 실행 블록
 if __name__ == "__main__":
@@ -228,11 +249,11 @@ if __name__ == "__main__":
 
     stocks_data = load_stock_data_from_json()
 
-    results = search_patterns(stocks_data)
+    top_stocks = search_patterns_and_find_top(stocks_data)
 
-    if results:
-        for result in results:
-            logging.info(f"종목 코드: {result['code']} - 패턴: {result['pattern']} (완성 날짜: {result['pattern_date']})")
+    if top_stocks:
+        for stock in top_stocks:
+            logging.info(f"종목 코드: {stock['code']} - 점수: {stock['score']}")
     else:
-        logging.info("Cup with Handle, Golden Cross, Bullish Divergence 또는 Round Bottom 패턴을 가진 종목이 없습니다.")
+        logging.info("모든 패턴을 만족하는 종목이 없습니다.")
 
