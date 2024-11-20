@@ -1,68 +1,236 @@
-import json
-import os
+import FinanceDataReader as fdr
+import pandas as pd
+import numpy as np
+import logging
 from datetime import datetime, timedelta
-import pandas as pd  # pandas 임포트 추가
+import os
+import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def load_results():
-    """저장된 JSON 파일에서 결과를 로드하는 함수."""
-    filename = os.path.join('json_results', 'pattern_results.json')
-    if not os.path.exists(filename):
-        print("결과 파일이 존재하지 않습니다.")
+# 로그 디렉토리 생성
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
+
+# JSON 파일 저장 디렉토리 생성
+json_dir = 'json_results'
+os.makedirs(json_dir, exist_ok=True)
+
+# 로깅 설정
+logging.basicConfig(
+    filename=os.path.join(log_dir, 'stock_analysis.log'),
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# 콘솔에도 로그 출력
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
+def fetch_stock_listing(market):
+    """주식 종목 목록을 가져오는 함수."""
+    try:
+        logging.debug(f"{market} 종목 목록 가져오는 중...")
+        return fdr.StockListing(market)['Code'].tolist()
+    except Exception as e:
+        logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
         return []
 
+def fetch_and_save_stock_data(codes, start_date, end_date):
+    """주식 데이터를 JSON 형식으로 가져와 저장하는 함수."""
+    all_data = {}
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(fdr.DataReader, code, start_date, end_date): code for code in codes}
+        for future in as_completed(futures):
+            code = futures[future]
+            try:
+                df = future.result()
+                logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
+
+                if 'Date' not in df.columns:
+                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
+                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+
+                df['Date'] = pd.to_datetime(df['Date'])
+                all_data[code] = df.to_dict(orient='records')
+            except Exception as e:
+                logging.error(f"{code} 처리 중 오류 발생: {e}")
+
+    filename = os.path.join(json_dir, 'stock_data.json')
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)
+    logging.info(f"주식 데이터를 JSON 파일로 저장했습니다: {filename}")
+
+def load_stock_data_from_json():
+    """JSON 파일에서 주식 데이터를 로드하는 함수."""
+    filename = os.path.join(json_dir, 'stock_data.json')
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def filter_results(results):
-    """결과에서 40일 이전의 데이터 제외하고 날짜 추가하는 함수."""
-    filtered_results = []
-    today = datetime.today()
+def is_cup_with_handle(df):
+    """컵과 핸들 패턴을 찾는 함수."""
+    if len(df) < 60:
+        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+        return False, None
 
-    for item in results:
-        code = item['code']
-        data = item['data']
-        
-        # 40일 이전의 날짜 계산
-        cutoff_date = today - timedelta(days=40)
+    if df.index.empty:
+        logging.warning(f"종목 코드: {df['Code'].iloc[0]}에 날짜 데이터가 없습니다.")
+        return False, None
 
-        # 필터링된 데이터 생성
-        filtered_data = [entry for entry in data if pd.to_datetime(entry['Date']) > cutoff_date]
+    logging.debug(f"종목 코드: {df['Code'].iloc[0]}의 날짜 데이터: {df.index.tolist()}")
 
-        if filtered_data:
-            filtered_results.append({
+    cup_bottom = df['Low'].min()
+    cup_bottom_index = df['Low'].idxmin()
+
+    cup_bottom_index = df.index.get_loc(cup_bottom_index)
+
+    if cup_bottom_index < 0 or cup_bottom_index >= len(df):
+        logging.warning(f"컵 바닥 인덱스가 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
+        return False, None
+
+    cup_top = df['Close'][:cup_bottom_index].max()
+
+    if pd.isna(cup_top):
+        logging.warning(f"컵 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
+        return False, None
+
+    handle_start_index = cup_bottom_index + 1
+    handle_end_index = handle_start_index + 10
+
+    if handle_end_index <= len(df):
+        handle = df.iloc[handle_start_index:handle_end_index]
+        handle_top = handle['Close'].max()
+
+        if pd.isna(handle_top):
+            logging.warning(f"핸들 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}")
+            return False, None
+    else:
+        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다. handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}, 데이터 길이: {len(df)}")
+        return False, None
+
+    if handle_top < cup_top and cup_bottom < handle_top:
+        buy_price = cup_top * 1.01  # 매수 가격 설정 (컵 상단의 1% 상승)
+        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]
+        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]
+
+        if recent_volume > average_volume:
+            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
+            return True, df.index[-1]
+        else:
+            logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 거래량이 충분하지 않아 매수 신호가 없습니다.")
+    else:
+        logging.debug(f"종목 코드: {df['Code'].iloc[0]} - 패턴 미발견. handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
+
+    return False, None
+
+def is_golden_cross(df):
+    """골든 크로스 패턴을 찾는 함수."""
+    if len(df) < 50:
+        logging.debug(f"데이터 길이가 50일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
+        return False, None
+
+    df['SMA50'] = df['Close'].rolling(window=50).mean()
+    df['SMA200'] = df['Close'].rolling(window=200).mean()
+
+    if df['SMA50'].isnull().all() or df['SMA200'].isnull().all():
+        logging.warning(f"종목 코드: {df['Code'].iloc[0]}의 이동 평균 데이터가 없습니다.")
+        return False, None
+
+    last_sma50 = df['SMA50'].iloc[-1]
+    last_sma200 = df['SMA200'].iloc[-1]
+    prev_sma50 = df['SMA50'].iloc[-2]
+    prev_sma200 = df['SMA200'].iloc[-2]
+
+    if prev_sma50 < prev_sma200 and last_sma50 > last_sma200:
+        logging.info(f"종목 코드: {df['Code'].iloc[0]} - 골든 크로스 발생!")
+        return True, df.index[-1]
+
+    return False, None
+
+def save_stock_data(df, pattern_type):
+    """주식 데이터를 JSON 형식으로 저장하는 함수."""
+    records = df[['Code', 'Date', 'Low', 'High', 'Open', 'Close', 'Volume']].to_dict(orient='records')
+    
+    filename = os.path.join(json_dir, f'{pattern_type}_results.json')
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(records, f, default=str, ensure_ascii=False, indent=4)
+    
+    logging.info(f"{pattern_type} 패턴 결과를 JSON 파일로 저장했습니다: {filename}")
+
+def search_patterns(stocks_data):
+    """저장된 주식 데이터에서 Cup with Handle 및 골든 크로스 패턴을 찾는 함수."""
+    results = []
+
+    for code, data in stocks_data.items():
+        df = pd.DataFrame(data)
+
+        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+        df.set_index('Date', inplace=True)
+        df['Code'] = code
+
+        if df.index.empty:
+            logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
+            continue
+
+        logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
+
+        is_cup, cup_date = is_cup_with_handle(df)
+        is_golden, cross_date = is_golden_cross(df)
+
+        if is_cup:
+            results.append({
                 'code': code,
-                'data': filtered_data
+                'pattern': 'Cup with Handle',
+                'pattern_date': cup_date.strftime('%Y-%m-%d') if cup_date else None,
+                'data': df.loc[cup_date].to_dict()  # 패턴이 발생한 날짜의 데이터 저장
+            })
+        
+        if is_golden:
+            results.append({
+                'code': code,
+                'pattern': 'Golden Cross',
+                'pattern_date': cross_date.strftime('%Y-%m-%d') if cross_date else None,
+                'data': df.loc[cross_date].to_dict()  # 패턴이 발생한 날짜의 데이터 저장
             })
 
-    return filtered_results
+    return results
 
-def save_results(filtered_results):
-    """필터링된 결과를 JSON 파일로 저장하는 함수."""
-    filename = os.path.join('json_results', 'filtered_pattern_results.json')
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(filtered_results, f, ensure_ascii=False, indent=4)
-    print(f"필터링된 결과를 JSON 파일로 저장했습니다: {filename}")
-
-def log_results(filtered_results):
-    """저장된 결과를 로그로 출력하는 함수."""
-    if filtered_results:
-        for item in filtered_results:
-            print(f"종목 코드: {item['code']}")
-            for entry in item['data']:
-                print(f"  날짜: {entry['Date']}, 종가: {entry['Close']}, RSI: {entry['RSI']}")
-    else:
-        print("발견된 패턴이 없습니다.")
-
+# 메인 실행 블록
 if __name__ == "__main__":
-    results = load_results()
-    if results:
-        # 결과 필터링
-        filtered_results = filter_results(results)
-        
-        # 필터링된 결과 저장
-        save_results(filtered_results)
+    logging.info("주식 분석 스크립트 실행 중...")
 
-        # 저장된 결과 로그 출력
-        log_results(filtered_results)
+    today = datetime.today()
+    start_date = today - timedelta(days=365)
+    end_date = today.strftime('%Y-%m-%d')
+    start_date_str = start_date.strftime('%Y-%m-%d')
+
+    markets = ['KOSPI', 'KOSDAQ']
+    all_codes = []
+
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        future_to_market = {executor.submit(fetch_stock_listing, market): market for market in markets}
+        for future in as_completed(future_to_market):
+            market = future_to_market[future]
+            try:
+                codes = future.result()
+                all_codes.extend(codes)
+                logging.info(f"{market} 종목 목록 가져오기 성공: {len(codes)}개")
+            except Exception as e:
+                logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
+
+    fetch_and_save_stock_data(all_codes, start_date_str, end_date)
+
+    stocks_data = load_stock_data_from_json()
+
+    results = search_patterns(stocks_data)
+
+    if results:
+        for result in results:
+            logging.info(f"종목 코드: {result['code']} - 패턴: {result['pattern']} (완성 날짜: {result['pattern_date']})")
+            # 기존 데이터 저장
+            save_stock_data(pd.DataFrame([result['data']]), result['pattern'])
     else:
-        print("발견된 패턴이 없습니다.")
+        logging.info("Cup with Handle 또는 골든 크로스 패턴을 가진 종목이 없습니다.")
+
