@@ -32,7 +32,10 @@ def fetch_stock_listing(market):
     """주식 종목 목록을 가져오는 함수."""
     try:
         logging.debug(f"{market} 종목 목록 가져오는 중...")
-        return fdr.StockListing(market)['Code'].tolist()
+        stock_list = fdr.StockListing(market)
+        # 우선주 제외
+        common_stocks = stock_list[~stock_list['Code'].str.endswith(('A', 'B'))]
+        return common_stocks['Code'].tolist()
     except Exception as e:
         logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
         return []
@@ -83,6 +86,7 @@ def is_cup_with_handle(df):
 
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
+    cup_bottom_index = df.index.get_loc(cup_bottom_index)  # 인덱스를 정수로 변환
     cup_top = df['Close'][:cup_bottom_index].max()
 
     handle_start_index = cup_bottom_index + 1
