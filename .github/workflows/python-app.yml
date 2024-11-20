@@ -1,3 +1,5 @@
+name: Run Stock Analysis and Discord Webhook
+
 on:
   schedule:
     - cron: '0 7 * * *'  # 매일 16:00 KST에 실행 (UTC 07:00)
@@ -31,7 +33,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
         run: |
           echo "주식 분석 스크립트 실행 중..."  # 실행 시작 메시지
-          python stock_analysis.py  # 주식 분석 스크립트 실행
+          python stock_analysis.py json_results/input_data.json json_results/top_50_stocks.json  # 입력 및 출력 파일 경로 전달
           echo "주식 분석 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Run Discord Webhook Script
@@ -40,7 +42,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
         run: |
           echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
-          python discord_webhook.py  # Discord 웹훅 스크립트 실행
+          python discord_webhook.py json_results/top_50_stocks.json  # JSON 파일 경로를 인수로 전달
           echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Upload log file
