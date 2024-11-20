@@ -102,8 +102,7 @@ def calculate_indicators(df):
     df['Lower Band'] = df['MA50'] - (df['Close'].rolling(window=50).std() * 2)
 
     return df
-    
-def is_cup_with_handle(df):
+    def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
@@ -132,8 +131,9 @@ def is_cup_with_handle(df):
             if rsi_condition and macd_condition:
                 buy_price = cup_top * 1.01  # 매수 가격 설정
                 last_close_price = df['Close'].iloc[-1]  # 마지막 날 종가
-                logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 마지막 날 종가: {last_close_price}")
-                return True, df.index[-1], buy_price
+                pattern_date = df.index[-1]  # 매수 신호 발생 날짜
+                logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 마지막 날 종가: {last_close_price}, 날짜: {pattern_date.strftime('%Y-%m-%d')}")
+                return True, pattern_date, buy_price
     return False, None, None
 
 def search_cup_with_handle(stocks_data):
