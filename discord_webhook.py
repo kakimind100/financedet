@@ -4,7 +4,7 @@ import logging
 
 # 로깅 설정
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -20,9 +20,8 @@ def main():
     try:
         # JSON 파일 읽기
         with open(filename, 'r', encoding='utf-8') as f:
-            data = json.load(f)
+            top_stocks = json.load(f)  # 리스트로 직접 로드
 
-        top_stocks = data.get('top_stocks', [])
         logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
         # 데이터 확인을 위한 출력
