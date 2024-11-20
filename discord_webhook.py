@@ -1,9 +1,19 @@
 import json
 import requests
 import os
+from datetime import datetime, timedelta
 
-# Discord 웹훅 URL 설정
-WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL')  # 환경 변수에서 웹훅 URL 가져오기
+def filter_recent_data(data, days=40):
+    """최근 n일의 데이터만 필터링하는 함수."""
+    cutoff_date = datetime.today() - timedelta(days=days)
+    recent_data = []
+
+    for item in data:
+        pattern_date = datetime.strptime(item['pattern_date'], '%Y-%m-%d')
+        if pattern_date >= cutoff_date:
+            recent_data.append(item)
+
+    return recent_data
 
 def send_to_discord(data):
     """Discord 웹훅으로 데이터를 전송하는 함수."""
@@ -26,12 +36,13 @@ def send_to_discord(data):
         "embeds": [embed]
     }
 
-    response = requests.post(WEBHOOK_URL, json=payload)
+    # 웹훅 호출 부분은 주석 처리했습니다. 필요 시 주석을 해제하세요.
+    # response = requests.post(WEBHOOK_URL, json=payload)
     
-    if response.status_code == 204:
-        print("메시지가 성공적으로 전송되었습니다.")
-    else:
-        print(f"메시지 전송 실패: {response.status_code}, {response.text}")
+    # if response.status_code == 204:
+    #     print("메시지가 성공적으로 전송되었습니다.")
+    # else:
+    #     print(f"메시지 전송 실패: {response.status_code}, {response.text}")
 
 def load_results():
     """저장된 JSON 파일에서 결과를 로드하는 함수."""
@@ -46,6 +57,12 @@ def load_results():
 if __name__ == "__main__":
     results = load_results()
     if results:
-        send_to_discord(results)  # Discord로 전송
+        recent_results = filter_recent_data(results)  # 최근 40일 데이터 필터링
+        if recent_results:
+            # 웹훅 전송 부분은 주석 처리
+            # send_to_discord(recent_results)  # Discord로 전송
+            print("최근 40일 데이터:", recent_results)  # 필터링된 데이터 출력
+        else:
+            print("최근 40일 내의 발견된 패턴이 없습니다.")
     else:
         print("발견된 패턴이 없습니다.")
