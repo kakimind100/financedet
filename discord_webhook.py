@@ -1,14 +1,8 @@
-import requests
-import json
 import logging
 import pandas as pd
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def send_to_discord(webhook_url, data):
-    """Discord 웹훅으로 데이터를 전송하는 함수 (현재 사용하지 않음)."""
-    pass  # 웹훅 사용 안 함
 
 def search_patterns_and_find_top(stocks_data):
     """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목 50개를 찾는 함수."""
