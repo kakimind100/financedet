@@ -79,28 +79,11 @@ def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
-        return False, None
-
-    if df.index.empty:
-        logging.warning(f"종목 코드: {df['Code'].iloc[0]}에 날짜 데이터가 없습니다.")
-        return False, None
-
-    logging.debug(f"종목 코드: {df['Code'].iloc[0]}의 날짜 데이터: {df.index.tolist()}")
+        return False, None, None
 
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
-
-    cup_bottom_index = df.index.get_loc(cup_bottom_index)
-
-    if cup_bottom_index < 0 or cup_bottom_index >= len(df):
-        logging.warning(f"컵 바닥 인덱스가 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
-        return False, None
-
     cup_top = df['Close'][:cup_bottom_index].max()
-
-    if pd.isna(cup_top):
-        logging.warning(f"컵 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, cup_bottom_index: {cup_bottom_index}")
-        return False, None
 
     handle_start_index = cup_bottom_index + 1
     handle_end_index = handle_start_index + 10
@@ -109,27 +92,12 @@ def is_cup_with_handle(df):
         handle = df.iloc[handle_start_index:handle_end_index]
         handle_top = handle['Close'].max()
 
-        if pd.isna(handle_top):
-            logging.warning(f"핸들 상단 값이 유효하지 않습니다. 종목 코드: {df['Code'].iloc[0]}, handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}")
-            return False, None
-    else:
-        logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다. handle_start_index: {handle_start_index}, handle_end_index: {handle_end_index}, 데이터 길이: {len(df)}")
-        return False, None
-
-    if handle_top < cup_top and cup_bottom < handle_top:
-        buy_price = cup_top * 1.01  # 매수 가격 설정 (컵 상단의 1% 상승)
-        recent_volume = df['Volume'].iloc[cup_bottom_index - 1]
-        average_volume = df['Volume'].rolling(window=5).mean().iloc[cup_bottom_index - 1]
-
-        if recent_volume > average_volume:
-            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
-            return True, df.index[-1]
-        else:
-            logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 거래량이 충분하지 않아 매수 신호가 없습니다.")
-    else:
-        logging.debug(f"종목 코드: {df['Code'].iloc[0]} - 패턴 미발견. handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
-
-    return False, None
+        # 매수 신호 발생 조건
+        if handle_top > cup_top:
+            buy_price = cup_top * 1.01  # 매수 가격 설정
+            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}")
+            return True, df.index[-1], buy_price
+    return False, None, None
 
 def search_cup_with_handle(stocks_data):
     """저장된 주식 데이터에서 Cup with Handle 패턴을 찾는 함수."""
@@ -150,14 +118,15 @@ def search_cup_with_handle(stocks_data):
 
         logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
 
-        is_pattern, pattern_date = is_cup_with_handle(df)
+        is_pattern, pattern_date, buy_price = is_cup_with_handle(df)
         if is_pattern:
             if recent_date is None or (pattern_date and pattern_date > recent_date):
                 recent_date = pattern_date
                 recent_cup_with_handle = code
                 results.append({
                     'code': code,
-                    'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
+                    'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
+                    'buy_price': buy_price
                 })
 
     return recent_cup_with_handle, recent_date, results
@@ -199,4 +168,3 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
-
