@@ -168,11 +168,10 @@ def search_patterns(stocks_data):
         # RSI 계산
         df['RSI'] = calculate_rsi(df)
 
-        # Cup with Handle 패턴 확인
+        # 패턴 확인
         is_cup_handle, pattern_date = is_cup_with_handle(df)
-        
-        # 돌파 패턴 확인
         is_breakout_pattern = is_breakout(df)
+        is_golden_cross_pattern = is_golden_cross(df)
 
         # 조건이 모두 만족할 경우
         if is_cup_handle and is_breakout_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
@@ -181,8 +180,24 @@ def search_patterns(stocks_data):
                 'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
                 'type': 'Cup with Handle and Breakout'
             })
+        
+        # 골든 크로스 패턴이 발견된 경우 추가
+        elif is_golden_cross_pattern:
+            results.append({
+                'code': code,
+                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
+                'type': 'Golden Cross'
+            })
 
-    return results  # 조건이 모두 만족한 경우만 반환
+        # 돌파 패턴이 발견된 경우 추가
+        elif is_breakout_pattern:
+            results.append({
+                'code': code,
+                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
+                'type': 'Breakout'
+            })
+
+    return results  # 모든 패턴 확인 후 결과 반환
 
 # 메인 실행 블록
 if __name__ == "__main__":
@@ -224,4 +239,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
-
+               
