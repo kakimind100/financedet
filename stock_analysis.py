@@ -161,7 +161,7 @@ def search_patterns(stocks_data):
         is_cup, cup_date = is_cup_with_handle(df)
         is_golden, cross_date = is_golden_cross(df)
         is_divergence, divergence_date = is_bullish_divergence(df)
-        is_round_bottom, round_bottom_date = is_round_bottom(df)
+        round_bottom_found, round_bottom_date = is_round_bottom(df)
 
         # 컵과 핸들 패턴이 발견된 경우
         if is_cup:
@@ -191,7 +191,7 @@ def search_patterns(stocks_data):
             })
 
         # 원형 바닥 패턴이 발견된 경우
-        if is_round_bottom:
+        if round_bottom_found:  # 수정된 변수 이름 사용
             results.append({
                 'code': code,
                 'pattern': 'Round Bottom',
