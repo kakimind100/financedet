@@ -148,7 +148,7 @@ def search_patterns(stocks_data):
         if is_cup_handle or is_golden_cross_pattern:
             results.append({
                 'code': code,
-                'data': data  # 2년간의 데이터 전체를 저장
+                'data': df.astype(object).to_dict(orient='records')  # 데이터 전체를 JSON 직렬화 가능한 형식으로 변환
             })
 
     return results
