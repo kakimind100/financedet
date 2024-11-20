@@ -110,7 +110,8 @@ def is_cup_with_handle(df):
 
 def search_cup_with_handle(stocks_data):
     """저장된 주식 데이터에서 Cup with Handle 패턴을 찾는 함수."""
-    results = []
+    recent_cup_with_handle = None
+    recent_date = None
 
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
@@ -127,12 +128,11 @@ def search_cup_with_handle(stocks_data):
 
         is_pattern, pattern_date = is_cup_with_handle(df)
         if is_pattern:
-            results.append({
-                'code': code,
-                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
-            })
+            if recent_date is None or (pattern_date and pattern_date > recent_date):
+                recent_date = pattern_date
+                recent_cup_with_handle = code
 
-    return results
+    return recent_cup_with_handle, recent_date
 
 # 메인 실행 블록
 if __name__ == "__main__":
@@ -161,16 +161,15 @@ if __name__ == "__main__":
 
     stocks_data = load_stock_data_from_json()
 
-    results = search_cup_with_handle(stocks_data)
+    recent_stock, date_found = search_cup_with_handle(stocks_data)
     
-    # 발견된 모든 Cup with Handle 패턴을 로그로 기록
-    if results:
-        for result in results:
-            logging.info(f"Cup with Handle 패턴이 발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']})")
+    # 최근 Cup with Handle 패턴이 발견된 종목을 로그로 기록
+    if recent_stock:
+        logging.info(f"가장 최근 Cup with Handle 패턴이 발견된 종목: {recent_stock} (완성 날짜: {date_found})")
     else:
         logging.info("Cup with Handle 패턴을 가진 종목이 없습니다.")
 
     result_filename = os.path.join(json_dir, 'cup_with_handle_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
-        json.dump(results, f, ensure_ascii=False, indent=4)
+        json.dump({'code': recent_stock, 'pattern_date': date_found.strftime('%Y-%m-%d') if date_found else None}, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
