@@ -26,7 +26,7 @@ def get_ai_response(api_key, prompt):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",  # 모델을 GPT-4로 변경
+            model="gpt-4o-mini",  # 모델을 GPT-4로 변경
             messages=[
                 {"role": "system", "content": "당신은 최고의 전문 기술 투자자입니다."},
                 {"role": "user", "content": prompt}
