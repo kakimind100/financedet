@@ -125,8 +125,26 @@ def is_cup_with_handle(df):
 
     return False, None
 
-def search_cup_with_handle(stocks_data):
-    """저장된 주식 데이터에서 Cup with Handle 패턴을 찾는 함수."""
+def is_golden_cross(df):
+    """골든 크로스 조건을 확인하는 함수."""
+    df['MA50'] = df['Close'].rolling(window=50).mean()
+    df['MA200'] = df['Close'].rolling(window=200).mean()
+    if len(df) > 200:
+        if df['MA50'].iloc[-2] < df['MA200'].iloc[-2] and df['MA50'].iloc[-1] > df['MA200'].iloc[-1]:
+            logging.info(f"{df['Code'].iloc[0]} - 골든 크로스 발생!")
+            return True
+    return False
+
+def is_breakout(df):
+    """돌파 패턴을 확인하는 함수."""
+    resistance = df['Close'].rolling(window=20).max().iloc[-2]  # 20일 최고가
+    if df['Close'].iloc[-1] > resistance:
+        logging.info(f"{df['Code'].iloc[0]} - 돌파 패턴 발생!")
+        return True
+    return False
+
+def search_patterns(stocks_data):
+    """저장된 주식 데이터에서 다양한 패턴을 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
@@ -145,11 +163,25 @@ def search_cup_with_handle(stocks_data):
         # RSI 계산
         df['RSI'] = calculate_rsi(df)
 
+        # Cup with Handle 패턴 확인
         is_pattern, pattern_date = is_cup_with_handle(df)
         if is_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때 매수 신호 추가
             results.append({
                 'code': code,
                 'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None
+            })
+
+        # 추가 패턴 확인
+        if is_golden_cross(df):
+            results.append({
+                'code': code,
+                'pattern_date': df.index[-1].strftime('%Y-%m-%d')
+            })
+
+        if is_breakout(df):
+            results.append({
+                'code': code,
+                'pattern_date': df.index[-1].strftime('%Y-%m-%d')
             })
 
     return results  # 결과를 제한하지 않음
@@ -159,7 +191,7 @@ if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
 
     today = datetime.today()
-    start_date = today - timedelta(days=365)
+        start_date = today - timedelta(days=365)
     end_date = today.strftime('%Y-%m-%d')
     start_date_str = start_date.strftime('%Y-%m-%d')
 
@@ -181,17 +213,16 @@ if __name__ == "__main__":
 
     stocks_data = load_stock_data_from_json()
 
-    results = search_cup_with_handle(stocks_data)
-    
-    # 최근 Cup with Handle 패턴이 발견된 종목을 로그로 기록
+    results = search_patterns(stocks_data)
+
+    # 최근 발견된 패턴을 가진 종목을 로그로 기록
     if results:
         for result in results:
-            logging.info(f"Cup with Handle 패턴이 발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']})")
+            logging.info(f"발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']})")
     else:
-        logging.info("Cup with Handle 패턴을 가진 종목이 없습니다.")
+        logging.info("발견된 패턴이 없습니다.")
 
-    result_filename = os.path.join(json_dir, 'cup_with_handle_results.json')
+    result_filename = os.path.join(json_dir, 'pattern_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
-
