@@ -121,7 +121,7 @@ def is_golden_cross(df):
     return False
 
 def search_patterns(stocks_data):
-    """저장된 주식 데이터에서 다양한 패턴을 찾는 함수."""
+    """저장된 주식 데이터에서 패턴을 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
@@ -144,18 +144,14 @@ def search_patterns(stocks_data):
         is_cup_handle = is_cup_with_handle(df)
         is_golden_cross_pattern = is_golden_cross(df)
 
-        # 패턴이 발견된 경우
+        # 하나라도 만족하는 경우
         if is_cup_handle or is_golden_cross_pattern:
             results.append({
                 'code': code,
-                'low': df['Low'].min(),  # 전체 데이터의 최저가
-                'high': df['High'].max(),  # 전체 데이터의 최고가
-                'open': df['Open'].iloc[0],  # 시작가
-                'close': df['Close'].iloc[-1],  # 종가
-                'volume': df['Volume'].sum()  # 거래량 합계
+                'data': data  # 2년간의 데이터 전체를 저장
             })
 
-    return results  # 모든 패턴 확인 후 결과 반환
+    return results
 
 # 메인 실행 블록
 if __name__ == "__main__":
