@@ -137,6 +137,10 @@ def is_golden_cross(df):
 
 def is_breakout(df):
     """돌파 패턴을 확인하는 함수."""
+    if df['Close'].count() < 20:  # 거래일 기준으로 20일 이상이 필요
+        logging.warning(f"{df['Code'].iloc[0]} - 데이터가 부족하여 돌파 패턴 확인 불가")
+        return False
+
     resistance = df['Close'].rolling(window=20).max().iloc[-2]  # 20일 최고가
     if df['Close'].iloc[-1] > resistance:
         logging.info(f"{df['Code'].iloc[0]} - 돌파 패턴 발생!")
@@ -191,11 +195,11 @@ if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
 
     today = datetime.today()
-    start_date = today - timedelta(days=365)
+    start_date = today - timedelta(days=730)  # 2년으로 설정
     end_date = today.strftime('%Y-%m-%d')
     start_date_str = start_date.strftime('%Y-%m-%d')
 
-    markets = ['KOSPI', 'KOSDAQ']
+    markets = ['KOSPI', 'KOSDAQ']  # 필요한 경우 다른 시장 추가 가능
     all_codes = []
 
     with ThreadPoolExecutor(max_workers=20) as executor:
