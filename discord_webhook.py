@@ -1,21 +1,42 @@
-import logging
 import sys
 import json
+import logging
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-def receive_stock_data(data):
-    """주식 데이터를 수신하고 로그로 출력하는 함수."""
-    logging.info(f"수신된 주식 데이터: {data}")
+def main():
+    # 인수로 전달된 파일 경로
+    filename = sys.argv[1]
+    logging.info(f"전달받은 파일 경로: {filename}")
+
+    try:
+        # JSON 파일 읽기
+        with open(filename, 'r', encoding='utf-8') as f:
+            top_stocks = json.load(f)
+
+        if not top_stocks:
+            logging.error("주식 데이터가 없습니다.")
+            return
+
+        logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
+        logging.debug(f"읽어온 데이터: {top_stocks}")  # 데이터 내용 로그
+
+        # 데이터 확인을 위한 출력
+        for stock in top_stocks:
+            logging.info(f"종목 코드: {stock['code']}, 점수: {stock['score']}")
+            # 필요한 경우 더 많은 데이터 출력 가능
+            # 예: logging.info(f"데이터: {stock['data']}")
+
+    except FileNotFoundError:
+        logging.error(f"파일을 찾을 수 없습니다: {filename}")
+    except json.JSONDecodeError:
+        logging.error(f"JSON 파일을 읽는 중 오류 발생: {filename} - 잘못된 형식일 수 있습니다.")
+    except Exception as e:
+        logging.error(f"오류 발생: {str(e)}")
 
 if __name__ == "__main__":
-    logging.info("Discord 웹훅 스크립트 실행 중...")
-
-    # 명령줄 인수로 전달된 데이터 수신
-    if len(sys.argv) > 1:
-        stock_data_json = sys.argv[1]
-        stock_data = json.loads(stock_data_json)
-        receive_stock_data(stock_data)
-    else:
-        logging.error("주식 데이터가 전달되지 않았습니다.")
+    main()
