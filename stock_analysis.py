@@ -204,7 +204,7 @@ def should_buy(stock_data):
     return False, rsi
 
 def search_patterns_and_find_top(stocks_data):
-    """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목 50개를 찾는 함수."""
+    """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목을 찾는 함수."""
     results = []
 
     for code, data in stocks_data.items():
@@ -240,9 +240,10 @@ def search_patterns_and_find_top(stocks_data):
     for item in all_patterns_found:
         score = evaluate_stock(item['data'])
         item['score'] = score
+        logging.info(f"종목 코드: {item['code']} - 점수: {score}")  # 점수 출력
 
     # 점수 기준으로 정렬하고 상위 50개 선택
-    top_50_stocks = sorted(high_score_stocks, key=lambda x: x['score'], reverse=True)[:50]
+    top_50_stocks = sorted(all_patterns_found, key=lambda x: x['score'], reverse=True)[:50]
 
     # 매수 시점 판단 및 출력
     for stock in top_50_stocks:
