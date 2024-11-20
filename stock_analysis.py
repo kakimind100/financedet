@@ -125,8 +125,16 @@ def is_cup_with_handle(df):
 
         # 매수 신호 발생 조건
         if handle_top > cup_top:
-            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 컵 완성 가격: {cup_top}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
-            return True, df.index[-1], cup_top
+            # 거래량 확인
+            volume_increase = handle['Volume'].mean() > df['Volume'].rolling(window=20).mean().iloc[handle_start_index]
+
+            # 보조 지표 확인
+            rsi_condition = df['RSI'].iloc[handle_end_index - 1] < 70  # RSI가 과매수 상태가 아닐 때
+            macd_condition = df['MACD'].iloc[handle_end_index - 1] > df['Signal'].iloc[handle_end_index - 1]  # MACD가 신호선 위일 때
+
+            if volume_increase and rsi_condition and macd_condition:
+                logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 컵 완성 가격: {cup_top}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
+                return True, df.index[-1], cup_top
     return False, None, None
 
 def search_cup_with_handle(stocks_data):
@@ -198,3 +206,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
+
