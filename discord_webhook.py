@@ -4,7 +4,7 @@ import logging
 
 # 로깅 설정
 logging.basicConfig(
-    level=logging.INFO,  # 로그 레벨을 INFO로 변경하여 DEBUG 로그를 숨깁니다.
+    level=logging.INFO,  # 로그 레벨을 INFO로 설정
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -29,10 +29,11 @@ def main():
         for stock in top_stocks:
             logging.info(f"종목 코드: {stock['code']}, 컵: {stock['cup']}, 다이버전스: {stock['divergence']}, 원형 바닥: {stock['round_bottom']}")
 
-            # 필요한 경우 데이터의 특정 부분만 로그로 출력
-            # 예를 들어, 종목 코드와 마지막 종가만 출력
-            last_record = stock['data'][-1]  # 마지막 데이터 포인트
-            logging.info(f"종목 코드: {stock['code']}, 마지막 종가: {last_record['Close']}")
+            # 각 종목의 데이터에서 날짜 정보를 포함하여 로그 출력
+            for record in stock['data']:
+                # 각 데이터 레코드에서 날짜를 가져옵니다.
+                date_str = record.get('Date', '날짜 정보 없음')  # 날짜 정보가 없으면 기본값 설정
+                logging.info(f"날짜: {date_str}, 데이터: {record}")
 
     except FileNotFoundError:
         logging.error(f"파일을 찾을 수 없습니다: {filename}")
