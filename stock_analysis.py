@@ -153,6 +153,28 @@ def evaluate_stock(stock_data):
 
     return score
 
+def should_buy(stock_data):
+    """매수 시점을 판단하는 함수."""
+    df = pd.DataFrame(stock_data)
+
+    # 최근 14일 RSI 계산
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs)).iloc[-1]
+
+    # 컵과 핸들 패턴 확인
+    is_cup, _ = is_cup_with_handle(df)
+
+    # 원형 바닥 패턴 확인
+    is_round_bottom_found, _ = is_round_bottom(df)
+
+    # 매수 조건
+    if (rsi < 30) and (is_cup or is_round_bottom_found):
+        return True, rsi
+    return False, rsi
+
 def search_patterns_and_find_top(stocks_data):
     """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목 50개를 찾는 함수."""
     results = []
@@ -193,6 +215,12 @@ def search_patterns_and_find_top(stocks_data):
 
     # 점수 기준으로 정렬하고 상위 50개 선택
     top_50_stocks = sorted(all_patterns_found, key=lambda x: x['score'], reverse=True)[:50]
+
+    # 매수 시점 판단 및 출력
+    for stock in top_50_stocks:
+        buy_signal, rsi_value = should_buy(stock['data'])
+        if buy_signal:
+            logging.info(f"종목 코드: {stock['code']} - 매수 신호 발생 (RSI: {rsi_value})")
 
     return top_50_stocks
 
