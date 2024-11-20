@@ -136,18 +136,6 @@ def is_golden_cross(df):
             return True
     return False
 
-def is_breakout(df):
-    """돌파 패턴을 확인하는 함수."""
-    if df['Close'].count() < 20:  # 거래일 기준으로 20일 이상이 필요
-        logging.warning(f"{df['Code'].iloc[0]} - 데이터가 부족하여 돌파 패턴 확인 불가")
-        return False
-
-    resistance = df['Close'].rolling(window=20).max().iloc[-2]  # 20일 최고가
-    if df['Close'].iloc[-1] > resistance:
-        logging.info(f"{df['Code'].iloc[0]} - 돌파 패턴 발생!")
-        return True
-    return False
-
 def search_patterns(stocks_data):
     """저장된 주식 데이터에서 다양한 패턴을 찾는 함수."""
     results = []
@@ -170,15 +158,14 @@ def search_patterns(stocks_data):
 
         # 패턴 확인
         is_cup_handle, pattern_date = is_cup_with_handle(df)
-        is_breakout_pattern = is_breakout(df)
         is_golden_cross_pattern = is_golden_cross(df)
 
         # 조건이 모두 만족할 경우
-        if is_cup_handle and is_breakout_pattern and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
+        if is_cup_handle and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
             results.append({
                 'code': code,
                 'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
-                'type': 'Cup with Handle and Breakout'
+                'type': 'Cup with Handle'
             })
         
         # 골든 크로스 패턴이 발견된 경우 추가
@@ -187,14 +174,6 @@ def search_patterns(stocks_data):
                 'code': code,
                 'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
                 'type': 'Golden Cross'
-            })
-
-        # 돌파 패턴이 발견된 경우 추가
-        elif is_breakout_pattern:
-            results.append({
-                'code': code,
-                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
-                'type': 'Breakout'
             })
 
     return results  # 모든 패턴 확인 후 결과 반환
@@ -239,4 +218,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
-               
+
