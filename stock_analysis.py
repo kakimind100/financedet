@@ -129,31 +129,28 @@ def search_patterns(stocks_data):
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
             continue
 
+        # 패턴 탐지
         is_cup, cup_date = is_cup_with_handle(df)
         is_golden, cross_date = is_golden_cross(df)
 
+        # 컵과 핸들 패턴이 발견된 경우
         if is_cup:
-            if is_golden and (cross_date - cup_date).days <= 10:  # 컵과 핸들 이후 10일 이내에 골든 크로스
-                results.append({
-                    'code': code,
-                    'pattern': 'Cup with Handle & Golden Cross',
-                    'pattern_date': cup_date.strftime('%Y-%m-%d'),
-                    'data': df.loc[cup_date].to_dict()
-                })
-            else:
-                results.append({
-                    'code': code,
-                    'pattern': 'Cup with Handle',
-                    'pattern_date': cup_date.strftime('%Y-%m-%d'),
-                    'data': df.loc[cup_date].to_dict()
-                })
+            # 전체 데이터 저장
+            results.append({
+                'code': code,
+                'pattern': 'Cup with Handle',
+                'pattern_date': cup_date.strftime('%Y-%m-%d'),
+                'data': df.to_dict(orient='records')  # 전체 데이터 저장
+            })
 
-        elif is_golden:
+        # 골든 크로스 패턴이 발견된 경우
+        if is_golden:
+            # 전체 데이터 저장
             results.append({
                 'code': code,
                 'pattern': 'Golden Cross',
                 'pattern_date': cross_date.strftime('%Y-%m-%d'),
-                'data': df.loc[cross_date].to_dict()
+                'data': df.to_dict(orient='records')  # 전체 데이터 저장
             })
 
     return results
@@ -178,7 +175,7 @@ if __name__ == "__main__":
                 codes = future.result()
                 all_codes.extend(codes)
                 logging.info(f"{market} 종목 목록 가져오기 성공: {len(codes)}개")
-            except Exception as e:
+            except
                 logging.error(f"{market} 종목 목록 가져오기 중 오류 발생: {e}")
 
     fetch_and_save_stock_data(all_codes, start_date_str, end_date)
@@ -192,3 +189,4 @@ if __name__ == "__main__":
             logging.info(f"종목 코드: {result['code']} - 패턴: {result['pattern']} (완성 날짜: {result['pattern_date']})")
     else:
         logging.info("Cup with Handle 또는 Golden Cross 패턴을 가진 종목이 없습니다.")
+
