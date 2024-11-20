@@ -180,20 +180,8 @@ def search_patterns(stocks_data):
                 'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
                 'type': 'Cup with Handle and Breakout'
             })
-        elif is_cup_handle:
-            results.append({
-                'code': code,
-                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
-                'type': 'Cup with Handle'
-            })
-        elif is_breakout_pattern:
-            results.append({
-                'code': code,
-                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
-                'type': 'Breakout'
-            })
 
-    return results  # 결과를 제한하지 않음
+    return results  # 조건이 모두 만족한 경우만 반환
 
 # 메인 실행 블록
 if __name__ == "__main__":
