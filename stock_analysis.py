@@ -49,12 +49,18 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                 df = future.result()
                 logging.info(f"{code} 데이터 가져오기 성공, 가져온 데이터 길이: {len(df)}")
 
-                if 'Date' not in df.columns:
-                    df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')
-                    logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+                # 데이터프레임이 비어 있지 않은 경우
+                if not df.empty:
+                    # 날짜 열이 없으면 추가
+                    if 'Date' not in df.columns:
+                        df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 날짜 열 추가
+                        logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
+                    else:
+                        df['Date'] = pd.to_datetime(df['Date'])  # 날짜 열이 있는 경우 변환
 
-                df['Date'] = pd.to_datetime(df['Date'])
-                all_data[code] = df.to_dict(orient='records')
+                    all_data[code] = df.to_dict(orient='records')
+                else:
+                    logging.warning(f"{code}에 대한 데이터가 비어 있습니다.")
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
 
@@ -129,13 +135,21 @@ def search_patterns(stocks_data):
     for code, data in stocks_data.items():
         df = pd.DataFrame(data)
 
+        # 날짜 데이터 확인
+        if 'Date' in df.columns:
+            print(f"{code}의 날짜 데이터: {df['Date'].tolist()}")
+        else:
+            print(f"{code}의 날짜 정보가 없습니다.")
+            logging.warning(f"{code}의 날짜 정보가 없습니다.")
+            continue  # 날짜 정보가 없으면 다음 종목으로 넘어감
+
         df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
         df.set_index('Date', inplace=True)
         df['Code'] = code
 
         if df.index.empty:
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
-            continue
+            continue  # 유효한 날짜 데이터가 없으면 다음 종목으로 넘어감
 
         logging.debug(f"종목 코드: {code}의 날짜 데이터: {df.index.tolist()}")
 
@@ -190,4 +204,5 @@ if __name__ == "__main__":
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
 
-    # Discord 웹훅으로 전송하는 부분은 discord_webhook.py에서 처리
+    # Discord 웹훅으로 전송하는 부분은 여기에 추가할 수 있습니다.
+
