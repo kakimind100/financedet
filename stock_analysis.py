@@ -82,7 +82,7 @@ def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수. 조건을 완화했습니다."""
     if len(df) < 40:  # 데이터 길이를 40으로 완화
         logging.debug(f"데이터 길이가 40일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
-        return False, None
+        return False
 
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
@@ -97,7 +97,7 @@ def is_cup_with_handle(df):
 
     if handle.empty:
         logging.warning(f"{df['Code'].iloc[0]} 핸들 데이터가 부족합니다.")
-        return False, None
+        return False
 
     handle_top = handle['Close'].max()
 
@@ -108,7 +108,7 @@ def is_cup_with_handle(df):
     # 조건 완화: 컵 깊이를 0.1 이상으로 설정하고 핸들 깊이를 0.15 이하로 설정
     if cup_depth < 0.1 or handle_depth > 0.15:
         logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음. 컵 깊이: {cup_depth}, 핸들 깊이: {handle_depth}")
-        return False, None
+        return False
 
     # 매수 신호 조건 강화
     if handle_top < cup_top and cup_bottom < handle_top:
@@ -118,13 +118,13 @@ def is_cup_with_handle(df):
 
         if recent_volume > average_volume * 1.5:  # 거래량이 평균의 1.5배 이상이어야 매수 신호
             logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
-            return True, df.index[-1]
+            return True
         else:
             logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 거래량이 충분하지 않아 매수 신호가 없습니다.")
     else:
         logging.debug(f"종목 코드: {df['Code'].iloc[0]} - 패턴 미발견. handle_top: {handle_top}, cup_top: {cup_top}, cup_bottom: {cup_bottom}")
 
-    return False, None
+    return False
 
 def is_golden_cross(df):
     """골든 크로스 조건을 확인하는 함수."""
@@ -157,23 +157,30 @@ def search_patterns(stocks_data):
         df['RSI'] = calculate_rsi(df)
 
         # 패턴 확인
-        is_cup_handle, pattern_date = is_cup_with_handle(df)
+        is_cup_handle = is_cup_with_handle(df)
         is_golden_cross_pattern = is_golden_cross(df)
 
         # 컵 위드 핸들 조건이 만족하는 경우
         if is_cup_handle and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
+            # 필요한 정보 추가
             results.append({
                 'code': code,
-                'pattern_date': pattern_date.strftime('%Y-%m-%d') if pattern_date else None,
-                'type': 'Cup with Handle'
+                'low': df['Low'].min(),  # 전체 데이터의 최저가
+                'high': df['High'].max(),  # 전체 데이터의 최고가
+                'open': df['Open'].iloc[0],  # 시작가
+                'close': df['Close'].iloc[-1],  # 종가
+                'volume': df['Volume'].sum()  # 거래량 합계
             })
         
         # 골든 크로스 패턴이 발견된 경우 추가
         if is_golden_cross_pattern:
             results.append({
                 'code': code,
-                'pattern_date': df.index[-1].strftime('%Y-%m-%d'),
-                'type': 'Golden Cross'
+                'low': df['Low'].min(),  # 전체 데이터의 최저가
+                'high': df['High'].max(),  # 전체 데이터의 최고가
+                'open': df['Open'].iloc[0],  # 시작가
+                'close': df['Close'].iloc[-1],  # 종가
+                'volume': df['Volume'].sum()  # 거래량 합계
             })
 
         # 두 패턴이 모두 발견된 경우 로그 기록
@@ -182,7 +189,6 @@ def search_patterns(stocks_data):
 
     return results  # 모든 패턴 확인 후 결과 반환
 
-# 메인 실행 블록
 # 메인 실행 블록
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
@@ -215,7 +221,8 @@ if __name__ == "__main__":
     # 최근 발견된 패턴을 가진 종목을 로그로 기록
     if results:
         for result in results:
-            logging.info(f"발견된 종목: {result['code']} (완성 날짜: {result['pattern_date']}, 유형: {result['type']})")
+            logging.info(f"발견된 종목: {result['code']} (최저가: {result['low']}, 최고가: {result['high']}, "
+                         f"시작가: {result['open']}, 종가: {result['close']}, 거래량: {result['volume']})")
     else:
         logging.info("발견된 패턴이 없습니다.")
 
