@@ -51,7 +51,7 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
             try:
                 df = future.result()
 
-                # 거래 정지 여부 확인 (여기서는 'Status' 열이 있다고 가정)
+                # 거래 정지 여부 확인
                 if 'Status' in df.columns and '거래 정지' in df['Status'].values:
                     logging.info(f"{code}는 거래 정지 상태입니다. 제외합니다.")
                     continue
@@ -78,15 +78,42 @@ def load_stock_data_from_json():
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
+def calculate_indicators(df):
+    """보조 지표를 계산하는 함수."""
+    # 이동 평균
+    df['MA50'] = df['Close'].rolling(window=50).mean()
+    df['MA200'] = df['Close'].rolling(window=200).mean()
+
+    # RSI 계산
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
+
+    # MACD 계산
+    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
+    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = exp1 - exp2
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
+
+    # 볼린저 밴드 계산
+    df['Upper Band'] = df['MA50'] + (df['Close'].rolling(window=50).std() * 2)
+    df['Lower Band'] = df['MA50'] - (df['Close'].rolling(window=50).std() * 2)
+
+    return df
+
 def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
         return False, None, None
 
+    df = calculate_indicators(df)  # 보조 지표 계산
+
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
-    cup_bottom_index = df.index.get_loc(cup_bottom_index)  # 인덱스를 정수로 변환
+    cup_bottom_index = df.index.get_loc(cup_bottom_index)
     cup_top = df['Close'][:cup_bottom_index].max()
 
     handle_start_index = cup_bottom_index + 1
@@ -98,9 +125,8 @@ def is_cup_with_handle(df):
 
         # 매수 신호 발생 조건
         if handle_top > cup_top:
-            buy_price = cup_top * 1.01  # 매수 가격 설정
-            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 매수 가격: {buy_price}")
-            return True, df.index[-1], buy_price
+            logging.info(f"종목 코드: {df['Code'].iloc[0]} - 매수 신호 발생! 컵 완성 가격: {cup_top}, 현재 가격: {df['Close'].iloc[cup_bottom_index]}")
+            return True, df.index[-1], cup_top
     return False, None, None
 
 def search_cup_with_handle(stocks_data):
