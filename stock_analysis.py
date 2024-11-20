@@ -191,7 +191,7 @@ if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
 
     today = datetime.today()
-        start_date = today - timedelta(days=365)
+    start_date = today - timedelta(days=365)
     end_date = today.strftime('%Y-%m-%d')
     start_date_str = start_date.strftime('%Y-%m-%d')
 
@@ -226,3 +226,4 @@ if __name__ == "__main__":
     with open(result_filename, 'w', encoding='utf-8') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
     logging.info(f"결과를 JSON 파일로 저장했습니다: {result_filename}")
+
