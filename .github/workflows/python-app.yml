@@ -26,25 +26,28 @@ jobs:
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '14'  # 사용할 Node.js 버전 설정
-
-      - name: Run stock analysis
+      - name: Run Stock Analysis
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
-          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' }}  # 수동 실행 여부 설정
         run: |
           echo "주식 분석 스크립트 실행 중..."  # 실행 시작 메시지
           python stock_analysis.py  # 주식 분석 스크립트 실행
           echo "주식 분석 스크립트 실행 완료."  # 실행 완료 메시지
 
+      - name: Run Discord Webhook Script
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # Discord 웹훅 URL 시크릿 사용
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
+        run: |
+          echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
+          python discord_webhook.py  # Discord 웹훅 스크립트 실행
+          echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
+
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
         with:
-          name: stock-analysis-log  # 업로드할 아티팩트의 이름
-          path: logs/stock_analysis.log  # logs 디렉토리의 로그 파일 경로
+          name: discord-webhook-log  # 업로드할 아티팩트의 이름
+          path: logs/discord_webhook.log  # 로그 파일 경로 (필요시 수정)
 
       - name: Get Korean Time
         run: |
