@@ -26,7 +26,7 @@ def get_ai_response(api_key, prompt):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # 모델을 GPT-4로 변경
+            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 변경
             messages=[
                 {"role": "system", "content": "당신은 최고의 전문 기술 투자자입니다."},
                 {"role": "user", "content": prompt}
@@ -73,13 +73,17 @@ def main():
                         record['Date'] = (current_date - timedelta(days=index)).strftime('%Y-%m-%d')
                         logging.info(f"종목 코드: {code} - 날짜 추가: {record['Date']}")
 
-                # 최근 40일 데이터만 남기기
-                forty_days_ago = current_date - timedelta(days=40)
-                stock['data'] = [
-                    record for record in stock['data']
-                    if datetime.strptime(record['Date'], '%Y-%m-%d') >= forty_days_ago
-                ]
-                logging.info(f"종목 코드: {code} - 최근 40일 데이터 개수: {len(stock['data'])}")
+                # 최근 28 거래일 데이터만 남기기
+                trading_days = 0
+                filtered_data = []
+                for record in reversed(stock['data']):
+                    record_date = datetime.strptime(record['Date'], '%Y-%m-%d')
+                    if trading_days < 28:
+                        filtered_data.append(record)
+                        if record_date.weekday() < 5:  # 0-4: 월-금
+                            trading_days += 1
+                stock['data'] = list(reversed(filtered_data))  # 원래 순서로 복원
+                logging.info(f"종목 코드: {code} - 최근 28 거래일 데이터 개수: {len(stock['data'])}")
 
         # AI에게 JSON 파일의 데이터를 기반으로 분석 요청
         analysis_prompt = (
