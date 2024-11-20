@@ -55,8 +55,8 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
                     if 'Date' not in df.columns:
                         df['Date'] = pd.date_range(end=datetime.today(), periods=len(df), freq='B')  # 날짜 열 추가
                         logging.info(f"{code} 데이터에 날짜 정보를 추가했습니다.")
-                    else:
-                        df['Date'] = pd.to_datetime(df['Date'])  # 날짜 열이 있는 경우 변환
+
+                    df['Date'] = pd.to_datetime(df['Date'])  # 날짜 열이 있는 경우 변환
 
                     all_data[code] = df.to_dict(orient='records')
                 else:
@@ -64,6 +64,7 @@ def fetch_and_save_stock_data(codes, start_date, end_date):
             except Exception as e:
                 logging.error(f"{code} 처리 중 오류 발생: {e}")
 
+    # 주식 데이터를 JSON 파일로 저장
     filename = os.path.join(json_dir, 'stock_data.json')
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(all_data, f, default=str, ensure_ascii=False, indent=4)
@@ -137,7 +138,8 @@ def search_patterns(stocks_data):
 
         # 날짜 데이터 확인
         if 'Date' in df.columns:
-            print(f"{code}의 날짜 데이터: {df['Date'].tolist()}")
+            # 날짜 확인 로그 생략
+            pass
         else:
             print(f"{code}의 날짜 정보가 없습니다.")
             logging.warning(f"{code}의 날짜 정보가 없습니다.")
@@ -197,7 +199,7 @@ if __name__ == "__main__":
     stocks_data = load_stock_data_from_json()
 
     results = search_patterns(stocks_data)
-
+    
     # 결과를 JSON 파일로 저장
     result_filename = os.path.join(json_dir, 'pattern_results.json')
     with open(result_filename, 'w', encoding='utf-8') as f:
