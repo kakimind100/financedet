@@ -102,7 +102,8 @@ def calculate_indicators(df):
     df['Lower Band'] = df['MA50'] - (df['Close'].rolling(window=50).std() * 2)
 
     return df
-    def is_cup_with_handle(df):
+
+def is_cup_with_handle(df):
     """컵과 핸들 패턴을 찾는 함수."""
     if len(df) < 60:
         logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
