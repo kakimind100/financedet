@@ -58,6 +58,9 @@ def main():
 
         logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
+        # 현재 날짜
+        current_date = datetime.today()
+
         # 데이터 확인 및 날짜 추가
         for stock in top_stocks:
             code = stock.get('code', '알 수 없음')
@@ -67,8 +70,16 @@ def main():
             if 'data' in stock:
                 for index, record in enumerate(stock['data']):
                     if 'Date' not in record or not record['Date']:
-                        record['Date'] = (datetime.today() - timedelta(days=index)).strftime('%Y-%m-%d')
+                        record['Date'] = (current_date - timedelta(days=index)).strftime('%Y-%m-%d')
                         logging.info(f"종목 코드: {code} - 날짜 추가: {record['Date']}")
+
+                # 최근 40일 데이터만 남기기
+                forty_days_ago = current_date - timedelta(days=40)
+                stock['data'] = [
+                    record for record in stock['data']
+                    if datetime.strptime(record['Date'], '%Y-%m-%d') >= forty_days_ago
+                ]
+                logging.info(f"종목 코드: {code} - 최근 40일 데이터 개수: {len(stock['data'])}")
 
         # AI에게 JSON 파일의 데이터를 기반으로 분석 요청
         analysis_prompt = (
