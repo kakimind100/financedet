@@ -195,7 +195,7 @@ def search_patterns_and_find_top(stocks_data):
         is_cup, cup_date = is_cup_with_handle(df)
         is_golden, cross_date = is_golden_cross(df)
         is_divergence, divergence_date = is_bullish_divergence(df)
-        is_round_bottom, round_bottom_date = is_round_bottom(df)
+        is_round_bottom_found, round_bottom_date = is_round_bottom(df)  # 수정된 부분
 
         # 패턴 결과 저장
         pattern_info = {
@@ -203,7 +203,7 @@ def search_patterns_and_find_top(stocks_data):
             'cup': is_cup,
             'golden_cross': is_golden,
             'divergence': is_divergence,
-            'round_bottom': is_round_bottom,
+            'round_bottom': is_round_bottom_found,  # 수정된 부분
             'data': df.to_dict(orient='records')
         }
 
