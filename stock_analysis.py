@@ -86,11 +86,10 @@ def is_cup_with_handle(df):
 
     cup_bottom = df['Low'].min()
     cup_bottom_index = df['Low'].idxmin()
-    cup_bottom_index = df.index.get_loc(cup_bottom_index)
-
     cup_top = df['Close'][:cup_bottom_index].max()
-    handle_start_index = cup_bottom_index + 1
 
+    # 핸들 시작 인덱스
+    handle_start_index = cup_bottom_index + 1
     handle_length = min(10, len(df) - handle_start_index)
     handle = df.iloc[handle_start_index:handle_start_index + handle_length]
 
@@ -102,12 +101,15 @@ def is_cup_with_handle(df):
     cup_depth = (cup_top - cup_bottom) / cup_top
     handle_depth = (handle_top - cup_bottom) / cup_top
 
-    if cup_depth < 0.1 or handle_depth > 0.15:
+    # 컵 깊이와 핸들 깊이에 대한 조건 완화
+    if cup_depth < 0.05 or handle_depth > 0.2:  # 조건 완화
         logging.warning(f"종목 코드: {df['Code'].iloc[0]} - 컵 또는 핸들 조건이 충족되지 않음.")
         return False
 
-    if handle_top < cup_top and cup_bottom < handle_top:
+    # 핸들이 컵의 상단보다 낮아야 하며 컵의 바닥 위에 있어야 함
+    if handle_top < cup_top and handle_top > cup_bottom:
         return True
+
     return False
 
 def is_golden_cross(df):
