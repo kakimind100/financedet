@@ -160,7 +160,7 @@ def search_patterns(stocks_data):
         is_cup_handle, pattern_date = is_cup_with_handle(df)
         is_golden_cross_pattern = is_golden_cross(df)
 
-        # 조건이 모두 만족할 경우
+        # 컵 위드 핸들 조건이 만족하는 경우
         if is_cup_handle and df['RSI'].iloc[-1] < 30:  # RSI가 30 이하일 때
             results.append({
                 'code': code,
@@ -182,6 +182,7 @@ def search_patterns(stocks_data):
 
     return results  # 모든 패턴 확인 후 결과 반환
 
+# 메인 실행 블록
 # 메인 실행 블록
 if __name__ == "__main__":
     logging.info("주식 분석 스크립트 실행 중...")
