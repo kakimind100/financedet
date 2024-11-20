@@ -85,11 +85,11 @@ def is_cup_with_handle(df):
         return False
 
     cup_bottom = df['Low'].min()
-    cup_bottom_index = df['Low'].idxmin()
-    cup_top = df['Close'][:cup_bottom_index].max()
+    cup_bottom_index = df['Low'].idxmin()  # 컵의 바닥 인덱스
+    cup_top = df['Close'][:cup_bottom_index].max()  # 컵의 상단
 
     # 핸들 시작 인덱스
-    handle_start_index = cup_bottom_index + 1
+    handle_start_index = df.index.get_loc(cup_bottom_index) + 1  # 정수 인덱스 위치로 변환
     handle_length = min(10, len(df) - handle_start_index)
     handle = df.iloc[handle_start_index:handle_start_index + handle_length]
 
