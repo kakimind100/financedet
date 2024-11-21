@@ -74,6 +74,11 @@ start_date = end_date - timedelta(days=365)  # 1년 전 날짜
 logging.info("주식 분석 스크립트 실행 중...")
 all_stocks_data = fetch_all_stocks_data(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
 
-# 모든 주식 데이터 출력 (선택 사항)
+# 모든 주식 데이터 확인
 for code, data in all_stocks_data.items():
     logging.info(f"{code} 데이터: {data[:5]}")  # 각 종목의 첫 5개 데이터 출력
+    # 데이터프레임으로 변환하여 열 확인
+    df = pd.DataFrame(data)
+    print(f"종목 코드: {code}")
+    print("데이터 열:", df.columns.tolist())  # 데이터 열 확인
+    print(df.head())  # 데이터의 첫 5개 행 출력
