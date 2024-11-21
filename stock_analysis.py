@@ -35,6 +35,11 @@ def fetch_stock_data(code, start_date, end_date):
     if df is not None and not df.empty:
         df.reset_index(inplace=True)  # 날짜를 칼럼으로 추가
         logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
+
+        # NaN 값 확인
+        if df.isnull().values.any():
+            logging.warning(f"{code} 데이터에 NaN 값이 포함되어 있습니다.")
+
         return code, df
     logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")
     return code, None
@@ -55,6 +60,11 @@ def calculate_technical_indicators(df):
     df['Upper Band'] = df['MA20'] + (df['Close'].rolling(window=20).std() * 2)
     df['Lower Band'] = df['MA20'] - (df['Close'].rolling(window=20).std() * 2)
     df['Price Change'] = df['Close'].diff()
+
+    # NaN 값 확인
+    if df.isnull().values.any():
+        logging.warning("기술적 지표 계산 후 NaN 값이 포함되어 있습니다.")
+
     return df
 
 def preprocess_data(all_stocks_data):
@@ -63,14 +73,18 @@ def preprocess_data(all_stocks_data):
     all_targets = []
 
     for code, df in all_stocks_data.items():
-        df = calculate_technical_indicators(df).dropna()  # NaN 값 제거
+        df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
         if len(df) > 20:  # 충분한 데이터가 있는 경우
             df = df.copy()  # 복사본 생성
             df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-            X = df[features].dropna()
-            y = df['Target'][X.index]
-            
+            X = df[features]
+            y = df['Target']
+
+            # NaN 값 확인
+            if X.isnull().values.any() or y.isnull().values.any():
+                logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
+
             all_features.append(X)
             all_targets.append(y)
 
@@ -88,7 +102,7 @@ def train_model(X, y):
     logging.info("모델 훈련 시작...")
     for _ in tqdm(range(1), desc="모델 훈련 진행 중", unit="iteration"):
         model.fit(X, y)
-    
+
     joblib.dump(model, 'stock_model.pkl')  # 모델 저장
     logging.info("모델 훈련 완료 및 저장됨.")
     
@@ -148,22 +162,15 @@ def main():
         if len(df) > 20:  # 충분한 데이터가 있는 경우
             last_row = df.iloc[-1]
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-            
-            # DataFrame을 사용하여 피처 이름 포함
-            X_new = pd.DataFrame(last_row[features]).T  # 1행 DataFrame 생성
-            
+            X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
+
             # NaN 값 체크
-            if X_new.isnull().values.any():
+            if np.isnan(X_new).any():
                 logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
                 continue  # NaN이 포함된 종목은 건너뜁니다.
 
             prediction = model.predict(X_new)
-
-            # 내일의 상한가 계산 (전일 종가의 29% 상승)
-            upper_limit = last_row['Close'] * 1.29
-
-            # 예측된 값이 1이거나, 예측된 종가가 상한가를 초과할 경우
-            if prediction[0] == 1 or last_row['Close'] > upper_limit:
+            if prediction[0] == 1:  # 상승 예상
                 potential_stocks.append((code, last_row['Close'], df))
 
     # 상승 가능성이 있는 종목 정렬 및 상위 20개 선택
@@ -182,4 +189,4 @@ def main():
     logging.info("주식 분석 스크립트 실행 완료.")
 
 if __name__ == "__main__":
-    main()
+   
