@@ -50,10 +50,10 @@ def calculate_potential_increase(df):
     df = df.tail(num_to_calculate)
 
     # 이전 거래량과 현재 거래량 계산
-    df['Volume Previous'] = df['Volume'].shift(1)
+    df.loc[:, 'Volume Previous'] = df['Volume'].shift(1)
 
     # 상승 가능성 계산
-    df['Potential Increase (%)'] = (
+    df.loc[:, 'Potential Increase (%)'] = (
         ((df['Close'] - df['Open']) / df['Open']) * 100 +
         df.apply(lambda x: ((x['Volume'] - x['Volume Previous']) / x['Volume Previous']) * 100 if x['Volume Previous'] > 0 else 0, axis=1)
     )
@@ -61,7 +61,12 @@ def calculate_potential_increase(df):
     # 첫 번째 행은 계산할 수 없으므로 제거
     df = df.dropna(subset=['Potential Increase (%)'])
 
-    return df[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)']]
+    # 'Date'가 데이터프레임에 있는지 확인하고 반환
+    if 'Date' in df.columns:
+        return df[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)']]
+    else:
+        logging.warning("'Date' 컬럼이 데이터프레임에 없습니다.")
+        return None
 
 def fetch_all_stocks_data(start_date, end_date):
     """모든 주식 데이터를 가져오는 함수."""
@@ -90,6 +95,17 @@ start_date = end_date - timedelta(days=365)
 
 logging.info("주식 분석 스크립트 실행 중...")
 all_stocks_data = fetch_all_stocks_data(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+
+# 특정 종목 데이터 확인 (예: '227610')
+specific_code = '227610'
+if specific_code in all_stocks_data:
+    specific_data = all_stocks_data[specific_code]
+    df_specific = pd.DataFrame(specific_data)
+    print(f"종목 코드 {specific_code}의 데이터:")
+    print(df_specific.head())  # 첫 5개 데이터 출력
+else:
+    logging.warning(f"종목 코드 {specific_code}의 데이터가 없습니다.")
+    print(f"종목 코드 {specific_code}의 데이터가 없습니다.")  # 사용자에게 알림
 
 # 전체 종목에 대해 상승 가능성 계산
 results = {}
