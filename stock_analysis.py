@@ -95,7 +95,8 @@ all_targets = []
 for code, df in all_stocks_data.items():
     df = calculate_technical_indicators(df).dropna()  # NaN 값 제거
     if len(df) > 20:  # 충분한 데이터가 있는 경우
-        df.loc[:, 'Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+        df = df.copy()  # 복사본 생성
+        df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
         X = df[features].dropna()
         y = df['Target'][X.index]
@@ -132,6 +133,9 @@ for code, df in all_stocks_data.items():
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
         X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
 
+        # X_new를 NumPy 배열로 변환
+        X_new = np.array(X_new)
+
         # NaN 값 체크
         if np.isnan(X_new).any():
             logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
@@ -156,4 +160,3 @@ else:
     print("상승 가능성이 있는 종목이 없습니다.")
 
 logging.info("주식 분석 스크립트 실행 완료.")
-    
