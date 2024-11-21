@@ -80,23 +80,26 @@ def preprocess_data(all_stocks_data):
     all_features = []
     all_targets = []
 
-    for code, df in all_stocks_data.items():
-        df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
-        if len(df) > 20:  # 충분한 데이터가 있는 경우
-            df = df.copy()  # 복사본 생성
-            df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
-            features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-            X = df[features]
-            y = df['Target']
+for code, df in all_stocks_data.items():
+    df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
+    if len(df) > 20:  # 충분한 데이터가 있는 경우
+        df = df.copy()  # 복사본 생성
+        df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
+        X = df[features]
+        y = df['Target']
 
-            # NaN 값 확인
-            if X.isnull().values.any() or y.isnull().values.any():
-                logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
-                logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
-                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+        # 충분한 데이터가 있는 경우 로그 기록
+        logging.info(f"종목 코드 {code}의 충분한 데이터 확인: 마지막 5일 데이터\n{df.tail(5)}")
 
-            all_features.append(X)
-            all_targets.append(y)
+        # NaN 값 확인
+        if X.isnull().values.any() or y.isnull().values.any():
+            logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
+            logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
+            logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+
+        all_features.append(X)
+        all_targets.append(y)
 
     # 모든 종목 데이터를 하나로 합치기
     X_all = pd.concat(all_features)
@@ -174,16 +177,20 @@ def main():
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
             X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
 
+            # X_new의 데이터 타입 확인 및 변환
+            try:
+                X_new = np.array(X_new, dtype=float)  # 명시적으로 float로 변환
+            except Exception as e:
+                logging.error(f"종목 코드 {code}의 입력 데이터 변환 실패: {e}")
+                continue
+
             # NaN 값 체크
             if np.isnan(X_new).any():
                 logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
                 continue  # NaN이 포함된 종목은 건너뜁니다.
 
             prediction = model.predict(X_new)
-
-            # 내일 가격 예측 (가정: 오늘 종가에 상승률 적용)
-            predicted_price = last_row['Close'] * 1.29  # 29% 상승 예측
-            if prediction[0] == 1 and last_row['Close'] < predicted_price:  # 상승 예상 및 29% 이상 상승
+            if prediction[0] == 1:  # 상승 예상
                 potential_stocks.append((code, last_row['Close'], df))
 
     # 상승 가능성이 있는 종목 정렬 및 상위 20개 선택
