@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
 import joblib
+from tqdm import tqdm  # 진행 상황 표시를 위한 라이브러리
 
 # 로그 및 JSON 파일 디렉토리 설정
 log_dir = 'logs'
@@ -82,7 +83,11 @@ def preprocess_data(all_stocks_data):
 def train_model(X, y):
     """모델을 훈련시키고 저장하는 함수."""
     model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
+    
+    # 진행상황을 로그로 남기기 위해 tqdm 사용
+    for _ in tqdm(range(1), desc="모델 훈련 진행 중", unit="iteration"):
+        model.fit(X, y)
+    
     joblib.dump(model, 'stock_model.pkl')  # 모델 저장
     logging.info("모델 훈련 완료 및 저장됨.")
     return model
