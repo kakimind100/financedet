@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import joblib  # 모델 저장 및 로드를 위한 라이브러리
+import joblib
 
 # 로그 및 JSON 파일 디렉토리 설정
 log_dir = 'logs'
@@ -84,14 +84,6 @@ def calculate_technical_indicators(df):
     df['Price Change'] = df['Close'].diff()
     return df
 
-def train_model(X, y):
-    """모델을 훈련시키고 저장하는 함수."""
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X, y)
-    joblib.dump(model, 'stock_model.pkl')  # 모델 저장
-    logging.info("모델 훈련 완료 및 저장됨.")
-    return model
-
 # 사용 예
 end_date = datetime.today()
 start_date = end_date - timedelta(days=365)
@@ -116,37 +108,63 @@ with ThreadPoolExecutor(max_workers=20) as executor:  # 멀티스레딩: 최대 
         else:
             logging.warning(f"{code} 데이터가 실패했습니다.")
 
-# 머신러닝 모델 훈련 및 예측
-specific_code_input = '007810'  # 예시 종목 코드
-if specific_code_input in all_stocks_data:
-    df_specific = pd.DataFrame(all_stocks_data[specific_code_input])
-    df_specific = calculate_technical_indicators(df_specific)
+# 머신러닝 모델 훈련 및 예측을 위한 데이터 준비
+all_features = []
+all_targets = []
 
-    # 예측을 위한 데이터 준비
-    df_specific['Target'] = np.where(df_specific['Price Change'] > 0, 1, 0)  # 종가 상승 여부
-    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-    X = df_specific[features].dropna()
-    y = df_specific['Target'][X.index]
+for code, df in all_stocks_data.items():
+    df = calculate_technical_indicators(df)
+    if len(df) > 20:  # 충분한 데이터가 있는 경우
+        df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
+        X = df[features].dropna()
+        y = df['Target'][X.index]
+        
+        all_features.append(X)
+        all_targets.append(y)
 
-    # 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# 모든 종목 데이터를 하나로 합치기
+X_all = pd.concat(all_features)
+y_all = pd.concat(all_targets)
 
-    # 모델 훈련 및 저장
-    model = train_model(X_train, y_train)
+# 데이터 분할
+X_train, X_test, y_train, y_test = train_test_split(X_all, y_all, test_size=0.2, random_state=42)
 
-    # 예측 수행
-    y_pred = model.predict(X_test)
+# 모델 훈련 및 저장
+model = train_model(X_train, y_train)
 
-    # 결과 출력
-    print(classification_report(y_test, y_pred))
+# 예측 수행
+y_pred = model.predict(X_test)
 
-    # 최근 5일 치 데이터 출력 및 로그 기록
-    recent_data = df_specific.tail(5)
-    logging.info(f"종목 코드 {specific_code_input}의 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']]}")
-    print(f"종목 코드 {specific_code_input}의 최근 5일 치 데이터:")
-    print(recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']])
+# 결과 출력
+print(classification_report(y_test, y_pred))
+
+# 상승 가능성이 있는 종목 찾기
+potential_stocks = []
+
+for code, df in all_stocks_data.items():
+    df = calculate_technical_indicators(df)
+    if len(df) > 20:  # 충분한 데이터가 있는 경우
+        last_row = df.iloc[-1]
+        # 예측을 위한 데이터 준비
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
+        X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
+        prediction = model.predict(X_new)
+        
+        if prediction[0] == 1:  # 상승 예상
+            potential_stocks.append((code, last_row['Close'], df))
+
+# 상승 가능성이 있는 종목 정렬 및 상위 20개 선택
+top_stocks = sorted(potential_stocks, key=lambda x: x[1], reverse=True)[:20]
+
+# 결과 출력 및 최근 5일 치 데이터 로그 기록
+if top_stocks:
+    print("내일 상승 가능성이 있는 종목:")
+    for code, price, df in top_stocks:
+        recent_data = df.tail(5)  # 최근 5일 치 데이터
+        logging.info(f"종목 코드: {code}, 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']]}")
+        print(f"종목 코드: {code}, 현재 가격: {price}")
 else:
-    logging.warning(f"종목 코드 {specific_code_input}의 데이터가 없습니다.")
-    print(f"종목 코드 {specific_code_input}의 데이터가 없습니다.")
+    print("상승 가능성이 있는 종목이 없습니다.")
 
 logging.info("주식 분석 스크립트 실행 완료.")
