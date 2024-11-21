@@ -83,19 +83,23 @@ def preprocess_data(all_stocks_data):
 def train_model(X, y):
     """모델을 훈련시키고 저장하는 함수."""
     model = RandomForestClassifier(n_estimators=100, random_state=42)
-    
+
     # 진행상황을 로그로 남기기 위해 tqdm 사용
+    logging.info("모델 훈련 시작...")
     for _ in tqdm(range(1), desc="모델 훈련 진행 중", unit="iteration"):
         model.fit(X, y)
     
     joblib.dump(model, 'stock_model.pkl')  # 모델 저장
     logging.info("모델 훈련 완료 및 저장됨.")
+    
     return model
 
 def evaluate_model(model, X_test, y_test):
     """모델 성능을 평가하는 함수."""
     y_pred = model.predict(X_test)
     report = classification_report(y_test, y_pred)
+    
+    # 성능 보고서 로그에 기록
     logging.info(f"모델 성능 보고서:\n{report}")
     print(report)
 
@@ -179,4 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
