@@ -164,8 +164,8 @@ def main():
 
             prediction = model.predict(X_new)
 
-            # 내일의 상한가 계산 (전일 종가의 30% 상승)
-            upper_limit = last_row['Close'] * 1.3
+            # 내일의 상한가 계산 (전일 종가의 29% 상승)
+            upper_limit = last_row['Close'] * 1.29
 
             # 예측된 값이 1이거나, 예측된 종가가 상한가를 초과할 경우
             if prediction[0] == 1 or last_row['Close'] > upper_limit:
