@@ -40,49 +40,29 @@ def fetch_stock_data(code, start_date, end_date):
 
 def calculate_technical_indicators(df):
     """기술적 지표를 계산하는 함수."""
-    
-    # 5일 이동 평균 계산
     df['MA5'] = df['Close'].rolling(window=5).mean()
-    
-    # 20일 이동 평균 계산
     df['MA20'] = df['Close'].rolling(window=20).mean()
-    
-    # 종가의 변화량 계산
     delta = df['Close'].diff()
-    
-    # 상승폭의 평균 계산 (14일 기준)
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    
-    # 하락폭의 평균 계산 (14일 기준)
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    
-    # 상대 강도(RS) 계산: 상승폭 평균 / 하락폭 평균
     rs = gain / loss
-    
-    # 상대 강도 지수(RSI) 계산: 0과 100 사이의 값으로, 과매수 및 과매도 신호로 사용
     df['RSI'] = 100 - (100 / (1 + rs))
-    
-    # 12일 지수 이동 평균(EMA) 계산
     df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
-    
-    # 26일 지수 이동 평균(EMA) 계산
     df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
-    
-    # MACD 계산: 12일 EMA - 26일 EMA
     df['MACD'] = df['EMA12'] - df['EMA26']
-    
-    # MACD 신호선 계산: MACD의 9일 EMA
     df['Signal Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
-    
-    # 볼린저 밴드의 상단 밴드 계산: 20일 이동 평균 + 2배의 20일 표준편차
     df['Upper Band'] = df['MA20'] + (df['Close'].rolling(window=20).std() * 2)
-    
-    # 볼린저 밴드의 하단 밴드 계산: 20일 이동 평균 - 2배의 20일 표준편차
     df['Lower Band'] = df['MA20'] - (df['Close'].rolling(window=20).std() * 2)
-
-    # 추가 칼럼: 종가 변화량
     df['Price Change'] = df['Close'].diff()
     return df
+
+def train_model(X, y):
+    """모델을 훈련시키고 저장하는 함수."""
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X, y)
+    joblib.dump(model, 'stock_model.pkl')  # 모델 저장
+    logging.info("모델 훈련 완료 및 저장됨.")
+    return model
 
 # 사용 예
 end_date = datetime.today()
