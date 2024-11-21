@@ -1,18 +1,20 @@
 import FinanceDataReader as fdr
 import pandas as pd
 import logging
+import os
+
+# 로그 및 JSON 파일 디렉토리 설정
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
 
 # 로깅 설정
-logging.basicConfig(level=logging.INFO)
-
-로깅 설정
 logging.basicConfig(
-filename=os.path.join(log_dir, 'stock_analysis.log'),
-level=logging.DEBUG,
-format='%(asctime)s - %(levelname)s - %(message)s'
+    filename=os.path.join(log_dir, 'stock_analysis.log'),
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-콘솔 로그 출력 설정
+# 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
@@ -38,4 +40,7 @@ def fetch_stock_data(code, start_date, end_date):
 # 사용 예
 start_date = '2020-01-01'
 end_date = '2023-01-01'
+
+# 실행 시작 메시지
+logging.info("주식 분석 스크립트 실행 중...")
 fetch_stock_data('AAPL', start_date, end_date)
