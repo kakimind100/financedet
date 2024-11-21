@@ -69,6 +69,19 @@ def calculate_potential_increase(df):
         logging.warning("'Date' 컬럼이 데이터프레임에 없습니다.")
         return None
 
+def find_stocks_with_potential_increase(df, threshold=2.0):
+    """상승 가능성이 있는 종목을 찾는 함수."""
+    # 상승 가능성 계산
+    df['Potential Increase (%)'] = (
+        ((df['Close'] - df['Open']) / df['Open']) * 100 +
+        df['Volume'].pct_change() * 100  # 거래량 변화 비율
+    )
+    
+    # 기준 이상인 종목 필터링
+    potential_stocks = df[df['Potential Increase (%)'] > threshold]
+    
+    return potential_stocks
+
 def fetch_all_stocks_data(start_date, end_date):
     """모든 주식 데이터를 가져오는 함수."""
     markets = ['KOSPI', 'KOSDAQ']
@@ -97,29 +110,19 @@ start_date = end_date - timedelta(days=365)
 logging.info("주식 분석 스크립트 실행 중...")
 all_stocks_data = fetch_all_stocks_data(start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
 
-# 특정 종목 데이터 확인 (예: '465770')
-specific_code = '465770'  # 종목 코드를 465770으로 변경
-if specific_code in all_stocks_data:
-    specific_data = all_stocks_data[specific_code]
-    df_specific = pd.DataFrame(specific_data)
-    print(f"종목 코드 {specific_code}의 데이터:")
-    print(df_specific.head())  # 첫 5개 데이터 출력
-else:
-    logging.warning(f"종목 코드 {specific_code}의 데이터가 없습니다.")
-    print(f"종목 코드 {specific_code}의 데이터가 없습니다.")  # 사용자에게 알림
-
-# 전체 종목에 대해 상승 가능성 계산
-results = {}
+# 내일 상승할 가능성이 있는 종목 찾기
+potential_increase_stocks = {}
 for specific_code, specific_data in all_stocks_data.items():
     df_specific = pd.DataFrame(specific_data)
 
-    # 상승 가능성 계산
-    result_df = calculate_potential_increase(df_specific)
+    # 오늘까지의 데이터로 상승 가능성 있는 종목 찾기
+    potential_stocks = find_stocks_with_potential_increase(df_specific, threshold=2.0)
     
-    if result_df is not None and not result_df.empty:
-        results[specific_code] = result_df  # 결과를 저장
+    if not potential_stocks.empty:
+        potential_increase_stocks[specific_code] = potential_stocks
 
-# 결과 출력 (원하는 형태로 출력 가능)
-for code, result in results.items():
-    print(f"종목 코드 {code}의 상승 가능성:")
-    print(result.head())  # 각 종목의 첫 5개 데이터 출력
+# 결과 출력
+print("내일 상승할 가능성이 있는 종목:")
+for code, result in potential_increase_stocks.items():
+    print(f"종목 코드 {code}:")
+    print(result[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)']].tail())  # 마지막 몇 개 데이터 출력
