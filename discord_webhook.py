@@ -85,16 +85,14 @@ def main():
                 stock['data'] = list(reversed(filtered_data))  # 원래 순서로 복원
                 logging.info(f"종목 코드: {code} - 최근 26 거래일 데이터 개수: {len(stock['data'])}")
 
-        # AI에게 JSON 파일의 데이터를 기반으로 분석 요청
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{json.dumps(top_stocks, ensure_ascii=False)}\n"
-            f"각 종목 코드에 대한 다음거래일에 상승 가능성을 예측해주세요. "
+            f"각 종목 코드에 대한 다음 거래일에 상승 가능성을 예측해주세요. "
             f"예측은 최근 가격, 거래량, 기술적 지표를 기반으로 하며, "
-            f"결과는 종목 코드와 상승 가능성0~100(%)을 포함하여 높은 순서로 나열해 주세요.\n"
+            f"결과는 종목 코드와 상승 가능성(0~100%)을 포함하여 높은 순서로 나열해 주세요.\n"
             f"예시 출력 형식: 종목 코드: 상승 가능성 %"
         )
 
-        
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
 
         if ai_response:
