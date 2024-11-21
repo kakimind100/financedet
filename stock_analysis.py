@@ -159,4 +159,3 @@ if top_stocks:
 else:
     print("상승 가능성이 있는 종목이 없습니다.")
 
-logging.info("주식 분석 스크립트 실행 완료.")
