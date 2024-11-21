@@ -5,6 +5,19 @@ import logging
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 
+로깅 설정
+logging.basicConfig(
+filename=os.path.join(log_dir, 'stock_analysis.log'),
+level=logging.DEBUG,
+format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
     try:
