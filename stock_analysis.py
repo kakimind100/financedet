@@ -163,7 +163,12 @@ def main():
                 continue  # NaN이 포함된 종목은 건너뜁니다.
 
             prediction = model.predict(X_new)
-            if prediction[0] == 1:  # 상승 예상
+
+            # 내일의 상한가 계산 (전일 종가의 30% 상승)
+            upper_limit = last_row['Close'] * 1.3
+
+            # 예측된 값이 1이거나, 예측된 종가가 상한가를 초과할 경우
+            if prediction[0] == 1 or last_row['Close'] > upper_limit:
                 potential_stocks.append((code, last_row['Close'], df))
 
     # 상승 가능성이 있는 종목 정렬 및 상위 20개 선택
@@ -183,3 +188,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
