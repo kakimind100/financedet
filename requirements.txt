@@ -12,3 +12,4 @@ discord.py==2.0.1       # 디스코드 API와 상호작용하기 위한 라이�
 mysql-connector-python==8.0.30  # MySQL Connector/Python
 matplotlib
 pyyaml
+scikit-learn
