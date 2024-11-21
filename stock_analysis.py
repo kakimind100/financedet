@@ -148,17 +148,12 @@ def main():
         if len(df) > 20:  # 충분한 데이터가 있는 경우
             last_row = df.iloc[-1]
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-            X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
-
-            # X_new의 데이터 타입 확인 및 변환
-            try:
-                X_new = np.array(X_new, dtype=float)  # 명시적으로 float로 변환
-            except Exception as e:
-                logging.error(f"종목 코드 {code}의 입력 데이터 변환 실패: {e}")
-                continue
-
+            
+            # DataFrame을 사용하여 피처 이름 포함
+            X_new = pd.DataFrame(last_row[features]).T  # 1행 DataFrame 생성
+            
             # NaN 값 체크
-            if np.isnan(X_new).any():
+            if X_new.isnull().values.any():
                 logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
                 continue  # NaN이 포함된 종목은 건너뜁니다.
 
@@ -188,4 +183,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
