@@ -146,6 +146,13 @@ def main():
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
             X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
 
+            # X_new의 데이터 타입 확인 및 변환
+            try:
+                X_new = np.array(X_new, dtype=float)  # 명시적으로 float로 변환
+            except Exception as e:
+                logging.error(f"종목 코드 {code}의 입력 데이터 변환 실패: {e}")
+                continue
+
             # NaN 값 체크
             if np.isnan(X_new).any():
                 logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
@@ -172,3 +179,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
