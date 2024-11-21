@@ -1,5 +1,6 @@
 import FinanceDataReader as fdr
 import pandas as pd
+import numpy as np
 import logging
 import os
 from datetime import datetime, timedelta
@@ -36,38 +37,30 @@ def fetch_stock_data(code, start_date, end_date):
     
     return None
 
-def calculate_potential_increase(df):
-    """상승 가능성을 계산하는 함수."""
-    data_length = len(df)
+def calculate_technical_indicators(df):
+    """기술적 지표를 계산하는 함수."""
+    # 이동 평균 (MA)
+    df['MA5'] = df['Close'].rolling(window=5).mean()
+    df['MA20'] = df['Close'].rolling(window=20).mean()
 
-    if data_length < 2:
-        logging.warning("상승 가능성을 계산하기 위해 최소 2개의 데이터가 필요합니다.")
-        return None
+    # 상대 강도 지수 (RSI)
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df['RSI'] = 100 - (100 / (1 + rs))
 
-    # 사용 가능한 데이터 길이에 따라 계산할 개수 설정
-    num_to_calculate = min(data_length, 100)
+    # MACD
+    df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
+    df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
+    df['MACD'] = df['EMA12'] - df['EMA26']
+    df['Signal Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
 
-    # 필요한 데이터만 슬라이스
-    df = df.tail(num_to_calculate)
+    # 볼린저 밴드
+    df['Upper Band'] = df['MA20'] + (df['Close'].rolling(window=20).std() * 2)
+    df['Lower Band'] = df['MA20'] - (df['Close'].rolling(window=20).std() * 2)
 
-    # 이전 거래량과 현재 거래량 계산
-    df.loc[:, 'Volume Previous'] = df['Volume'].shift(1).copy()
-
-    # 상승 가능성 계산
-    df.loc[:, 'Potential Increase (%)'] = (
-        ((df['Close'] - df['Open']) / df['Open']) * 100 +
-        df.apply(lambda x: ((x['Volume'] - x['Volume Previous']) / x['Volume Previous']) * 100 if x['Volume Previous'] > 0 else 0, axis=1)
-    )
-
-    # 첫 번째 행은 계산할 수 없으므로 제거
-    df = df.dropna(subset=['Potential Increase (%)'])
-
-    # 'Date'가 데이터프레임에 있는지 확인하고 반환
-    if 'Date' in df.columns:
-        return df[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)']]
-    else:
-        logging.warning("'Date' 컬럼이 데이터프레임에 없습니다.")
-        return None
+    return df
 
 def find_stocks_with_potential_increase(df, threshold=2.0):
     """상승 가능성이 있는 종목을 찾는 함수."""
@@ -80,6 +73,12 @@ def find_stocks_with_potential_increase(df, threshold=2.0):
     # 기준 이상인 종목 필터링
     potential_stocks = df[df['Potential Increase (%)'] > threshold]
     
+    # 추가 조건: RSI, MACD 신호 등
+    potential_stocks = potential_stocks[
+        (potential_stocks['RSI'] < 30) |  # 과매도 상태
+        (potential_stocks['MACD'] > potential_stocks['Signal Line'])  # MACD가 신호선 위
+    ]
+
     return potential_stocks
 
 def fetch_all_stocks_data(start_date, end_date):
@@ -115,6 +114,9 @@ potential_increase_stocks = {}
 for specific_code, specific_data in all_stocks_data.items():
     df_specific = pd.DataFrame(specific_data)
 
+    # 기술적 지표 계산
+    df_specific = calculate_technical_indicators(df_specific)
+
     # 오늘까지의 데이터로 상승 가능성 있는 종목 찾기
     potential_stocks = find_stocks_with_potential_increase(df_specific, threshold=2.0)
     
@@ -125,4 +127,18 @@ for specific_code, specific_data in all_stocks_data.items():
 print("내일 상승할 가능성이 있는 종목:")
 for code, result in potential_increase_stocks.items():
     print(f"종목 코드 {code}:")
-    print(result[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)']].tail())  # 마지막 몇 개 데이터 출력
+    print(result[['Date', 'Open', 'Close', 'Volume', 'Potential Increase (%)', 'RSI', 'MACD', 'Upper Band', 'Lower Band']].tail())  # 마지막 몇 개 데이터 출력
+
+# 특정 종목 코드에 대한 최근 5일 치 데이터 로그 기록
+specific_code_input = input("특정 종목 코드를 입력하세요 (예: '065350'): ")
+if specific_code_input in all_stocks_data:
+    specific_data = all_stocks_data[specific_code_input]
+    df_specific = pd.DataFrame(specific_data)
+
+    # 최근 5일 치 데이터 출력 및 로그 기록
+    recent_data = df_specific.tail(5)
+    logging.info(f"종목 코드 {specific_code_input}의 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume']]}")
+    print(f"종목 코드 {specific_code_input}의 최근 5일 치 데이터:")
+    print(recent_data[['Date', 'Open', 'Close', 'Volume']])
+else:
+    print(f"종목 코드 {specific_code_input}의 데이터가 없습니다.")
