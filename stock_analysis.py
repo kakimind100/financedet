@@ -2,6 +2,7 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
+from datetime import datetime, timedelta
 
 # 로그 및 JSON 파일 디렉토리 설정
 log_dir = 'logs'
@@ -38,9 +39,9 @@ def fetch_stock_data(code, start_date, end_date):
         return None
 
 # 사용 예
-start_date = '2020-01-01'
-end_date = '2023-01-01'
+end_date = datetime.today()  # 현재 날짜
+start_date = end_date - timedelta(days=365)  # 1년 전 날짜
 
 # 실행 시작 메시지
 logging.info("주식 분석 스크립트 실행 중...")
-fetch_stock_data('AAPL', start_date, end_date)
+fetch_stock_data('AAPL', start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
