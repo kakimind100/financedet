@@ -26,18 +26,22 @@ def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
     try:
         df = fdr.DataReader(code, start_date, end_date)
-        logging.info(f"{code} 데이터 가져오기 성공, 데이터 길이: {len(df)}")
+        
+        # 데이터가 정상적으로 가져와졌는지 확인
+        if df is not None and not df.empty:
+            logging.info(f"{code} 데이터 가져오기 성공, 데이터 길이: {len(df)}")
 
-        # 날짜 인덱스 확인
-        if df.index.empty:
-            logging.warning(f"{code}에 유효한 날짜 데이터가 없습니다.")
-        else:
-            logging.info(f"{code}의 날짜 인덱스: {df.index}")
+            # 날짜 인덱스 확인
+            if df.index.empty:
+                logging.warning(f"{code}에 유효한 날짜 데이터가 없습니다.")
+            else:
+                logging.info(f"{code}의 날짜 인덱스: {df.index}")
 
-        return df
+            return df
     except Exception as e:
         logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")
-        return None
+    
+    return None
 
 def fetch_all_stocks_data(start_date, end_date):
     """모든 주식 데이터를 가져오는 함수."""
@@ -53,7 +57,7 @@ def fetch_all_stocks_data(start_date, end_date):
 
     # 멀티스레딩을 사용하여 데이터 가져오기
     with ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {executor.submit(fetch_stock_data, code, start_date, end_date): code for code in all_codes}
+        futures = {executor.submit(fetch_stock_data, code, start_date, end_date): code for code in set(all_codes)}  # 중복된 종목 코드 제거
         for future in as_completed(futures):
             code = futures[future]
             data = future.result()
