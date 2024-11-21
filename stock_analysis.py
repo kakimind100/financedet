@@ -63,7 +63,7 @@ markets = ['KOSPI', 'KOSDAQ']
 all_stocks_data = {}
 
 logging.info("주식 데이터 가져오는 중...")
-with ThreadPoolExecutor(max_workers=1) as executor:  # 하나씩 가져오기
+with ThreadPoolExecutor(max_workers=5) as executor:  # 멀티스레딩: 최대 5개
     futures = {}
     for market in markets:
         codes = fdr.StockListing(market)['Code'].tolist()
