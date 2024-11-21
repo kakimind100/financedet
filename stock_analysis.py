@@ -81,11 +81,19 @@ def calculate_rise_probability(stock_data):
     volume_current = df['Volume'].iloc[-1]
     volume_previous = df['Volume'].iloc[-2]
 
+    # 가격과 거래량이 유효한지 체크
+    if open_price <= 0 or volume_previous <= 0:
+        return None  # 유효하지 않은 경우
+
     # 상승 가능성 계산
     rise_probability = (
         ((close_price - open_price) / open_price) * 100 +
         ((volume_current - volume_previous) / volume_previous) * 100
     )
+
+    # 상승 가능성이 inf인 경우 None 반환
+    if rise_probability == float('inf'):
+        return None
 
     return rise_probability
 
