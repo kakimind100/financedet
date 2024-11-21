@@ -30,7 +30,6 @@ logging.getLogger().addHandler(console_handler)
 
 def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
-    logging.info(f"{code} 데이터 가져오는 중...")
     df = fdr.DataReader(code, start_date, end_date)
     if df is not None and not df.empty:
         df.reset_index(inplace=True)  # 날짜를 칼럼으로 추가
