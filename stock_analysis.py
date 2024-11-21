@@ -129,6 +129,12 @@ for code, df in all_stocks_data.items():
         # 예측을 위한 데이터 준비
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
         X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
+
+        # NaN 값 체크
+        if np.isnan(X_new).any():
+            logging.warning(f"종목 코드 {code}의 입력 데이터에 NaN 값이 포함되어 있습니다.")
+            continue  # NaN이 포함된 종목은 건너뜁니다.
+
         prediction = model.predict(X_new)
         
         if prediction[0] == 1:  # 상승 예상
