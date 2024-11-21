@@ -89,7 +89,7 @@ def main():
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{json.dumps(top_stocks, ensure_ascii=False)}\n"
             f"가져온 데이터에서 날짜별 시작가,종가,최저가,최고가,거래량의 데이터를 가지고"
-            f"각 종목에 대한 상승 가능성을 %로 예측하고 보여 주세요."
+            f"각 종목에 대한 상승 가능성을 %로 예측하고 보여 주세요.종목 코드와 상승 가능성을 나열해 주세요 "
         )
         
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
