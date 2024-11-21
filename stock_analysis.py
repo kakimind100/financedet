@@ -95,7 +95,7 @@ all_targets = []
 for code, df in all_stocks_data.items():
     df = calculate_technical_indicators(df).dropna()  # NaN 값 제거
     if len(df) > 20:  # 충분한 데이터가 있는 경우
-        df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+        df.loc[:, 'Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
         X = df[features].dropna()
         y = df['Target'][X.index]
