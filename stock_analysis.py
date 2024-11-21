@@ -80,26 +80,26 @@ def preprocess_data(all_stocks_data):
     all_features = []
     all_targets = []
 
-for code, df in all_stocks_data.items():
-    df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
-    if len(df) > 20:  # 충분한 데이터가 있는 경우
-        df = df.copy()  # 복사본 생성
-        df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
-        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-        X = df[features]
-        y = df['Target']
+    for code, df in all_stocks_data.items():
+        df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
+        if len(df) > 20:  # 충분한 데이터가 있는 경우
+            df = df.copy()  # 복사본 생성
+            df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+            features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
+            X = df[features]
+            y = df['Target']
 
-        # 충분한 데이터가 있는 경우 로그 기록
-        logging.info(f"종목 코드 {code}의 충분한 데이터 확인: 마지막 5일 데이터\n{df.tail(5)}")
+            # 충분한 데이터가 있는 경우 로그 기록
+            logging.info(f"종목 코드 {code}의 충분한 데이터 확인: 마지막 5일 데이터\n{df.tail(5)}")
 
-        # NaN 값 확인
-        if X.isnull().values.any() or y.isnull().values.any():
-            logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
-            logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
-            logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+            # NaN 값 확인
+            if X.isnull().values.any() or y.isnull().values.any():
+                logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
+                logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
+                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
 
-        all_features.append(X)
-        all_targets.append(y)
+            all_features.append(X)
+            all_targets.append(y)
 
     # 모든 종목 데이터를 하나로 합치기
     X_all = pd.concat(all_features)
@@ -131,6 +131,7 @@ def evaluate_model(model, X_test, y_test):
     print(report)
 
 def main():
+    logging.info("주식 분석 스크립트 실행 중...")  # 실행 시작 메시지
     # 사용 예
     end_date = datetime.today()
     start_date = end_date - timedelta(days=365)
@@ -176,6 +177,9 @@ def main():
             last_row = df.iloc[-1]
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
             X_new = last_row[features].values.reshape(1, -1)  # 2D 배열로 변환
+
+            # 데이터가 있는 경우 로그 기록
+            logging.info(f"종목 코드 {code}의 마지막 데이터: {last_row[['Date', 'Close', 'MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']]}")
 
             # X_new의 데이터 타입 확인 및 변환
             try:
