@@ -239,24 +239,18 @@ def search_patterns_and_find_top(stocks_data):
     # 종목 평가 및 점수 계산
     for item in all_patterns_found:
         score = evaluate_stock(item['data'])
-        item['score'] = score
         logging.info(f"종목 코드: {item['code']} - 점수: {score}")  # 점수 출력
+        # 점수는 결과에 포함하지 않음
 
-    # 점수 기준으로 정렬하고 상위 20개 선택 (변경된 부분)
+    # 점수 기준으로 정렬하고 상위 20개 선택
     top_20_stocks = sorted(all_patterns_found, key=lambda x: x['score'], reverse=True)[:20]
 
-    # 매수 시점 판단 및 출력
-    for stock in top_20_stocks:
-        buy_signal, rsi_value = should_buy(stock['data'])
-        if buy_signal:
-            logging.info(f"종목 코드: {stock['code']} - 매수 신호 발생 (RSI: {rsi_value})")
-
-    # top_20_stocks를 JSON 파일로 저장
-    filename = os.path.join(json_dir, 'top_20_stocks.json')  # 파일 이름도 변경
+    # top_20_stocks를 JSON 파일로 저장 (점수 제외)
+    filename = os.path.join(json_dir, 'top_20_stocks.json')
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(top_20_stocks, f, default=str, ensure_ascii=False, indent=4)
 
-    # Discord 웹훅 스크립트로 데이터 전달 (파일 경로 전달)
+    # Discord 웹훅 스크립트로 데이터 전달
     subprocess.run(["python", "discord_webhook.py", filename])
 
     return top_20_stocks
