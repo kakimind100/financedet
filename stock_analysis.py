@@ -93,7 +93,7 @@ all_features = []
 all_targets = []
 
 for code, df in all_stocks_data.items():
-    df = calculate_technical_indicators(df)
+    df = calculate_technical_indicators(df).dropna()  # NaN 값 제거
     if len(df) > 20:  # 충분한 데이터가 있는 경우
         df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
@@ -116,8 +116,10 @@ model = train_model(X_train, y_train)
 # 예측 수행
 y_pred = model.predict(X_test)
 
-# 결과 출력
-print(classification_report(y_test, y_pred))
+# 결과 출력 및 로그 기록
+report = classification_report(y_test, y_pred)
+logging.info(f"모델 성능 보고서:\n{report}")
+print(report)
 
 # 상승 가능성이 있는 종목 찾기
 potential_stocks = []
@@ -154,3 +156,4 @@ else:
     print("상승 가능성이 있는 종목이 없습니다.")
 
 logging.info("주식 분석 스크립트 실행 완료.")
+    
