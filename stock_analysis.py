@@ -16,6 +16,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# 콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
     df = fdr.DataReader(code, start_date, end_date)
@@ -67,4 +73,5 @@ if specific_code_input in all_stocks_data:
     print(f"종목 코드 {specific_code_input}의 최근 5일 치 데이터:")
     print(recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band']])
 else:
+    logging.warning(f"종목 코드 {specific_code_input}의 데이터가 없습니다.")
     print(f"종목 코드 {specific_code_input}의 데이터가 없습니다.")
