@@ -39,6 +39,7 @@ def fetch_stock_data(code, start_date, end_date):
         # NaN 값 확인
         if df.isnull().values.any():
             logging.warning(f"{code} 데이터에 NaN 값이 포함되어 있습니다.")
+            logging.debug(f"{code} NaN 값 위치:\n{df[df.isnull().any(axis=1)]}")
 
         return code, df
     logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")
@@ -51,6 +52,13 @@ def calculate_technical_indicators(df):
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    
+    # NaN 발생 원인 로그
+    if gain.isnull().values.any() or loss.isnull().values.any():
+        logging.warning("기술적 지표 계산 중 NaN 값 발생")
+        logging.debug(f"Gain NaN 위치:\n{gain[gain.isnull()]}")
+        logging.debug(f"Loss NaN 위치:\n{loss[loss.isnull()]}")
+
     rs = gain / loss
     df['RSI'] = 100 - (100 / (1 + rs))
     df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
@@ -64,6 +72,7 @@ def calculate_technical_indicators(df):
     # NaN 값 확인
     if df.isnull().values.any():
         logging.warning("기술적 지표 계산 후 NaN 값이 포함되어 있습니다.")
+        logging.debug(f"NaN 값 위치:\n{df[df.isnull().any(axis=1)]}")
 
     return df
 
@@ -84,6 +93,8 @@ def preprocess_data(all_stocks_data):
             # NaN 값 확인
             if X.isnull().values.any() or y.isnull().values.any():
                 logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
+                logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
+                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
 
             all_features.append(X)
             all_targets.append(y)
@@ -102,7 +113,7 @@ def train_model(X, y):
     logging.info("모델 훈련 시작...")
     for _ in tqdm(range(1), desc="모델 훈련 진행 중", unit="iteration"):
         model.fit(X, y)
-
+    
     joblib.dump(model, 'stock_model.pkl')  # 모델 저장
     logging.info("모델 훈련 완료 및 저장됨.")
     
@@ -170,7 +181,10 @@ def main():
                 continue  # NaN이 포함된 종목은 건너뜁니다.
 
             prediction = model.predict(X_new)
-            if prediction[0] == 1:  # 상승 예상
+
+            # 내일 가격 예측 (가정: 오늘 종가에 상승률 적용)
+            predicted_price = last_row['Close'] * 1.29  # 29% 상승 예측
+            if prediction[0] == 1 and last_row['Close'] < predicted_price:  # 상승 예상 및 29% 이상 상승
                 potential_stocks.append((code, last_row['Close'], df))
 
     # 상승 가능성이 있는 종목 정렬 및 상위 20개 선택
@@ -178,15 +192,15 @@ def main():
 
     # 결과 출력 및 최근 5일 치 데이터 로그 기록
     if top_stocks:
-        print("내일 상승 가능성이 있는 종목:")
+        print("내일 29% 이상 상승 가능성이 있는 종목:")
         for code, price, df in top_stocks:
             recent_data = df.tail(5)  # 최근 5일 치 데이터
             logging.info(f"종목 코드: {code}, 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']]}")
             print(f"종목 코드: {code}, 현재 가격: {price}")
     else:
-        print("상승 가능성이 있는 종목이 없습니다.")
+        print("29% 이상 상승 가능성이 있는 종목이 없습니다.")
 
     logging.info("주식 분석 스크립트 실행 완료.")
 
 if __name__ == "__main__":
-   
+    main()
