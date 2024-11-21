@@ -69,139 +69,25 @@ def load_stock_data_from_json():
     with open(filename, 'r', encoding='utf-8') as f:
         return json.load(f)
 
-def is_cup_with_handle(df):
-    """컵과 핸들 패턴을 찾는 함수."""
-    if len(df) < 60:
-        logging.debug(f"데이터 길이가 60일 미만입니다. 종목 코드: {df['Code'].iloc[0]}")
-        return False, None
-
-    cup_bottom = df['Low'].min()
-    cup_bottom_index = df['Low'].idxmin()
-    cup_bottom_index = df.index.get_loc(cup_bottom_index)
-
-    cup_top = df['Close'][:cup_bottom_index].max()
-    handle_start_index = cup_bottom_index + 1
-    handle_end_index = handle_start_index + 10
-
-    if handle_end_index <= len(df):
-        handle = df.iloc[handle_start_index:handle_end_index]
-        handle_top = handle['Close'].max()
-
-        if handle_top < cup_top and cup_bottom < handle_top:
-            return True, df.index[-1]
-    
-    return False, None
-
-def is_bullish_divergence(df):
-    """다이버전스 패턴을 찾는 함수."""
-    if len(df) < 15:
-        return False, None
-
-    df['RSI'] = 100 - (100 / (1 + (df['Close'].diff(1).clip(lower=0).rolling(window=14).mean() /
-                                      df['Close'].diff(1).clip(upper=0).abs().rolling(window=14).mean())))
-
-    if (df['Close'].iloc[-1] < df['Close'].iloc[-2] and 
-        df['RSI'].iloc[-1] > df['RSI'].iloc[-2]):
-        return True, df.index[-1]
-    
-    return False, None
-
-def is_round_bottom(df):
-    """원형 바닥 패턴을 찾는 함수."""
-    if len(df) < 30:
-        return False, None
-
-    recent_low = df['Low'].rolling(window=10).min().iloc[-1]
-    recent_high = df['High'].rolling(window=10).max().iloc[-1]
-
-    if df['Close'].iloc[-1] > recent_low and df['Close'].iloc[-1] < recent_high:
-        return True, df.index[-1]
-
-    return False, None
-
-def calculate_moving_average(df, window):
-    return df['Close'].rolling(window=window).mean()
-
-def calculate_macd(df):
-    exp1 = df['Close'].ewm(span=12, adjust=False).mean()
-    exp2 = df['Close'].ewm(span=26, adjust=False).mean()
-    macd = exp1 - exp2
-    signal = macd.ewm(span=9, adjust=False).mean()
-    return macd, signal
-
-def calculate_bollinger_bands(df, window=20):
-    rolling_mean = df['Close'].rolling(window).mean()
-    rolling_std = df['Close'].rolling(window).std()
-    upper_band = rolling_mean + (rolling_std * 2)
-    lower_band = rolling_mean - (rolling_std * 2)
-    return upper_band, lower_band
-
-def calculate_stochastic_oscillator(df, k_window=14, d_window=3):
-    low_min = df['Low'].rolling(window=k_window).min()
-    high_max = df['High'].rolling(window=k_window).max()
-    stoch_k = 100 * ((df['Close'] - low_min) / (high_max - low_min))
-    stoch_d = stoch_k.rolling(window=d_window).mean()
-    return stoch_k, stoch_d
-
-def calculate_cci(df, window=20):
-    typical_price = (df['High'] + df['Low'] + df['Close']) / 3
-    sma = typical_price.rolling(window).mean()
-    mad = (typical_price - sma).abs().rolling(window).mean()
-    cci = (typical_price - sma) / (0.015 * mad)
-    return cci
-
-def evaluate_stock(stock_data):
+def calculate_rise_probability(stock_data):
     df = pd.DataFrame(stock_data)
 
-    # 기술적 지표 계산
-    df['MA20'] = calculate_moving_average(df, 20)
-    macd, signal = calculate_macd(df)
-    df['MACD'] = macd
-    df['Signal'] = signal
+    # 최근 Open, Close, Volume 데이터 추출
+    if len(df) < 2:
+        return None  # 데이터가 충분하지 않으면 None 반환
 
-    df['Upper_Band'], df['Lower_Band'] = calculate_bollinger_bands(df)
-    df['Stoch_K'], df['Stoch_D'] = calculate_stochastic_oscillator(df)
-    df['CCI'] = calculate_cci(df)
+    open_price = df['Open'].iloc[-1]
+    close_price = df['Close'].iloc[-1]
+    volume_current = df['Volume'].iloc[-1]
+    volume_previous = df['Volume'].iloc[-2]
 
-    # 기존 평가 기준
-    recent_gain = (df['Close'].iloc[-1] - df['Close'].iloc[-10]) / df['Close'].iloc[-10] * 100
-    avg_volume = df['Volume'].iloc[-11:-1].mean()
-    current_volume = df['Volume'].iloc[-1]
-    volume_increase = (current_volume - avg_volume) / avg_volume * 100
+    # 상승 가능성 계산
+    rise_probability = (
+        ((close_price - open_price) / open_price) * 100 +
+        ((volume_current - volume_previous) / volume_previous) * 100
+    )
 
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs)).iloc[-1]
-
-    # 평가 점수 계산
-    score = (recent_gain + volume_increase + (rsi - 50) +
-             (df['MACD'].iloc[-1] > df['Signal'].iloc[-1]) * 10 +
-             (df['Close'].iloc[-1] > df['Upper_Band'].iloc[-1]) * 5 +
-             (df['Stoch_K'].iloc[-1] > df['Stoch_D'].iloc[-1]) * 5 +
-             (df['CCI'].iloc[-1] > 100) * 5)
-
-    return score
-
-def should_buy(stock_data):
-    df = pd.DataFrame(stock_data)
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs)).iloc[-1]
-
-    # 컵과 핸들 패턴 확인
-    is_cup, _ = is_cup_with_handle(df)
-
-    # 원형 바닥 패턴 확인
-    is_round_bottom_found, _ = is_round_bottom(df)
-
-    # 매수 조건
-    if (rsi < 30) and (is_cup or is_round_bottom_found):
-        return True, rsi
-    return False, rsi
+    return rise_probability
 
 def search_patterns_and_find_top(stocks_data):
     """각 패턴을 탐지하고, 모든 데이터가 저장된 후 가장 좋은 상태의 종목을 찾는 함수."""
@@ -217,47 +103,30 @@ def search_patterns_and_find_top(stocks_data):
             logging.warning(f"종목 코드: {code}에 유효한 날짜 데이터가 없습니다.")
             continue
 
-        # 각 패턴 탐지
-        is_cup, cup_date = is_cup_with_handle(df)
-        is_divergence, divergence_date = is_bullish_divergence(df)
-        is_round_bottom_found, round_bottom_date = is_round_bottom(df)
+        # 상승 가능성 계산
+        rise_probability = calculate_rise_probability(df)
 
         # 패턴 결과 저장
         pattern_info = {
             'code': code,
-            'cup': is_cup,
-            'divergence': is_divergence,
-            'round_bottom': is_round_bottom_found,
+            'rise_probability': rise_probability,
             'data': df.to_dict(orient='records')
         }
 
         results.append(pattern_info)
 
-    # 모든 패턴이 발견된 종목 필터링
-    all_patterns_found = [res for res in results if res['cup'] and res['divergence'] and res['round_bottom']]
+    # 상승 가능성이 높은 종목 필터링
+    results = [res for res in results if res['rise_probability'] is not None]
 
-    # 종목 평가 및 점수 계산
-    for item in all_patterns_found:
-        score = evaluate_stock(item['data'])
-        item['score'] = score
-        logging.info(f"종목 코드: {item['code']} - 점수: {score}")  # 점수 출력
-
-    # 점수 기준으로 정렬하고 상위 20개 선택
-    top_20_stocks = sorted(all_patterns_found, key=lambda x: x['score'], reverse=True)[:20]
-
-    # 매수 시점 판단 및 출력
-    for stock in top_20_stocks:
-        buy_signal, rsi_value = should_buy(stock['data'])
-        if buy_signal:
-            logging.info(f"종목 코드: {stock['code']} - 매수 신호 발생 (RSI: {rsi_value})")
+    # 상승 가능성 기준으로 정렬하고 상위 20개 선택
+    top_20_stocks = sorted(results, key=lambda x: x['rise_probability'], reverse=True)[:20]
 
     # top_20_stocks를 JSON 파일로 저장
     filename = os.path.join(json_dir, 'top_20_stocks.json')
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(top_20_stocks, f, default=str, ensure_ascii=False, indent=4)
 
-    # Discord 웹훅 스크립트로 데이터 전달 (파일 경로 전달)
-    subprocess.run(["python", "discord_webhook.py", filename])
+    logging.info(f"상승 가능성이 높은 종목 20개를 JSON 파일로 저장했습니다: {filename}")
 
     return top_20_stocks
 
@@ -292,6 +161,6 @@ if __name__ == "__main__":
 
     if top_stocks:
         for stock in top_stocks:
-            logging.info(f"종목 코드: {stock['code']} - 점수: {stock['score']}")
+            logging.info(f"종목 코드: {stock['code']} - 상승 가능성: {stock['rise_probability']:.2f}%")
     else:
-        logging.info("모든 패턴을 만족하는 종목이 없습니다.")
+        logging.info("상승 가능성이 높은 종목이 없습니다.")
