@@ -88,8 +88,8 @@ def main():
         # AI에게 JSON 파일의 데이터를 기반으로 분석 요청
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{json.dumps(top_stocks, ensure_ascii=False)}\n"
-            f"가져온 데이터에서 시작가,종가,최저가,최고가,거래량의 데이터를 가지고"
-            f"각 종목에 대한 상승 가능성을 %로 예측하고 상위 5개의 종목과 간단한 이유를 20자 내외로 작성해 주세요."
+            f"가져온 데이터에서 날짜별 시작가,종가,최저가,최고가,거래량의 데이터를 가지고"
+            f"각 종목에 대한 상승 가능성을 %로 예측하고 보여 주세요."
         )
         
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
