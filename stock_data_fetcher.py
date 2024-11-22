@@ -16,6 +16,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# 콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def fetch_stock_data(market, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
     all_stocks_data = {}
