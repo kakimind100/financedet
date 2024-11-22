@@ -20,7 +20,7 @@ console_handler.setLevel(logging.DEBUG)  # DEBUG로 변경하여 모든 로그�
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
-def calculate_technical_indicators():
+def calculate_technical_indicators(target_code):
     """기술적 지표를 계산하는 함수."""
     data_dir = 'data'
     dtype = {
@@ -99,12 +99,20 @@ def calculate_technical_indicators():
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
 
+    # 특정 종목 코드의 데이터 로그하기
+    if target_code in df.index.levels[0]:
+        target_data = df.loc[target_code]
+        logging.info(f"{target_code} 종목 코드의 계산된 데이터:\n{target_data}")
+    else:
+        logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
+
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
     logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
 
 if __name__ == "__main__":
+    target_code = '006280'  # 특정 종목 코드를 입력하세요.
     logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
-    calculate_technical_indicators()
+    calculate_technical_indicators(target_code)
     logging.info("기술 지표 계산 스크립트 실행 완료.")
