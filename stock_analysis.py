@@ -158,24 +158,33 @@ def preprocess_data(all_stocks_data):
     all_targets = []
 
     for code, df in all_stocks_data.items():
-        df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
+        df = calculate_technical_indicators(df)  # 기술적 지표 계산
+
         if len(df) > 20:  # 충분한 데이터가 있는 경우
             df = df.copy()  # 복사본 생성
             
             # 가격 변화 계산
-            df['Price Change'] = df['Close'].diff()  # 여기서 Price Change를 다시 계산
+            df['Price Change'] = df['Close'].diff()  # Price Change 계산
 
+            # Price Change 확인
             if 'Price Change' not in df.columns:
                 logging.warning(f"{code}의 'Price Change' 컬럼이 없습니다.")
                 continue  # 다음 종목으로 넘어감
-            
+
+            # 타겟 생성
             df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
+
+            # 필요한 피처가 모두 존재하는지 확인
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
+            missing_features = [feature for feature in features if feature not in df.columns]
+
+            if missing_features:
+                logging.warning(f"{code}의 데이터프레임에 다음 열이 없습니다: {missing_features}. 데이터프레임:\n{df.head()}")
+                continue  # 다음 종목으로 넘어감
+
+            # 피처와 타겟 추출
             X = df[features]
             y = df['Target']
-
-            # 충분한 데이터가 있는 경우 로그 기록
-            logging.info(f"종목 코드 {code}의 충분한 데이터 확인: 마지막 5일 데이터\n{df.tail(5)}")
 
             # NaN 값 확인
             if X.isnull().values.any() or y.isnull().values.any():
