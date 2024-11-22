@@ -88,7 +88,7 @@ def calculate_technical_indicators(df):
         logging.warning(f"{df['Code'].iloc[0]}: 데이터가 부족하여 기술적 지표 계산을 건너뜁니다. 필요한 거래일: 30일, 현재 거래일: {trading_days}일")
         return df  # NaN 발생을 방지하기 위해 원본 반환
 
-    # 1년치 데이터 사용 (당일 데이터 포함)
+    # 1년치 데이터 사용
     df_last_year = df  # 당일 데이터 포함
 
     # 이동 평균 계산
@@ -96,15 +96,17 @@ def calculate_technical_indicators(df):
     df_last_year['MA20'] = df_last_year['Close'].rolling(window=20).mean()
     df_last_year['MA30'] = df_last_year['Close'].rolling(window=30).mean()
 
-    # 최근 5 거래일 데이터 로그 기록
-    logging.info(f"{df_last_year['Code'].iloc[0]}: MA5, MA20, MA30 계산 완료.")
-    logging.info(f"{df_last_year['Code'].iloc[0]} 최근 5 거래일 데이터:\n{df_last_year.tail(5)}")
+    # NaN 체크 및 로그 기록
+    if df_last_year[['MA5', 'MA20', 'MA30']].isnull().values.any():
+        logging.warning(f"{df_last_year['Code'].iloc[0]}: 이동 평균 계산 중 NaN 값 발생.")
+        logging.debug(f"NaN 위치:\n{df_last_year[df_last_year[['MA5', 'MA20', 'MA30']].isnull().any(axis=1)]}")
 
     # 가격 변화 및 RSI 계산
     delta = df_last_year['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
 
+    # Gain, Loss NaN 체크
     if gain.isnull().values.any() or loss.isnull().values.any():
         logging.warning(f"{df_last_year['Code'].iloc[0]}: 기술적 지표 계산 중 Gain 또는 Loss에서 NaN 값 발생.")
         logging.debug(f"Gain NaN 위치:\n{gain[gain.isnull()]}")
@@ -112,28 +114,37 @@ def calculate_technical_indicators(df):
 
     rs = gain / loss
     df_last_year['RSI'] = 100 - (100 / (1 + rs))
-    logging.info(f"{df_last_year['Code'].iloc[0]}: RSI 계산 완료.")
 
-    # 최근 5 거래일 데이터 로그 기록
-    logging.info(f"{df_last_year['Code'].iloc[0]} 최근 5 거래일 데이터 (RSI 포함):\n{df_last_year.tail(5)}")
+    # RSI NaN 체크
+    if df_last_year['RSI'].isnull().values.any():
+        logging.warning(f"{df_last_year['Code'].iloc[0]}: RSI 계산 중 NaN 값 발생.")
+        logging.debug(f"NaN 위치:\n{df_last_year[df_last_year['RSI'].isnull()]}")
+
+    logging.info(f"{df_last_year['Code'].iloc[0]}: RSI 계산 완료.")
 
     # EMA 및 MACD 계산
     df_last_year['EMA12'] = df_last_year['Close'].ewm(span=12, adjust=False).mean()
     df_last_year['EMA26'] = df_last_year['Close'].ewm(span=26, adjust=False).mean()
     df_last_year['MACD'] = df_last_year['EMA12'] - df_last_year['EMA26']
     df_last_year['Signal Line'] = df_last_year['MACD'].ewm(span=9, adjust=False).mean()
-    logging.info(f"{df_last_year['Code'].iloc[0]}: MACD 및 Signal Line 계산 완료.")
 
-    # 최근 5 거래일 데이터 로그 기록
-    logging.info(f"{df_last_year['Code'].iloc[0]} 최근 5 거래일 데이터 (MACD 포함):\n{df_last_year.tail(5)}")
+    # MACD NaN 체크
+    if df_last_year[['MACD', 'Signal Line']].isnull().values.any():
+        logging.warning(f"{df_last_year['Code'].iloc[0]}: MACD 계산 중 NaN 값 발생.")
+        logging.debug(f"NaN 위치:\n{df_last_year[df_last_year[['MACD', 'Signal Line']].isnull().any(axis=1)]}")
+
+    logging.info(f"{df_last_year['Code'].iloc[0]}: MACD 및 Signal Line 계산 완료.")
 
     # 볼린저 밴드 계산
     df_last_year['Upper Band'] = df_last_year['MA30'] + (df_last_year['Close'].rolling(window=30).std() * 2)
     df_last_year['Lower Band'] = df_last_year['MA30'] - (df_last_year['Close'].rolling(window=30).std() * 2)
-    logging.info(f"{df_last_year['Code'].iloc[0]}: 볼린저 밴드 계산 완료.")
 
-    # 최근 5 거래일 데이터 로그 기록
-    logging.info(f"{df_last_year['Code'].iloc[0]} 최근 5 거래일 데이터 (볼린저 밴드 포함):\n{df_last_year.tail(5)}")
+    # 볼린저 밴드 NaN 체크
+    if df_last_year[['Upper Band', 'Lower Band']].isnull().values.any():
+        logging.warning(f"{df_last_year['Code'].iloc[0]}: 볼린저 밴드 계산 중 NaN 값 발생.")
+        logging.debug(f"NaN 위치:\n{df_last_year[df_last_year[['Upper Band', 'Lower Band']].isnull().any(axis=1)]}")
+
+    logging.info(f"{df_last_year['Code'].iloc[0]}: 볼린저 밴드 계산 완료.")
 
     # 가격 변화 계산
     df_last_year['Price Change'] = df_last_year['Close'].diff()
