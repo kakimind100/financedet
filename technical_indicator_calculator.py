@@ -67,13 +67,13 @@ def calculate_technical_indicators(target_code):
 
     # MACD 계산
     macd = ta.macd(df['Close'])
-    if 'MACD' in macd.columns:
-        df['MACD'] = macd['MACD']
-        df['MACD_Signal'] = macd['MACDh']
+    if 'MACD_12_26_9' in macd.columns:
+        df['MACD'] = macd['MACD_12_26_9']
+        df['MACD_Signal'] = macd['MACDh_12_26_9']
         logging.info("MACD 계산 완료.")
     else:
         logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
-        logging.debug(f"MACD 결과: {macd}")
+        logging.debug(f"MACD 결과:\n{macd}")
         return
 
     # Bollinger Bands 계산
@@ -110,6 +110,7 @@ def calculate_technical_indicators(target_code):
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
     logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
+    logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")  # 저장된 데이터프레임 정보 로그
 
 if __name__ == "__main__":
     target_code = '006280'  # 특정 종목 코드를 입력하세요.
