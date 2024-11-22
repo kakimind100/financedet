@@ -18,13 +18,13 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.WARNING,  # 로그 레벨을 WARNING으로 설정
+    level=logging.INFO,  # 로그 레벨을 INFO로 설정
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.WARNING)  # 콘솔 로그 레벨도 WARNING으로 설정
+console_handler.setLevel(logging.INFO)  # 콘솔 로그 레벨도 INFO로 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
