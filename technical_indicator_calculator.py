@@ -91,8 +91,8 @@ def calculate_technical_indicators(target_code):
     try:
         stoch = ta.stoch(df['High'], df['Low'], df['Close'])
         logging.debug(f"Stochastic 결과:\n{stoch}")  # 결과 로그
-        if 'STOCHK' in stoch.columns:
-            df['Stoch'] = stoch['STOCHK']
+        if 'STOCHk_14_3_3' in stoch.columns:
+            df['Stoch'] = stoch['STOCHk_14_3_3']  # 올바른 열 이름 사용
             logging.info("Stochastic Oscillator 계산 완료.")
         else:
             logging.error("Stochastic Oscillator 계산 결과에 'STOCHK' 열이 없습니다.")
