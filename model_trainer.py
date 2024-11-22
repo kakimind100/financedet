@@ -25,20 +25,29 @@ console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(
 logging.getLogger().addHandler(console_handler)  # 콘솔 핸들러 추가
 
 def fetch_stock_data():
-    """주식 데이터를 가져오는 함수 (예시)."""
-    # 여기에 주식 데이터를 가져오는 로직을 추가합니다.
+    """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
     logging.debug("주식 데이터를 가져오는 중...")
-    # 예시: df = pd.read_csv("data.csv")
-    # logging.info("주식 데이터를 성공적으로 가져왔습니다.")
-    
-def train_model():
-    """모델을 훈련시키고 저장하는 함수."""
     try:
-        # CSV 파일 경로를 data 디렉토리로 설정
+        # 파일 경로 설정
         file_path = os.path.join('data', 'stock_data_with_indicators.csv')
         df = pd.read_csv(file_path)
-        logging.info(f"CSV 파일 '{file_path}'을(를) 성공적으로 읽었습니다.")
+        logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
+        return df
+    except FileNotFoundError:
+        logging.error(f"파일 '{file_path}'을(를) 찾을 수 없습니다.")
+        return None
+    except Exception as e:
+        logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
+        return None
 
+def train_model():
+    """모델을 훈련시키고 저장하는 함수."""
+    df = fetch_stock_data()  # 주식 데이터 가져오기
+    if df is None:
+        logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
+        return
+
+    try:
         features = ['MA5', 'MA20', 'RSI']
         # 다음 날 종가가 현재 종가의 1.29배 이상인 경우를 타겟으로 설정
         df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 29% 상승 여부
@@ -59,8 +68,12 @@ def train_model():
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
+        # models 디렉토리 존재 여부 확인 및 생성
+        models_dir = 'models'
+        os.makedirs(models_dir, exist_ok=True)
+
         # 모델 저장
-        joblib.dump(model, 'models/stock_model.pkl')  # models 디렉토리에 저장
+        joblib.dump(model, os.path.join(models_dir, 'stock_model.pkl'))  # models 디렉토리에 저장
         logging.info("모델 훈련 완료 및 'models/stock_model.pkl'로 저장되었습니다.")
 
         # 모델 평가
@@ -69,13 +82,10 @@ def train_model():
         logging.info(f"모델 성능 보고서:\n{report}")
         print(report)
 
-    except FileNotFoundError:
-        logging.error(f"파일 '{file_path}'을(를) 찾을 수 없습니다.")
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
-    fetch_stock_data()  # 주식 데이터 가져오기
     train_model()  # 모델 훈련
     logging.info("모델 훈련 스크립트 실행 완료.")
