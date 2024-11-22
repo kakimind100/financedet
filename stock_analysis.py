@@ -18,13 +18,13 @@ os.makedirs(log_dir, exist_ok=True)
 # 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.INFO,
+    level=logging.WARNING,  # 로그 레벨을 WARNING으로 설정
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.WARNING)  # 콘솔 로그 레벨도 WARNING으로 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -41,26 +41,6 @@ def fetch_stock_data(code, start_date, end_date):
         cols.insert(cols.index('Date') + 1, 'Code')  # 'Date' 뒤에 'Code' 추가
         df = df[cols]  # 데이터프레임 열 순서 재배치
 
-        logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
-
-        # 최근 5 거래일 데이터 로그 기록
-        logging.info(f"{code} 최근 5 거래일 데이터:\n{df.tail(5)}")
-
-        # NaN 값 확인
-        if df.isnull().values.any():
-            logging.warning(f"{code} 데이터에 NaN 값이 포함되어 있습니다.")
-            logging.debug(f"{code} NaN 값 위치:\n{df[df.isnull().any(axis=1)]}")
-
-        return code, df
-    logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")
-    return code, None
-
-def fetch_stock_data(code, start_date, end_date):
-    """주식 데이터를 가져오는 함수."""
-    df = fdr.DataReader(code, start_date, end_date)
-    if df is not None and not df.empty:
-        df.reset_index(inplace=True)  # 날짜를 칼럼으로 추가
-        df['Code'] = code  # 종목 코드 추가
         logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
 
         # 최근 5 거래일 데이터 로그 기록
@@ -97,7 +77,7 @@ def calculate_technical_indicators(df):
     if df[['MA5', 'MA20', 'MA30']].isnull().values.any():
         nan_dates = df[df[['MA5', 'MA20', 'MA30']].isnull().any(axis=1)]['Date'].tolist()
         logging.warning(f"{df['Code'].iloc[0]}: 이동 평균 계산 중 NaN 값 발생. NaN 발생 날짜: {nan_dates}")
-    
+
     # 가격 변화 및 RSI 계산
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
@@ -174,7 +154,7 @@ def preprocess_data(all_stocks_data):
             if X.isnull().values.any() or y.isnull().values.any():
                 logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
                 logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
-                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+                                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
 
             all_features.append(X)
             all_targets.append(y)
@@ -193,23 +173,24 @@ def train_model(X, y):
     logging.info("모델 훈련 시작...")
     for _ in tqdm(range(1), desc="모델 훈련 진행 중", unit="iteration"):
         model.fit(X, y)
-    
+
     joblib.dump(model, 'stock_model.pkl')  # 모델 저장
     logging.info("모델 훈련 완료 및 저장됨.")
-    
+
     return model
 
 def evaluate_model(model, X_test, y_test):
     """모델 성능을 평가하는 함수."""
     y_pred = model.predict(X_test)
     report = classification_report(y_test, y_pred)
-    
+
     # 성능 보고서 로그에 기록
     logging.info(f"모델 성능 보고서:\n{report}")
     print(report)
 
 def main():
     logging.info("주식 분석 스크립트 실행 중...")  # 실행 시작 메시지
+    # 사용 예
     end_date = datetime.today()
     start_date = end_date - timedelta(days=365)
 
@@ -280,7 +261,7 @@ def main():
     # 결과 출력 및 최근 5일 치 데이터 로그 기록
     if top_stocks:
         print("내일 29% 이상 상승 가능성이 있는 종목:")
-        for code, price, df in top_stocks[:5]:  # 5개 종목만 출력
+        for code, price, df in top_stocks:
             recent_data = df.tail(5)  # 최근 5일 치 데이터
             logging.info(f"종목 코드: {code}, 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']]}")
             print(f"종목 코드: {code}, 현재 가격: {price}")
@@ -288,3 +269,8 @@ def main():
         print("29% 이상 상승 가능성이 있는 종목이 없습니다.")
 
     logging.info("주식 분석 스크립트 실행 완료.")
+
+if __name__ == "__main__":
+    main()
+
+               
