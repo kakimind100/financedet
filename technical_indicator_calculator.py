@@ -65,6 +65,9 @@ def calculate_technical_indicators(target_code):
     df['MA20'] = df['Close'].rolling(window=20).mean()
     logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
 
+    # NaN 값이 있는 행 제거
+    df.dropna(subset=['MA5', 'MA20'], inplace=True)
+
     # MACD 계산
     macd = ta.macd(df['Close'])
     if 'MACD_12_26_9' in macd.columns:
@@ -76,6 +79,9 @@ def calculate_technical_indicators(target_code):
         logging.debug(f"MACD 결과:\n{macd}")
         return
 
+    # NaN 값이 있는 행 제거
+    df.dropna(subset=['MACD', 'MACD_Signal'], inplace=True)
+
     # Bollinger Bands 계산
     try:
         bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
@@ -85,6 +91,9 @@ def calculate_technical_indicators(target_code):
     except Exception as e:
         logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
         return
+
+    # NaN 값이 있는 행 제거
+    df.dropna(subset=['Bollinger_High', 'Bollinger_Low'], inplace=True)
 
     # 기술적 지표 추가
     try:
@@ -98,6 +107,9 @@ def calculate_technical_indicators(target_code):
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
+
+    # NaN 값이 있는 행 제거
+    df.dropna(inplace=True)
 
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
