@@ -44,8 +44,30 @@ def fetch_stock_data(code, start_date, end_date):
     logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")
     return code, None
 
+def fetch_stock_data(code, start_date, end_date):
+    """주식 데이터를 가져오는 함수."""
+    df = fdr.DataReader(code, start_date, end_date)
+    if df is not None and not df.empty:
+        df.reset_index(inplace=True)  # 날짜를 칼럼으로 추가
+        df['Code'] = code  # 종목 코드 추가
+        logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
+
+        # 최근 5 거래일 데이터 로그 기록
+        logging.info(f"{code} 최근 5 거래일 데이터:\n{df.tail(5)}")
+
+        # NaN 값 확인
+        if df.isnull().values.any():
+            logging.warning(f"{code} 데이터에 NaN 값이 포함되어 있습니다.")
+            logging.debug(f"{code} NaN 값 위치:\n{df[df.isnull().any(axis=1)]}")
+
+        return code, df
+    logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")
+    return code, None
+
 def calculate_technical_indicators(df):
     """기술적 지표를 계산하는 함수."""
+    logging.info(f"현재 데이터프레임 열: {df.columns.tolist()}")  # 열 확인 로그 추가
+
     # 데이터가 충분한지 확인하기 위해 날짜 기준으로 정렬
     df.sort_values(by='Date', inplace=True)
 
@@ -56,23 +78,24 @@ def calculate_technical_indicators(df):
         return df  # NaN 발생을 방지하기 위해 원본 반환
 
     # 30 거래일 데이터를 확보
-    # 가장 최근 30 거래일 데이터 선택
-    df_last_30_days = df[df['Date'] >= df['Date'].max() - pd.Timedelta(days=60)]  # 최근 60일 데이터를 확보하여 30 거래일을 선택
-    df_last_30_days = df_last_30_days.drop_duplicates(subset='Date')  # 중복된 날짜 제거
-    df_last_30_days = df_last_30_days.tail(30)  # 마지막 30 거래일만 선택
+    df_last_30_days = df[df['Date'] >= df['Date'].max() - pd.Timedelta(days=60)]
+    df_last_30_days = df_last_30_days.drop_duplicates(subset='Date')
+    df_last_30_days = df_last_30_days.tail(30)
 
     # 이동 평균 계산
     df_last_30_days['MA5'] = df_last_30_days['Close'].rolling(window=5).mean()
     df_last_30_days['MA20'] = df_last_30_days['Close'].rolling(window=20).mean()
-    df_last_30_days['MA30'] = df_last_30_days['Close'].rolling(window=30).mean()  # 30일 이동 평균 추가
+    df_last_30_days['MA30'] = df_last_30_days['Close'].rolling(window=30).mean()
+    
+    # 최근 5 거래일 데이터 로그 기록
     logging.info(f"{df_last_30_days['Code'].iloc[0]}: MA5, MA20, MA30 계산 완료.")
+    logging.info(f"{df_last_30_days['Code'].iloc[0]} 최근 5 거래일 데이터:\n{df_last_30_days.tail(5)}")
 
     # 가격 변화 및 RSI 계산
     delta = df_last_30_days['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
 
-    # NaN 발생 원인 로그
     if gain.isnull().values.any() or loss.isnull().values.any():
         logging.warning(f"{df_last_30_days['Code'].iloc[0]}: 기술적 지표 계산 중 Gain 또는 Loss에서 NaN 값 발생.")
         logging.debug(f"Gain NaN 위치:\n{gain[gain.isnull()]}")
@@ -82,6 +105,9 @@ def calculate_technical_indicators(df):
     df_last_30_days['RSI'] = 100 - (100 / (1 + rs))
     logging.info(f"{df_last_30_days['Code'].iloc[0]}: RSI 계산 완료.")
 
+    # 최근 5 거래일 데이터 로그 기록
+    logging.info(f"{df_last_30_days['Code'].iloc[0]} 최근 5 거래일 데이터 (RSI 포함):\n{df_last_30_days.tail(5)}")
+
     # EMA 및 MACD 계산
     df_last_30_days['EMA12'] = df_last_30_days['Close'].ewm(span=12, adjust=False).mean()
     df_last_30_days['EMA26'] = df_last_30_days['Close'].ewm(span=26, adjust=False).mean()
@@ -89,10 +115,16 @@ def calculate_technical_indicators(df):
     df_last_30_days['Signal Line'] = df_last_30_days['MACD'].ewm(span=9, adjust=False).mean()
     logging.info(f"{df_last_30_days['Code'].iloc[0]}: MACD 및 Signal Line 계산 완료.")
 
-    # 볼린저 밴드 계산 (30일 이동 평균, 2 표준 편차)
+    # 최근 5 거래일 데이터 로그 기록
+    logging.info(f"{df_last_30_days['Code'].iloc[0]} 최근 5 거래일 데이터 (MACD 포함):\n{df_last_30_days.tail(5)}")
+
+    # 볼린저 밴드 계산
     df_last_30_days['Upper Band'] = df_last_30_days['MA30'] + (df_last_30_days['Close'].rolling(window=30).std() * 2)
     df_last_30_days['Lower Band'] = df_last_30_days['MA30'] - (df_last_30_days['Close'].rolling(window=30).std() * 2)
     logging.info(f"{df_last_30_days['Code'].iloc[0]}: 볼린저 밴드 계산 완료.")
+
+    # 최근 5 거래일 데이터 로그 기록
+    logging.info(f"{df_last_30_days['Code'].iloc[0]} 최근 5 거래일 데이터 (볼린저 밴드 포함):\n{df_last_30_days.tail(5)}")
 
     # 가격 변화 계산
     df_last_30_days['Price Change'] = df_last_30_days['Close'].diff()
