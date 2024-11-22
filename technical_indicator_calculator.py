@@ -18,7 +18,16 @@ def calculate_technical_indicators():
     """기술적 지표를 계산하는 함수."""
     # CSV 파일 읽기
     data_dir = 'data'
-    df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'))  # 수정된 경로
+    dtype = {
+        'Date': 'str',  # 날짜는 문자열로 읽기
+        'Open': 'float', 
+        'High': 'float', 
+        'Low': 'float', 
+        'Close': 'float', 
+        'Volume': 'float'  # 거래량도 float로 처리
+    }
+    
+    df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'), dtype=dtype)  # dtype 지정
     logging.debug(f"CSV 파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 성공적으로 읽었습니다.")
 
     # 이동 평균 계산
@@ -28,8 +37,9 @@ def calculate_technical_indicators():
 
     # 다양한 기술적 지표 추가
     df['RSI'] = ta.rsi(df['Close'], length=14)  # 상대 강도 지수
-    df['MACD'] = ta.macd(df['Close'])['MACD']  # MACD
-    df['MACD_Signal'] = ta.macd(df['Close'])['MACDh']  # MACD Signal
+    macd = ta.macd(df['Close'])  # MACD 계산
+    df['MACD'] = macd['MACD']  # MACD
+    df['MACD_Signal'] = macd['MACDh']  # MACD Signal
     df['Bollinger_High'], df['Bollinger_Low'] = ta.bbands(df['Close'], length=20, std=2).iloc[:, 0:2].T  # Bollinger Bands
     df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)  # Average True Range
     df['Stoch'] = ta.stoch(df['High'], df['Low'], df['Close'])['STOCHK']  # Stochastic Oscillator
