@@ -158,42 +158,34 @@ def preprocess_data(all_stocks_data):
     all_targets = []
 
     for code, df in all_stocks_data.items():
-        df = calculate_technical_indicators(df)  # 기술적 지표 계산
+        df = calculate_technical_indicators(df)
 
-        if len(df) > 20:  # 충분한 데이터가 있는 경우
-            df = df.copy()  # 복사본 생성
-            
-            # 가격 변화 계산
-            df['Price Change'] = df['Close'].diff()  # Price Change 계산
+        if len(df) > 20:
+            df = df.copy()
 
-            # Price Change 확인
-            if 'Price Change' not in df.columns:
-                logging.warning(f"{code}의 'Price Change' 컬럼이 없습니다.")
-                continue  # 다음 종목으로 넘어감
+            # Price Change 여부 계산
+            df['Price Change'] = df['Close'].diff()
+            df['Target'] = np.where(df['Price Change'] > 0, 1, 0) 
 
-            # 타겟 생성
-            df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
-
-            # 필요한 피처가 모두 존재하는지 확인
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
-            missing_features = [feature for feature in features if feature not in df.columns]
 
-            if missing_features:
-                logging.warning(f"{code}의 데이터프레임에 다음 열이 없습니다: {missing_features}. 데이터프레임:\n{df.head()}")
-                continue  # 다음 종목으로 넘어감
+            # 피처가 존재하는지 확인
+            if all(feature in df.columns for feature in features):
+                X = df[features]
 
-            # 피처와 타겟 추출
-            X = df[features]
-            y = df['Target']
+                # NaN 값 핸들링
+                if X.isnull().values.any():
+                    imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
+                    X = imputer.fit_transform(X)
 
-            # NaN 값 확인
-            if X.isnull().values.any() or y.isnull().values.any():
-                logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
-                logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
-                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+                y = df['Target']
+                
+                # NaN 확인
+                if y.isnull().values.any():
+                    continue 
 
-            all_features.append(X)
-            all_targets.append(y)
+                all_features.append(X)
+                all_targets.append(y)
 
     # 모든 종목 데이터를 하나로 합치기
     X_all = pd.concat(all_features)
