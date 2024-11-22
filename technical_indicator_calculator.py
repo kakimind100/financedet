@@ -16,7 +16,7 @@ logging.basicConfig(
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(logging.DEBUG)  # DEBUG로 변경하여 모든 로그를 출력하도록 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -105,4 +105,6 @@ def calculate_technical_indicators():
     logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
 
 if __name__ == "__main__":
+    logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
     calculate_technical_indicators()
+    logging.info("기술 지표 계산 스크립트 실행 완료.")
