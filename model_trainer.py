@@ -126,27 +126,30 @@ def predict_next_day():
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = []
 
+    # 최근 며칠간의 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
-        stock_data = today_rise_stocks[today_rise_stocks['Code'] == stock_code].tail(1)  # 마지막 하루 데이터 가져오기
-        if not stock_data.empty:
-            X_next = stock_data[features]
+        # 최근 5일간의 데이터를 가져오기
+        recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
+        if not recent_data.empty:
+            # 마지막 날의 기술적 지표로 예측
+            X_next = recent_data[features].iloc[-1].values.reshape(1, -1)  # 마지막 날의 데이터를 피쳐로 사용
             pred = model.predict(X_next)
 
             # 예측 결과와 함께 정보를 저장
             predictions.append({
                 'Code': stock_code,
                 'Prediction': pred[0],
-                'MA5': stock_data['MA5'].values[0],
-                'MA20': stock_data['MA20'].values[0],
-                'RSI': stock_data['RSI'].values[0],
-                'MACD': stock_data['MACD'].values[0],
-                'Bollinger_High': stock_data['Bollinger_High'].values[0],
-                'Bollinger_Low': stock_data['Bollinger_Low'].values[0],
-                'Stoch': stock_data['Stoch'].values[0],
-                'ATR': stock_data['ATR'].values[0],
-                'CCI': stock_data['CCI'].values[0],
-                'EMA20': stock_data['EMA20'].values[0],
-                'EMA50': stock_data['EMA50'].values[0]
+                'MA5': recent_data['MA5'].values[-1],
+                'MA20': recent_data['MA20'].values[-1],
+                'RSI': recent_data['RSI'].values[-1],
+                'MACD': recent_data['MACD'].values[-1],
+                'Bollinger_High': recent_data['Bollinger_High'].values[-1],
+                'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
+                'Stoch': recent_data['Stoch'].values[-1],
+                'ATR': recent_data['ATR'].values[-1],
+                'CCI': recent_data['CCI'].values[-1],
+                'EMA20': recent_data['EMA20'].values[-1],
+                'EMA50': recent_data['EMA50'].values[-1]
             })
 
     # 예측 결과를 데이터프레임으로 변환
