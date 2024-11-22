@@ -37,7 +37,7 @@ def calculate_technical_indicators():
     try:
         df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'), dtype=dtype)
         logging.debug(f"CSV 파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 성공적으로 읽었습니다.")
-        
+
         # 날짜 열을 datetime 형식으로 변환
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
         df.set_index(['Code', 'Date'], inplace=True)  # 종목 코드와 날짜를 인덱스로 설정
@@ -70,18 +70,34 @@ def calculate_technical_indicators():
     if 'MACD' in macd.columns:
         df['MACD'] = macd['MACD']
         df['MACD_Signal'] = macd['MACDh']
+        logging.info("MACD 계산 완료.")
     else:
         logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
+        logging.debug(f"MACD 결과: {macd}")
+        return
+
+    # Bollinger Bands 계산
+    try:
+        bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
+        df['Bollinger_High'] = bollinger_bands['BBH']
+        df['Bollinger_Low'] = bollinger_bands['BBL']
+        logging.info("Bollinger Bands 계산 완료.")
+    except Exception as e:
+        logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
+        return
 
     # 기술적 지표 추가
-    df['RSI'] = ta.rsi(df['Close'], length=14)
-    df['Bollinger_High'], df['Bollinger_Low'] = ta.bbands(df['Close'], length=20, std=2).iloc[:, 0:2].T
-    df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
-    df['Stoch'] = ta.stoch(df['High'], df['Low'], df['Close'])['STOCHK']
-    df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
-    df['EMA20'] = ta.ema(df['Close'], length=20)
-    df['EMA50'] = ta.ema(df['Close'], length=50)
-    logging.debug("기술적 지표(RSI, MACD, Bollinger Bands 등)를 계산했습니다.")
+    try:
+        df['RSI'] = ta.rsi(df['Close'], length=14)
+        df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
+        df['Stoch'] = ta.stoch(df['High'], df['Low'], df['Close'])['STOCHK']
+        df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
+        df['EMA20'] = ta.ema(df['Close'], length=20)
+        df['EMA50'] = ta.ema(df['Close'], length=50)
+        logging.info("기술적 지표(RSI, ATR, Stochastic, CCI, EMA 등)를 계산했습니다.")
+    except Exception as e:
+        logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
+        return
 
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
