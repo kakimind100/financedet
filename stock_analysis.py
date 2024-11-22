@@ -33,7 +33,18 @@ def fetch_stock_data(code, start_date, end_date):
     df = fdr.DataReader(code, start_date, end_date)
     if df is not None and not df.empty:
         df.reset_index(inplace=True)  # 날짜를 칼럼으로 추가
+        df['Code'] = code  # 종목 코드 추가
+
+        # 'Date' 열 뒤로 이동하기 위해 열 순서 재배치
+        cols = df.columns.tolist()
+        cols.remove('Code')  # 'Code' 열을 리스트에서 제거
+        cols.insert(cols.index('Date') + 1, 'Code')  # 'Date' 뒤에 'Code' 추가
+        df = df[cols]  # 데이터프레임 열 순서 재배치
+
         logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
+
+        # 최근 5 거래일 데이터 로그 기록
+        logging.info(f"{code} 최근 5 거래일 데이터:\n{df.tail(5)}")
 
         # NaN 값 확인
         if df.isnull().values.any():
