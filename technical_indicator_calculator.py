@@ -87,15 +87,28 @@ def calculate_technical_indicators(target_code):
         logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
         return
 
+    # Stochastic Oscillator 추가
+    try:
+        stoch = ta.stoch(df['High'], df['Low'], df['Close'])
+        logging.debug(f"Stochastic 결과:\n{stoch}")  # 결과 로그
+        if 'STOCHK' in stoch.columns:
+            df['Stoch'] = stoch['STOCHK']
+            logging.info("Stochastic Oscillator 계산 완료.")
+        else:
+            logging.error("Stochastic Oscillator 계산 결과에 'STOCHK' 열이 없습니다.")
+            return
+    except Exception as e:
+        logging.error(f"Stochastic Oscillator 계산 중 오류 발생: {e}")
+        return
+
     # 기술적 지표 추가
     try:
         df['RSI'] = ta.rsi(df['Close'], length=14)
         df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
-        df['Stoch'] = ta.stoch(df['High'], df['Low'], df['Close'])['STOCHK']
         df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
         df['EMA20'] = ta.ema(df['Close'], length=20)
         df['EMA50'] = ta.ema(df['Close'], length=50)
-        logging.info("기술적 지표(RSI, ATR, Stochastic, CCI, EMA 등)를 계산했습니다.")
+        logging.info("기술적 지표(RSI, ATR, CCI, EMA 등)를 계산했습니다.")
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
