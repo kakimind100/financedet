@@ -34,8 +34,8 @@ def fetch_stock_data():
 def train_model():
     """모델을 훈련시키고 저장하는 함수."""
     try:
-        # CSV 파일 경로를 절대 경로로 설정
-        file_path = os.path.join(os.path.dirname(__file__), 'stock_data_with_indicators.csv')
+        # CSV 파일 경로를 data 디렉토리로 설정
+        file_path = os.path.join('data', 'stock_data_with_indicators.csv')
         df = pd.read_csv(file_path)
         logging.info(f"CSV 파일 '{file_path}'을(를) 성공적으로 읽었습니다.")
 
@@ -60,8 +60,8 @@ def train_model():
         model.fit(X_train, y_train)
 
         # 모델 저장
-        joblib.dump(model, 'stock_model.pkl')
-        logging.info("모델 훈련 완료 및 'stock_model.pkl'로 저장되었습니다.")
+        joblib.dump(model, 'models/stock_model.pkl')  # models 디렉토리에 저장
+        logging.info("모델 훈련 완료 및 'models/stock_model.pkl'로 저장되었습니다.")
 
         # 모델 평가
         y_pred = model.predict(X_test)
