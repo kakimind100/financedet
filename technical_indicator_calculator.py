@@ -87,9 +87,6 @@ def calculate_technical_indicators(target_code):
         logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
         return
 
-    # NaN 값이 있는 행 제거
-    df.dropna(inplace=True)
-
     # 기술적 지표 추가
     try:
         df['RSI'] = ta.rsi(df['Close'], length=14)
