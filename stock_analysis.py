@@ -24,7 +24,7 @@ os.makedirs(log_dir, exist_ok=True)
 # 기본 로깅 설정
 logging.basicConfig(
     filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.WARNING,  # 기본 로그 레벨은 WARNING으로 설정
+    level=logging.INFO,  # 기본 로그 레벨을 INFO로 설정
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
