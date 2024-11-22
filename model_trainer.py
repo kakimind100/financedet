@@ -70,7 +70,9 @@ def train_model():
         return
 
     try:
-        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
+        # 모든 기술적 지표를 피쳐로 사용
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                    'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
         df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 29% 상승 여부
 
         # NaN 제거
@@ -111,8 +113,9 @@ def predict_next_day():
     # 훈련된 모델 불러오기
     model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
-    # 예측할 데이터 준비 (추가 피쳐 포함)
-    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
+    # 예측할 데이터 준비 (모든 기술적 지표 포함)
+    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = []
 
     for stock_code in df['Code'].unique():
