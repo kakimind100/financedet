@@ -80,8 +80,8 @@ def calculate_technical_indicators(target_code):
     try:
         bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
         logging.debug(f"Bollinger Bands 결과:\n{bollinger_bands}")  # 결과 로그
-        df['Bollinger_High'] = bollinger_bands['BBH']
-        df['Bollinger_Low'] = bollinger_bands['BBL']
+        df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']  # 중간선 (상한선 대신)
+        df['Bollinger_Low'] = bollinger_bands['BBL_20_2.0']  # 하한선
         logging.info("Bollinger Bands 계산 완료.")
     except Exception as e:
         logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
