@@ -113,21 +113,43 @@ def predict_next_day():
 
     # 예측할 데이터 준비 (추가 피쳐 포함)
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
-    predictions = {}
+    predictions = []
 
     for stock_code in df['Code'].unique():
         stock_data = df[df['Code'] == stock_code].tail(1)  # 마지막 하루 데이터 가져오기
         if not stock_data.empty:
             X_next = stock_data[features]
             pred = model.predict(X_next)
-            predictions[stock_code] = pred[0]  # 예측 결과 저장
+            # 예측 결과와 함께 정보를 저장
+            predictions.append({
+                'Code': stock_code,
+                'Prediction': pred[0],
+                'MA5': stock_data['MA5'].values[0],
+                'MA20': stock_data['MA20'].values[0],
+                'RSI': stock_data['RSI'].values[0],
+                'MACD': stock_data['MACD'].values[0],
+                'Bollinger_High': stock_data['Bollinger_High'].values[0],
+                'Bollinger_Low': stock_data['Bollinger_Low'].values[0],
+                'Stoch': stock_data['Stoch'].values[0],
+                'ATR': stock_data['ATR'].values[0],
+                'CCI': stock_data['CCI'].values[0],
+                'EMA20': stock_data['EMA20'].values[0],
+                'EMA50': stock_data['EMA50'].values[0]
+            })
+
+    # 예측 결과를 데이터프레임으로 변환
+    predictions_df = pd.DataFrame(predictions)
+
+    # 29% 상승할 것으로 예측된 종목 필터링
+    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
+
+    # 상위 20개 종목 정렬 (예: MA5 기준으로 정렬)
+    top_predictions = top_predictions.sort_values(by='MA5', ascending=False).head(20)
 
     # 예측 결과 출력
-    for code, prediction in predictions.items():
-        if prediction == 1:
-            print(f"{code}는 다음 거래일에 29% 상승할 것으로 예측됩니다.")
-        else:
-            print(f"{code}는 다음 거래일에 상승하지 않을 것으로 예측됩니다.")
+    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+    for index, row in top_predictions.iterrows():
+        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
