@@ -65,11 +65,16 @@ def calculate_technical_indicators():
     df['MA20'] = df['Close'].rolling(window=20).mean()
     logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
 
-    # 다양한 기술적 지표 추가
-    df['RSI'] = ta.rsi(df['Close'], length=14)
+    # MACD 계산
     macd = ta.macd(df['Close'])
-    df['MACD'] = macd['MACD']
-    df['MACD_Signal'] = macd['MACDh']
+    if 'MACD' in macd.columns:
+        df['MACD'] = macd['MACD']
+        df['MACD_Signal'] = macd['MACDh']
+    else:
+        logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
+
+    # 기술적 지표 추가
+    df['RSI'] = ta.rsi(df['Close'], length=14)
     df['Bollinger_High'], df['Bollinger_Low'] = ta.bbands(df['Close'], length=20, std=2).iloc[:, 0:2].T
     df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
     df['Stoch'] = ta.stoch(df['High'], df['Low'], df['Close'])['STOCHK']
