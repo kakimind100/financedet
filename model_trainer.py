@@ -30,7 +30,6 @@ def fetch_stock_data():
     try:
         file_path = os.path.join('data', 'stock_data_with_indicators.csv')
         
-        # 데이터 타입 지정
         dtype = {
             'Code': 'object',
             'Date': 'str',
@@ -57,16 +56,8 @@ def fetch_stock_data():
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
-        # 날짜 열을 datetime 형식으로 변환
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-
         return df
-    except FileNotFoundError:
-        logging.error(f"파일 '{file_path}'을(를) 찾을 수 없습니다.")
-        return None
-    except pd.errors.EmptyDataError:
-        logging.error("CSV 파일이 비어 있습니다.")
-        return None
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
@@ -79,9 +70,8 @@ def train_model():
         return
 
     try:
-        features = ['MA5', 'MA20', 'RSI']
-        # 다음 날 종가가 현재 종가의 1.29배 이상인 경우를 타겟으로 설정
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
+        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 29% 상승 여부
 
         # NaN 제거
         df.dropna(subset=features + ['Target'], inplace=True)
@@ -121,8 +111,8 @@ def predict_next_day():
     # 훈련된 모델 불러오기
     model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
-    # 예측할 데이터 준비
-    features = ['MA5', 'MA20', 'RSI']
+    # 예측할 데이터 준비 (추가 피쳐 포함)
+    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = {}
 
     for stock_code in df['Code'].unique():
