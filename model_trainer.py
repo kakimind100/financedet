@@ -30,8 +30,36 @@ def fetch_stock_data():
     try:
         # 파일 경로 설정
         file_path = os.path.join('data', 'stock_data_with_indicators.csv')
-        df = pd.read_csv(file_path)
+        
+        # 데이터 타입 지정
+        dtype = {
+            'Code': 'object',
+            'Date': 'str',  # 날짜는 나중에 datetime으로 변환할 예정
+            'Open': 'float',
+            'High': 'float',
+            'Low': 'float',
+            'Close': 'float',
+            'Volume': 'float',
+            'Change': 'float',
+            'MA5': 'float',
+            'MA20': 'float',
+            'MACD': 'float',
+            'MACD_Signal': 'float',
+            'Bollinger_High': 'float',
+            'Bollinger_Low': 'float',
+            'Stoch': 'float',
+            'RSI': 'float',
+            'ATR': 'float',
+            'CCI': 'float',
+            'EMA20': 'float',
+            'EMA50': 'float'
+        }
+
+        df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
+
+        # 날짜 열을 datetime 형식으로 변환
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
 
         # 데이터프레임 정보 및 데이터 타입 로그
         logging.debug(f"데이터프레임 정보:\n{df.info()}")
