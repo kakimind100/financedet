@@ -3,6 +3,7 @@ import FinanceDataReader as fdr
 import pandas as pd
 import logging
 import os
+from datetime import datetime, timedelta  # datetime 및 timedelta 임포트 추가
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -25,7 +26,11 @@ def fetch_stock_data(market, start_date, end_date):
             df = fdr.DataReader(code, start_date, end_date)
             if df is not None and not df.empty:
                 df.reset_index(inplace=True)
+                
+                # 날짜와 코드 칼럼 추가
                 df['Code'] = code
+                df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 포맷 변경
+
                 all_stocks_data[code] = df
                 logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
             else:
@@ -35,8 +40,8 @@ def fetch_stock_data(market, start_date, end_date):
 
     # 데이터프레임으로 변환 후 CSV로 저장
     all_data = pd.concat(all_stocks_data.values(), ignore_index=True)
-    all_data.to_csv('stock_data.csv', index=False)
-    logging.info("주식 데이터가 'stock_data.csv'로 저장되었습니다.")
+    all_data.to_csv('data/stock_data.csv', index=False)  # 경로 수정
+    logging.info("주식 데이터가 'data/stock_data.csv'로 저장되었습니다.")
 
 if __name__ == "__main__":
     end_date = datetime.today()
