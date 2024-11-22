@@ -46,34 +46,63 @@ def fetch_stock_data(code, start_date, end_date):
 
 def calculate_technical_indicators(df):
     """기술적 지표를 계산하는 함수."""
-    df['MA5'] = df['Close'].rolling(window=5).mean()
-    df['MA20'] = df['Close'].rolling(window=20).mean()
-    delta = df['Close'].diff()
+    # 데이터가 충분한지 확인하기 위해 날짜 기준으로 정렬
+    df.sort_values(by='Date', inplace=True)
+
+    # 실제 거래일 기준으로 30일 데이터 확보
+    trading_days = df['Date'].drop_duplicates().count()  # 중복 없는 거래일 수 카운트
+    if trading_days < 30:
+        logging.warning(f"{df['Code'].iloc[0]}: 데이터가 부족하여 기술적 지표 계산을 건너뜁니다. 필요한 거래일: 30일, 현재 거래일: {trading_days}일")
+        return df  # NaN 발생을 방지하기 위해 원본 반환
+
+    # 30 거래일 데이터를 확보
+    # 가장 최근 30 거래일 데이터 선택
+    df_last_30_days = df[df['Date'] >= df['Date'].max() - pd.Timedelta(days=60)]  # 최근 60일 데이터를 확보하여 30 거래일을 선택
+    df_last_30_days = df_last_30_days.drop_duplicates(subset='Date')  # 중복된 날짜 제거
+    df_last_30_days = df_last_30_days.tail(30)  # 마지막 30 거래일만 선택
+
+    # 이동 평균 계산
+    df_last_30_days['MA5'] = df_last_30_days['Close'].rolling(window=5).mean()
+    df_last_30_days['MA20'] = df_last_30_days['Close'].rolling(window=20).mean()
+    df_last_30_days['MA30'] = df_last_30_days['Close'].rolling(window=30).mean()  # 30일 이동 평균 추가
+    logging.info(f"{df_last_30_days['Code'].iloc[0]}: MA5, MA20, MA30 계산 완료.")
+
+    # 가격 변화 및 RSI 계산
+    delta = df_last_30_days['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-    
+
     # NaN 발생 원인 로그
     if gain.isnull().values.any() or loss.isnull().values.any():
-        logging.warning("기술적 지표 계산 중 NaN 값 발생")
+        logging.warning(f"{df_last_30_days['Code'].iloc[0]}: 기술적 지표 계산 중 Gain 또는 Loss에서 NaN 값 발생.")
         logging.debug(f"Gain NaN 위치:\n{gain[gain.isnull()]}")
         logging.debug(f"Loss NaN 위치:\n{loss[loss.isnull()]}")
 
     rs = gain / loss
-    df['RSI'] = 100 - (100 / (1 + rs))
-    df['EMA12'] = df['Close'].ewm(span=12, adjust=False).mean()
-    df['EMA26'] = df['Close'].ewm(span=26, adjust=False).mean()
-    df['MACD'] = df['EMA12'] - df['EMA26']
-    df['Signal Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
-    df['Upper Band'] = df['MA20'] + (df['Close'].rolling(window=20).std() * 2)
-    df['Lower Band'] = df['MA20'] - (df['Close'].rolling(window=20).std() * 2)
-    df['Price Change'] = df['Close'].diff()
+    df_last_30_days['RSI'] = 100 - (100 / (1 + rs))
+    logging.info(f"{df_last_30_days['Code'].iloc[0]}: RSI 계산 완료.")
+
+    # EMA 및 MACD 계산
+    df_last_30_days['EMA12'] = df_last_30_days['Close'].ewm(span=12, adjust=False).mean()
+    df_last_30_days['EMA26'] = df_last_30_days['Close'].ewm(span=26, adjust=False).mean()
+    df_last_30_days['MACD'] = df_last_30_days['EMA12'] - df_last_30_days['EMA26']
+    df_last_30_days['Signal Line'] = df_last_30_days['MACD'].ewm(span=9, adjust=False).mean()
+    logging.info(f"{df_last_30_days['Code'].iloc[0]}: MACD 및 Signal Line 계산 완료.")
+
+    # 볼린저 밴드 계산 (30일 이동 평균, 2 표준 편차)
+    df_last_30_days['Upper Band'] = df_last_30_days['MA30'] + (df_last_30_days['Close'].rolling(window=30).std() * 2)
+    df_last_30_days['Lower Band'] = df_last_30_days['MA30'] - (df_last_30_days['Close'].rolling(window=30).std() * 2)
+    logging.info(f"{df_last_30_days['Code'].iloc[0]}: 볼린저 밴드 계산 완료.")
+
+    # 가격 변화 계산
+    df_last_30_days['Price Change'] = df_last_30_days['Close'].diff()
 
     # NaN 값 확인
-    if df.isnull().values.any():
-        logging.warning("기술적 지표 계산 후 NaN 값이 포함되어 있습니다.")
-        logging.debug(f"NaN 값 위치:\n{df[df.isnull().any(axis=1)]}")
+    if df_last_30_days.isnull().values.any():
+        logging.warning(f"{df_last_30_days['Code'].iloc[0]}: 기술적 지표 계산 후 NaN 값이 포함되어 있습니다.")
+        logging.debug(f"NaN 값 위치:\n{df_last_30_days[df_last_30_days.isnull().any(axis=1)]}")
 
-    return df
+    return df_last_30_days
 
 def preprocess_data(all_stocks_data):
     """데이터를 전처리하고 피처와 레이블을 준비하는 함수."""
