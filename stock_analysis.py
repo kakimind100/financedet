@@ -210,7 +210,6 @@ def evaluate_model(model, X_test, y_test):
 
 def main():
     logging.info("주식 분석 스크립트 실행 중...")  # 실행 시작 메시지
-    # 사용 예
     end_date = datetime.today()
     start_date = end_date - timedelta(days=365)
 
@@ -281,7 +280,7 @@ def main():
     # 결과 출력 및 최근 5일 치 데이터 로그 기록
     if top_stocks:
         print("내일 29% 이상 상승 가능성이 있는 종목:")
-        for code, price, df in top_stocks:
+        for code, price, df in top_stocks[:5]:  # 5개 종목만 출력
             recent_data = df.tail(5)  # 최근 5일 치 데이터
             logging.info(f"종목 코드: {code}, 최근 5일 치 데이터:\n{recent_data[['Date', 'Open', 'Close', 'Volume', 'MA5', 'RSI', 'MACD', 'Upper Band', 'Lower Band', 'Price Change']]}")
             print(f"종목 코드: {code}, 현재 가격: {price}")
@@ -289,6 +288,3 @@ def main():
         print("29% 이상 상승 가능성이 있는 종목이 없습니다.")
 
     logging.info("주식 분석 스크립트 실행 완료.")
-
-if __name__ == "__main__":
-    main()
