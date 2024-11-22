@@ -145,9 +145,10 @@ def calculate_technical_indicators(df):
     df['Price Change'] = df['Close'].diff()
 
     # NaN 값 확인
-    if df.isnull().values.any():
-        nan_dates_final = df[df.isnull().any(axis=1)]['Date'].tolist()
-        logging.warning(f"{df['Code'].iloc[0]}: 기술적 지표 계산 후 NaN 값이 포함되어 있습니다. NaN 발생 날짜: {nan_dates_final}")
+    for column in df.columns:
+        if df[column].isnull().any():
+            nan_dates = df[df[column].isnull()]['Date'].tolist()
+            logging.warning(f"{df['Code'].iloc[0]}: {column} 계산 중 NaN 값 발생. NaN 발생 날짜: {nan_dates}")
 
     return df
 
