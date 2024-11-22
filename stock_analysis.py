@@ -11,22 +11,26 @@ from sklearn.metrics import classification_report
 import joblib
 from tqdm import tqdm  # 진행 상황 표시를 위한 라이브러리
 
+# NaN 경고 메시지를 필터링하는 클래스
+class NaNWarningFilter(logging.Filter):
+    def filter(self, record):
+        # 메시지에 'NaN'이 포함된 경우만 허용
+        return 'NaN' in record.getMessage()
+
 # 로그 및 JSON 파일 디렉토리 설정
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
-class NaNWarningFilter(logging.Filter):
-    def filter(self, record):
-        # NaN 경고 메시지만 허용
-        return 'NaN' in record.getMessage()
+# 기본 로깅 설정
+logging.basicConfig(
+    filename=os.path.join(log_dir, 'stock_analysis.log'),
+    level=logging.WARNING,  # 기본 로그 레벨은 WARNING으로 설정
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
-# 필터 추가
-nan_warning_filter = NaNWarningFilter()
-logging.getLogger().addFilter(nan_warning_filter)
-
-# 콘솔 핸들러 설정
+# 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.WARNING)  # 기본 레벨은 WARNING으로 설정
+console_handler.setLevel(logging.WARNING)  # 기본 콘솔 로그 레벨은 WARNING으로 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -34,9 +38,13 @@ logging.getLogger().addHandler(console_handler)
 nan_warning_handler = logging.StreamHandler()
 nan_warning_handler.setLevel(logging.INFO)  # NaN 경고는 INFO로 출력
 nan_warning_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-nan_warning_handler.addFilter(nan_warning_filter)
-logging.getLogger().addHandler(nan_warning_handler)
 
+# NaN 경고 필터 추가
+nan_warning_filter = NaNWarningFilter()
+nan_warning_handler.addFilter(nan_warning_filter)
+
+# 로거에 핸들러 추가
+logging.getLogger().addHandler(nan_warning_handler)
 
 def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
@@ -105,7 +113,7 @@ def calculate_technical_indicators(df):
     # RSI NaN 체크
     if df['RSI'].isnull().values.any():
         nan_dates_rsi = df[df['RSI'].isnull()]['Date'].tolist()
-        logging.warning(f"{df['Code'].iloc[0]}: RSI 계산 중 NaN 값 발생. NaN 발생 날짜: {nan_dates_rsi}")
+        logging.info(f"{df['Code'].iloc[0]}: RSI 계산 중 NaN 값 발생. NaN 발생 날짜: {nan_dates_rsi}")  # 로그 레벨 변경
 
     logging.info(f"{df['Code'].iloc[0]}: RSI 계산 완료.")
 
