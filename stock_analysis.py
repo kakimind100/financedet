@@ -142,6 +142,14 @@ def preprocess_data(all_stocks_data):
         df = calculate_technical_indicators(df)  # NaN 값을 제거하지 않음
         if len(df) > 20:  # 충분한 데이터가 있는 경우
             df = df.copy()  # 복사본 생성
+            
+            # 가격 변화 계산
+            df['Price Change'] = df['Close'].diff()  # 여기서 Price Change를 다시 계산
+
+            if 'Price Change' not in df.columns:
+                logging.warning(f"{code}의 'Price Change' 컬럼이 없습니다.")
+                continue  # 다음 종목으로 넘어감
+            
             df['Target'] = np.where(df['Price Change'] > 0, 1, 0)  # 종가 상승 여부
             features = ['MA5', 'MA20', 'RSI', 'MACD', 'Upper Band', 'Lower Band']
             X = df[features]
