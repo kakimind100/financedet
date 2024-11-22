@@ -15,18 +15,28 @@ from tqdm import tqdm  # 진행 상황 표시를 위한 라이브러리
 log_dir = 'logs'
 os.makedirs(log_dir, exist_ok=True)
 
-# 로깅 설정
-logging.basicConfig(
-    filename=os.path.join(log_dir, 'stock_analysis.log'),
-    level=logging.INFO,  # 로그 레벨을 INFO로 설정
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+class NaNWarningFilter(logging.Filter):
+    def filter(self, record):
+        # NaN 경고 메시지만 허용
+        return 'NaN' in record.getMessage()
 
-# 콘솔 로그 출력 설정
+# 필터 추가
+nan_warning_filter = NaNWarningFilter()
+logging.getLogger().addFilter(nan_warning_filter)
+
+# 콘솔 핸들러 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)  # 콘솔 로그 레벨도 INFO로 설정
+console_handler.setLevel(logging.WARNING)  # 기본 레벨은 WARNING으로 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
+
+# NaN 경고를 INFO 레벨로 출력할 핸들러 추가
+nan_warning_handler = logging.StreamHandler()
+nan_warning_handler.setLevel(logging.INFO)  # NaN 경고는 INFO로 출력
+nan_warning_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+nan_warning_handler.addFilter(nan_warning_filter)
+logging.getLogger().addHandler(nan_warning_handler)
+
 
 def fetch_stock_data(code, start_date, end_date):
     """주식 데이터를 가져오는 함수."""
