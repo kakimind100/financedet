@@ -132,7 +132,7 @@ def predict_next_day():
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
         if not recent_data.empty:
             # 마지막 날의 기술적 지표로 예측
-            X_next = recent_data[features].iloc[-1].values.reshape(1, -1)  # 마지막 날의 데이터를 피쳐로 사용
+            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
             pred = model.predict(X_next)
 
             # 예측 결과와 함께 정보를 저장
@@ -151,6 +151,7 @@ def predict_next_day():
                 'EMA20': recent_data['EMA20'].values[-1],
                 'EMA50': recent_data['EMA50'].values[-1]
             })
+
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
