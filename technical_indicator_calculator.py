@@ -38,10 +38,6 @@ def calculate_technical_indicators():
     df['EMA50'] = ta.ema(df['Close'], length=50)  # 50일 지수 이동 평균
     logging.debug("기술적 지표(RSI, MACD, Bollinger Bands 등)를 계산했습니다.")
 
-    # NaN 값 처리
-    df.fillna(0, inplace=True)  # NaN 값을 0으로 대체
-    logging.debug("NaN 값을 0으로 대체했습니다.")
-
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')  # 결과 저장 경로
     df.to_csv(output_file, index=False)  # CSV로 저장
