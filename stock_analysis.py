@@ -154,7 +154,7 @@ def preprocess_data(all_stocks_data):
             if X.isnull().values.any() or y.isnull().values.any():
                 logging.warning(f"{code}의 입력 피처 또는 타겟에 NaN 값이 포함되어 있습니다.")
                 logging.debug(f"{code}의 X NaN 위치:\n{X[X.isnull().any(axis=1)]}")
-                                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
+                logging.debug(f"{code}의 y NaN 위치:\n{y[y.isnull()]}")
 
             all_features.append(X)
             all_targets.append(y)
@@ -273,4 +273,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-               
