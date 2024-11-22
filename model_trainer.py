@@ -149,14 +149,14 @@ def predict_next_day():
     # 상위 20개 종목 정렬 (예: MA5 기준으로 정렬)
     top_predictions = top_predictions.sort_values(by='MA5', ascending=False).head(20)
 
-# 예측 결과 출력
-print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
-for index, row in top_predictions.iterrows():
-    print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
-          f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-          f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-          f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-          f"EMA50: {row['EMA50']})")
+    # 예측 결과 출력
+    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+    for index, row in top_predictions.iterrows():
+        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+              f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+              f"EMA50: {row['EMA50']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
