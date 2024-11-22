@@ -32,9 +32,17 @@ def fetch_stock_data():
         file_path = os.path.join('data', 'stock_data_with_indicators.csv')
         df = pd.read_csv(file_path)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
+
+        # 데이터프레임 정보 및 데이터 타입 로그
+        logging.debug(f"데이터프레임 정보:\n{df.info()}")
+        logging.debug(f"데이터프레임 첫 5행:\n{df.head()}")
+
         return df
     except FileNotFoundError:
         logging.error(f"파일 '{file_path}'을(를) 찾을 수 없습니다.")
+        return None
+    except pd.errors.EmptyDataError:
+        logging.error("CSV 파일이 비어 있습니다.")
         return None
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -57,6 +65,10 @@ def train_model():
 
         X = df[features]
         y = df['Target']
+
+        # 피쳐와 타겟 변수의 데이터 타입 로그
+        logging.debug(f"피쳐 데이터 타입:\n{X.dtypes}")
+        logging.debug(f"타겟 변수 데이터 타입:\n{y.dtypes}")
 
         logging.debug(f"훈련에 사용된 피쳐: {features}")
         logging.debug(f"타겟 변수: 'Target'")
