@@ -34,13 +34,23 @@ jobs:
           echo "현재 디렉토리의 파일 목록:"
           ls -al  # 현재 디렉토리의 파일 목록 확인
 
-      - name: Run Stock Analysis
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
+      - name: Run Stock Data Fetcher
         run: |
-          echo "주식 분석 스크립트 실행 중..."  # 실행 시작 메시지
-          python stock_analysis.py json_results/input_data.json json_results/top_20_stocks.json  # 입력 및 출력 파일 경로 전달
-          echo "주식 분석 스크립트 실행 완료."  # 실행 완료 메시지
+          echo "주식 데이터 가져오기 스크립트 실행 중..."  # 실행 시작 메시지
+          python stock_data_fetcher.py  # 주식 데이터 가져오기 스크립트 실행
+          echo "주식 데이터 가져오기 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Run Technical Indicator Calculator
+        run: |
+          echo "기술 지표 계산 스크립트 실행 중..."  # 실행 시작 메시지
+          python technical_indicator_calculator.py  # 기술 지표 계산 스크립트 실행
+          echo "기술 지표 계산 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Run Model Trainer
+        run: |
+          echo "모델 훈련 스크립트 실행 중..."  # 실행 시작 메시지
+          python model_trainer.py  # 모델 훈련 스크립트 실행
+          echo "모델 훈련 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Run Discord Webhook Script
         env:
