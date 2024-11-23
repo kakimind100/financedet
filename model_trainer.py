@@ -155,6 +155,9 @@ def predict_next_day():
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
 
+    # NaN 값 제거
+    predictions_df.dropna(inplace=True)
+
     # 모든 기술적 지표를 기반으로 점수 계산
     weights = {
         'MA5': 0.1,
@@ -166,6 +169,9 @@ def predict_next_day():
         'Stoch': 0.1
     }
 
+    # 각 지표의 값을 로그로 출력하여 확인
+    logging.debug(predictions_df[features].describe())
+
     # 점수 계산
     for feature in weights.keys():
         predictions_df[feature + '_score'] = predictions_df[feature] * weights[feature]
@@ -175,6 +181,7 @@ def predict_next_day():
 
     # 점수를 기준으로 상위 20개 종목 선택
     top_predictions = predictions_df.nlargest(20, 'Total_Score')
+
 
     # 상위 20개 종목의 모든 날짜의 기술적 지표를 포함한 데이터 프레임 생성
     top_20_codes = top_predictions['Code'].unique()  # 상위 20개 종목 코드
