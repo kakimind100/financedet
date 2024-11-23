@@ -12,6 +12,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# 콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def send_discord_message(webhook_url, message):
     """Discord 웹훅으로 메시지를 전송하는 함수."""
     data = {
