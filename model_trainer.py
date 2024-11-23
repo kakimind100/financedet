@@ -163,11 +163,7 @@ def predict_next_day():
         'MACD': 0.2,
         'Bollinger_High': 0.15,
         'Bollinger_Low': 0.15,
-        'Stoch': 0.1,
-        'ATR': 0.05,
-        'CCI': 0.05,
-        'EMA20': 0.05,
-        'EMA50': 0.05
+        'Stoch': 0.1
     }
 
     # 점수 계산
@@ -194,9 +190,7 @@ def predict_next_day():
     for index, row in top_predictions.iterrows():
         print(f"{row['Code']} (Total Score: {row['Total_Score']}, MA5: {row['MA5']}, MA20: {row['MA20']}, "
               f"RSI: {row['RSI']}, MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-              f"EMA50: {row['EMA50']})")
+              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
