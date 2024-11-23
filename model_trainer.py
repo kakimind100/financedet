@@ -163,7 +163,6 @@ def predict_next_day():
     top_predictions.loc[:, 'Score'] = (top_predictions['MA5'] * 0.3 + 
                                         (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
                                         top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
-                                        top_predictions['Bollinger_High'] * 0.3 +  # 볼린저 밴드 상단
                                         (100 - top_predictions['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
 
     # Score를 기준으로 정렬
