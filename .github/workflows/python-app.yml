@@ -40,16 +40,6 @@ jobs:
           python stock_data_fetcher.py  # 주식 데이터 가져오기 스크립트 실행
           echo "주식 데이터 가져오기 스크립트 실행 완료."  # 실행 완료 메시지
 
-      - name: Check for CSV file
-        run: |
-          echo "CSV 파일 존재 여부 확인 중..."
-          if [ -f csv_results/top_20_stocks.csv ]; then
-            echo "CSV 파일이 존재합니다."
-          else
-            echo "CSV 파일이 존재하지 않습니다. 경로를 확인하세요."
-            exit 1  # 오류 발생 시 워크플로우 중단
-          fi
-
       - name: Run Technical Indicator Calculator
         run: |
           echo "기술 지표 계산 스크립트 실행 중..."  # 실행 시작 메시지
@@ -68,7 +58,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
         run: |
           echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
-          python discord_webhook.py csv_results/top_20_stocks.csv  # CSV 파일 경로를 인수로 전달
           echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Upload log file
