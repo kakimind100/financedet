@@ -126,13 +126,13 @@ def predict_next_day():
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = []
 
-    # 최근 며칠간의 데이터를 사용하여 예측하기
+    # 최근 5일간의 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
         if not recent_data.empty:
-            # 마지막 날의 기술적 지표로 예측
-            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
+            # 최근 5일의 기술적 지표를 모두 사용하여 예측
+            X_next = recent_data[features].values.flatten().reshape(1, -1)  # 모든 기술적 지표를 1차원 배열로 변환
             pred = model.predict(X_next)
 
             # 예측 결과와 함께 정보를 저장
@@ -175,7 +175,7 @@ def predict_next_day():
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
-
+                                    
     # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
     output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
     all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
