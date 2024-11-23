@@ -75,21 +75,19 @@ def main():
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
-        # 최근 26 거래일 데이터만 남기기
+        # 최근 5 거래일 데이터만 남기기
         filtered_stocks = []
         for code in top_stocks['Code'].unique():
             stock_data = top_stocks[top_stocks['Code'] == code]
             logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
 
-            # 거래일 필터링
-            trading_days = 0
-            for record_index, record in stock_data.iterrows():
-                record_date = datetime.strptime(record['Date'], '%Y-%m-%d')
-                if trading_days < 26:  # 최근 26 거래일만 남기기
-                    filtered_stocks.append(record)
-                    trading_days += 1
-                else:
-                    break  # 26일이 넘으면 중단
+            # 최근 5일치 데이터만 남기기
+            if len(stock_data) > 5:
+                recent_data = stock_data.tail(5)  # 마지막 5일 데이터
+            else:
+                recent_data = stock_data  # 데이터가 5일 미만이면 전체 데이터 사용
+
+            filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
 
         # 필터링된 데이터로 DataFrame 생성
         filtered_df = pd.DataFrame(filtered_stocks)
