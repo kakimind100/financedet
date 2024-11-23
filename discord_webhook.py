@@ -49,12 +49,8 @@ def main():
     discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
     openai_api_key = os.getenv('OPENAI_API_KEY')
 
-    # 인수로 전달된 파일 경로 확인
-    if len(sys.argv) < 2:
-        logging.error("파일 경로가 제공되지 않았습니다.")
-        return
-
-    filename = sys.argv[1]
+    # 파일 경로 확인
+    filename = 'data/top_20_stocks_all_dates.csv'  # 파일 경로를 직접 설정
     logging.info(f"파일 경로: {filename}")
 
     try:
@@ -69,7 +65,7 @@ def main():
         
         # 전체 데이터 프레임 로그
         logging.info("전체 데이터 프레임:")
-        logging.info(top_stocks.to_string())  # 전체 데이터 프레임 출력
+        logging.debug(top_stocks.to_string())  # 전체 데이터 프레임 출력
 
         # 현재 날짜를 가져오는 부분
         current_date = datetime.today()
@@ -86,6 +82,8 @@ def main():
                 if trading_days < 26:  # 최근 26 거래일만 남기기
                     filtered_stocks.append(record)
                     trading_days += 1
+                else:
+                    break  # 26일이 넘으면 중단
 
         # 필터링된 데이터로 DataFrame 생성
         filtered_df = pd.DataFrame(filtered_stocks)
