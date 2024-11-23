@@ -108,10 +108,6 @@ def train_model():
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
 
-# 과매수 상태를 확인하는 함수
-def is_overbought(row):
-    return row['Bollinger_High'] is not None and (row['Close'] >= row['Bollinger_High'] or row['RSI'] > 70)
-
 def predict_next_day():
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
