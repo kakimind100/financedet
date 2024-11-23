@@ -49,9 +49,14 @@ def get_ai_response(api_key, prompt):
         return None
 
 def main():
+    logging.info("Discord 웹훅 스크립트 실행 중...")  # 시작 로그 추가
     # 환경 변수에서 설정 로드
     discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
     openai_api_key = os.getenv('OPENAI_API_KEY')
+
+    if not discord_webhook_url or not openai_api_key:
+        logging.error("환경 변수가 설정되지 않았습니다.")
+        return
 
     # 파일 경로 확인
     filename = 'data/top_20_stocks_all_dates.csv'  # 파일 경로를 직접 설정
@@ -118,6 +123,8 @@ def main():
         logging.error("CSV 파일을 읽는 중 오류 발생.")
     except Exception as e:
         logging.error(f"오류 발생: {str(e)}")
+    finally:
+        logging.info("Discord 웹훅 스크립트 실행 완료.")  # 종료 로그
 
 if __name__ == "__main__":
     main()
