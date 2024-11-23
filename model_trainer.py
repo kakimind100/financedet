@@ -164,7 +164,7 @@ def predict_next_day():
                                         (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
                                         top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
                                         (100 - top_predictions['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
-                                       
+
     # Score를 기준으로 정렬
     top_predictions = top_predictions.sort_values(by='Score', ascending=False).head(20)
 
@@ -192,3 +192,4 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
