@@ -70,21 +70,29 @@ def train_model():
         return
 
     try:
-        # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
         df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
-        
-        # NaN 제거
         df.dropna(subset=['Target'], inplace=True)
 
-        # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                     'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
 
         # NaN 제거
         df.dropna(subset=features + ['Target'], inplace=True)
 
-        X = df[features]
-        y = df['Target']
+        # 훈련 데이터를 위한 리스트
+        X = []
+        y = []
+
+        # 각 주식 코드에 대해 최근 5일간의 데이터를 사용하여 훈련 데이터 생성
+        for stock_code in df['Code'].unique():
+            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+            if len(stock_data) == 5:  # 5일치 데이터가 있는 경우
+                # 기술적 지표와 타겟을 추가
+                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+
+        X = np.array(X)
+        y = np.array(y)
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
