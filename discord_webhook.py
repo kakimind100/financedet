@@ -64,6 +64,7 @@ def main():
 
     try:
         # CSV 파일 읽기
+        logging.info("CSV 파일을 읽는 중...")
         top_stocks = pd.read_csv(filename)
         logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
@@ -78,6 +79,7 @@ def main():
 
         # 현재 날짜를 가져오는 부분
         current_date = datetime.today()
+        logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
         # 최근 26 거래일 데이터만 남기기
         filtered_stocks = []
@@ -108,6 +110,7 @@ def main():
             f"예시 출력 형식: 종목 코드: 상승 가능성 %, 이유 (예: 기술적 지표에 따른 분석)"
         )
 
+        logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
 
         if ai_response:
