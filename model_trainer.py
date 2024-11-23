@@ -182,7 +182,6 @@ def predict_next_day():
     # 점수를 기준으로 상위 20개 종목 선택
     top_predictions = predictions_df.nlargest(20, 'Total_Score')
 
-
     # 상위 20개 종목의 모든 날짜의 기술적 지표를 포함한 데이터 프레임 생성
     top_20_codes = top_predictions['Code'].unique()  # 상위 20개 종목 코드
     all_top_20_data = df[df['Code'].isin(top_20_codes)]  # 모든 날짜의 데이터 가져오기
@@ -196,8 +195,9 @@ def predict_next_day():
     print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
         print(f"{row['Code']} (Total Score: {row['Total_Score']}, MA5: {row['MA5']}, MA20: {row['MA20']}, "
-              f"RSI: {row['RSI']}, MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']})")
+              f"RSI: {row['RSI']}, MACD: {row['MACD']}, "
+              f"Bollinger_High: {row['Bollinger_High']}, Bollinger_Low: {row['Bollinger_Low']}, "
+              f"Stoch: {row['Stoch']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
