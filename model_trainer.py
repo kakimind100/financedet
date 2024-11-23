@@ -180,6 +180,13 @@ def predict_next_day():
     # 점수를 기준으로 상위 20개 종목 선택
     top_predictions = predictions_df.nlargest(20, 'Total_Score')
 
+    # 상위 20개 종목의 기술적 지표를 JSON으로 저장
+    top_20_dict = top_predictions.to_dict(orient='records')
+    output_json_file = os.path.join('data', 'top_20_stocks.json')
+    
+    with open(output_json_file, 'w') as json_file:
+        json.dump(top_20_dict, json_file, indent=4)
+
     # 예측 결과 출력
     print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
