@@ -173,13 +173,13 @@ def predict_next_day():
               f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
               f"EMA50: {row['EMA50']})")
 
-    # 예측 결과와 원본 데이터프레임 병합
-    all_data_with_predictions = pd.merge(df, top_predictions, on='Code', how='left', suffixes=('', '_pred'))
+    # 상위 20개 종목의 전체 날짜 데이터 추출
+    all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
 
     # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
     output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
-    all_data_with_predictions.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
-    logging.info(f"예측 결과가 '{output_file_path}'에 저장되었습니다.")
+    all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
+    logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
