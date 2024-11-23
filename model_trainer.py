@@ -163,10 +163,10 @@ def predict_next_day():
     top_predictions_copy = top_predictions.copy()
 
     # Score를 기준으로 정렬
-    top_predictions_copy['Score'] = (top_predictions_copy['MA5'] * 0.3 + 
+    top_predictions_copy['Score'] = (top_predictions_copy['MA5'] * 0.4 + 
                                    (100 - top_predictions_copy['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
                                    top_predictions_copy['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
-                                   (100 - top_predictions_copy['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
+                                   (100 - top_predictions_copy['Stoch']) * 0.1)  # Stoch은 낮을수록 좋음
 
     # Score를 기준으로 정렬하고 상위 20개 종목 선택
     top_predictions_copy = top_predictions_copy.sort_values(by='Score', ascending=False).head(20)
