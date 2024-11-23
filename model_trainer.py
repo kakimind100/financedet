@@ -159,11 +159,12 @@ def predict_next_day():
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 상위 20개 종목 정렬 (여러 기준으로)
-    top_predictions.loc[:, 'Score'] = (top_predictions['MA5'] * 0.3 + 
-                                        (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
-                                        top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
-                                        (100 - top_predictions['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
+    # Score를 기준으로 정렬 (SettingWithCopyWarning 해결)
+    top_predictions['Score'] = (top_predictions['MA5'] * 0.3 + 
+                                 (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
+                                 top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
+                                 (100 - top_predictions['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
+
 
     # Score를 기준으로 정렬
     top_predictions = top_predictions.sort_values(by='Score', ascending=False).head(20)
