@@ -149,9 +149,9 @@ def predict_next_day():
                 'ATR': recent_data['ATR'].values[-1],
                 'CCI': recent_data['CCI'].values[-1],
                 'EMA20': recent_data['EMA20'].values[-1],
-                'EMA50': recent_data['EMA50'].values[-1],
-                'Close': recent_data['Close'].values[-1]  # Close 열 추가
+                'EMA50': recent_data['EMA50'].values[-1]
             })
+
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
@@ -159,33 +159,17 @@ def predict_next_day():
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # top_predictions의 복사본을 생성합니다.
-    top_predictions_copy = top_predictions.copy()
-
-    # Score를 기준으로 정렬
-    top_predictions_copy['Score'] = (top_predictions_copy['MA5'] * 0.4 + 
-                                   (100 - top_predictions_copy['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
-                                   top_predictions_copy['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
-                                   (100 - top_predictions_copy['Stoch']) * 0.1)  # Stoch은 낮을수록 좋음
-
-    # Score를 기준으로 정렬하고 상위 20개 종목 선택
-    top_predictions_copy = top_predictions_copy.sort_values(by='Score', ascending=False).head(20)
-
-    # 상위 20개 종목의 모든 날짜의 데이터 가져오기
-    top_20_codes = top_predictions['Code'].unique()
-    all_top_20_data = df[df['Code'].isin(top_20_codes)]
-
-    # CSV로 저장
-    output_csv_file = os.path.join('data', 'top_20_stocks_all_dates.csv')
-    all_top_20_data.to_csv(output_csv_file, index=False)
-    logging.info(f"상위 20개 종목의 모든 날짜의 데이터가 '{output_csv_file}'로 저장되었습니다.")
+    # 상위 20개 종목 정렬 (예: MA5 기준으로 정렬)
+    top_predictions = top_predictions.sort_values(by='MA5', ascending=False).head(20)
 
     # 예측 결과 출력
     print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
         print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
               f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']})")
+              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+              f"EMA50: {row['EMA50']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
