@@ -155,49 +155,27 @@ def predict_next_day():
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
 
-    # NaN 값 제거
-    predictions_df.dropna(inplace=True)
+    # 29% 상승할 것으로 예측된 종목 필터링
+    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 모든 기술적 지표를 기반으로 점수 계산
-    weights = {
-        'MA5': 0.1,
-        'MA20': 0.1,
-        'RSI': 0.2,
-        'MACD': 0.2,
-        'Bollinger_High': 0.15,
-        'Bollinger_Low': 0.15,
-        'Stoch': 0.1
-    }
+    # 상위 20개 종목 정렬 (예: MA5 기준으로 정렬)
+    top_predictions = top_predictions.sort_values(by='MA5', ascending=False).head(20)
 
-    # 각 지표의 값을 로그로 출력하여 확인
-    logging.debug(predictions_df[features].describe())
-
-    # 점수 계산
-    for feature in weights.keys():
-        predictions_df[feature + '_score'] = predictions_df[feature] * weights[feature]
-
-    # 총 점수 계산
-    predictions_df['Total_Score'] = predictions_df[[feature + '_score' for feature in weights.keys()]].sum(axis=1)
-
-    # 점수를 기준으로 상위 20개 종목 선택
-    top_predictions = predictions_df.nlargest(20, 'Total_Score')
-
-    # 상위 20개 종목의 모든 날짜의 기술적 지표를 포함한 데이터 프레임 생성
-    top_20_codes = top_predictions['Code'].unique()  # 상위 20개 종목 코드
-    all_top_20_data = df[df['Code'].isin(top_20_codes)]  # 모든 날짜의 데이터 가져오기
+    # 상위 20개 종목의 모든 날짜의 데이터 가져오기
+    top_20_codes = top_predictions['Code'].unique()
+    all_top_20_data = df[df['Code'].isin(top_20_codes)]
 
     # CSV로 저장
     output_csv_file = os.path.join('data', 'top_20_stocks_all_dates.csv')
     all_top_20_data.to_csv(output_csv_file, index=False)
-    logging.info(f"상위 20개 종목의 모든 날짜의 기술적 지표가 '{output_csv_file}'로 저장되었습니다.")
+    logging.info(f"상위 20개 종목의 모든 날짜의 데이터가 '{output_csv_file}'로 저장되었습니다.")
 
     # 예측 결과 출력
     print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
-        print(f"{row['Code']} (Total Score: {row['Total_Score']}, MA5: {row['MA5']}, MA20: {row['MA20']}, "
-              f"RSI: {row['RSI']}, MACD: {row['MACD']}, "
-              f"Bollinger_High: {row['Bollinger_High']}, Bollinger_Low: {row['Bollinger_Low']}, "
-              f"Stoch: {row['Stoch']})")
+        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+              f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']})")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
@@ -207,4 +185,3 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
-
