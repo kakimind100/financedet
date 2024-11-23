@@ -8,7 +8,7 @@ from datetime import datetime
 
 # 로깅 설정
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG 레벨로 설정하여 모든 로그를 출력하도록 변경
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
@@ -60,13 +60,13 @@ def main():
 
     # 파일 경로 확인
     filename = 'data/top_20_stocks_all_dates.csv'  # 파일 경로를 직접 설정
-    logging.info(f"파일 경로: {filename}")
+    logging.debug(f"파일 경로: {filename}")
 
     try:
         # CSV 파일 읽기
         logging.info("CSV 파일을 읽는 중...")
         top_stocks = pd.read_csv(filename)
-        logging.info(f"읽어온 데이터 개수: {len(top_stocks)}개")
+        logging.debug(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
         # 데이터 확인
         if top_stocks.empty:
@@ -85,6 +85,7 @@ def main():
         filtered_stocks = []
         for code in top_stocks['Code'].unique():
             stock_data = top_stocks[top_stocks['Code'] == code]
+            logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
 
             # 거래일 필터링
             trading_days = 0
