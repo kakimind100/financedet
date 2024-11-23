@@ -108,6 +108,10 @@ def train_model():
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
 
+# 과매수 상태를 확인하는 함수
+def is_overbought(row):
+    return row['Bollinger_High'] is not None and (row['Close'] >= row['Bollinger_High'] or row['RSI'] > 70)
+
 def predict_next_day():
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
@@ -149,7 +153,8 @@ def predict_next_day():
                 'ATR': recent_data['ATR'].values[-1],
                 'CCI': recent_data['CCI'].values[-1],
                 'EMA20': recent_data['EMA20'].values[-1],
-                'EMA50': recent_data['EMA50'].values[-1]
+                'EMA50': recent_data['EMA50'].values[-1],
+                'Close': recent_data['Close'].values[-1]  # Close 열 추가
             })
 
     # 예측 결과를 데이터프레임으로 변환
@@ -158,11 +163,7 @@ def predict_next_day():
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 과매수 상태를 확인하는 함수
-    def is_overbought(row):
-        return row['Close'] >= row['Bollinger_High'] or row['RSI'] > 70
-
-    # 상위 20개 종목 정렬 (여러 기준으로)
+    # 과매수 상태일 경우 점수를 줄임
     top_predictions['Score'] = (top_predictions['MA5'] * 0.3 + 
                                  (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
                                  top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
@@ -176,8 +177,6 @@ def predict_next_day():
 
     # Score를 기준으로 정렬
     top_predictions = top_predictions.sort_values(by='Score', ascending=False).head(20)
-
-
 
     # 상위 20개 종목의 모든 날짜의 데이터 가져오기
     top_20_codes = top_predictions['Code'].unique()
@@ -199,6 +198,11 @@ if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
     train_model()  # 모델 훈련
     logging.info("모델 훈련 스크립트 실행 완료.")
+
+    logging.info("다음 거래일 예측 스크립트 실행 중...")
+    predict_next_day()  # 다음 거래일 예측
+    logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
 
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
