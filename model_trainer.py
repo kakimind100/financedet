@@ -173,9 +173,8 @@ def predict_next_day():
               f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
               f"EMA50: {row['EMA50']})")
 
-    # 예측 결과를 CSV 파일로 저장
-    output_file_path = os.path.join('results', 'top_predictions.csv')
-    os.makedirs('results', exist_ok=True)  # 결과 디렉토리 생성
+    # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
+    output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
     top_predictions.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
     logging.info(f"예측 결과가 '{output_file_path}'에 저장되었습니다.")
 
