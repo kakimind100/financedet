@@ -23,9 +23,12 @@ def send_discord_message(webhook_url, message):
     data = {
         "content": message
     }
-    response = requests.post(webhook_url, json=data)
-    if response.status_code != 204:
-        logging.error(f"메시지 전송 실패: {response.status_code} {response.text}")
+    try:
+        response = requests.post(webhook_url, json=data)
+        response.raise_for_status()  # HTTP 오류 확인
+        logging.info("메시지를 성공적으로 Discord에 전송했습니다.")
+    except Exception as e:
+        logging.error(f"메시지 전송 실패: {e}")
 
 def get_ai_response(api_key, prompt):
     """AI에게 질문을 하고 응답을 받는 함수."""
@@ -39,6 +42,7 @@ def get_ai_response(api_key, prompt):
             ],
             max_tokens=300  # 최대 토큰 수 설정
         )
+        logging.info("AI로부터 응답을 성공적으로 받았습니다.")
         return response['choices'][0]['message']['content']
     except Exception as e:
         logging.error(f"AI 응답 오류: {str(e)}")
