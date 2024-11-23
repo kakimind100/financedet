@@ -159,21 +159,12 @@ def predict_next_day():
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 과매수 상태를 확인하는 함수
-    def is_overbought(row):
-        return row['Bollinger_High'] is not None and (row['Close'] >= row['Bollinger_High'] or row['RSI'] > 70)
-
     # 상위 20개 종목 정렬 (여러 기준으로)
     top_predictions.loc[:, 'Score'] = (top_predictions['MA5'] * 0.3 + 
                                         (100 - top_predictions['RSI']) * 0.2 +  # RSI는 낮을수록 좋음
                                         top_predictions['MACD'] * 0.2 +  # MACD 값이 클수록 좋음
-                                        top_predictions['Bollinger_High'] * 0.3)  # 볼린저 밴드 상단
-
-    # 과매수 상태일 경우 점수를 줄임
-    top_predictions.loc[:, 'Score'] = top_predictions.apply(
-        lambda row: row['Score'] * 0.8 if is_overbought(row) else row['Score'],
-        axis=1
-    )
+                                        top_predictions['Bollinger_High'] * 0.3 +  # 볼린저 밴드 상단
+                                        (100 - top_predictions['Stoch']) * 0.2)  # Stoch은 낮을수록 좋음
 
     # Score를 기준으로 정렬
     top_predictions = top_predictions.sort_values(by='Score', ascending=False).head(20)
@@ -202,4 +193,3 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
-
