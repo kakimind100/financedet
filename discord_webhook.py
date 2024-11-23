@@ -34,7 +34,8 @@ def get_ai_response(api_key, prompt):
                 {"role": "system", "content": "당신은 최고의 전문 기술 투자자입니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300  # 최대 토큰 수 설정
+            max_tokens=300,  # 최대 토큰 수 설정
+            temperature=0.3   # 온도를 0.3으로 설정
         )
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
         return response['choices'][0]['message']['content']
