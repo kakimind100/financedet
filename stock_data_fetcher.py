@@ -38,20 +38,22 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
     except Exception as e:
         logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")  # 오류 로그
 
-def fetch_stock_data(market, start_date, end_date):
+def fetch_stock_data(markets, start_date, end_date):
     """주식 데이터를 가져오는 메인 함수."""
     all_stocks_data = {}  # 모든 주식 데이터를 저장할 딕셔너리
-    codes = fdr.StockListing(market)['Code'].tolist()  # 주식 코드 리스트 가져오기
-    threads = []  # 스레드 리스트 초기화
 
-    for code in codes:
-        # 주식 코드에 대해 새 스레드 생성
-        thread = threading.Thread(target=fetch_single_stock_data, args=(code, start_date, end_date, all_stocks_data))
-        threads.append(thread)  # 스레드 리스트에 추가
-        thread.start()  # 스레드 시작
+    for market in markets:  # 여러 시장에 대해 반복
+        codes = fdr.StockListing(market)['Code'].tolist()  # 주식 코드 리스트 가져오기
+        threads = []  # 스레드 리스트 초기화
 
-    for thread in threads:
-        thread.join()  # 모든 스레드가 완료될 때까지 대기
+        for code in codes:
+            # 주식 코드에 대해 새 스레드 생성
+            thread = threading.Thread(target=fetch_single_stock_data, args=(code, start_date, end_date, all_stocks_data))
+            threads.append(thread)  # 스레드 리스트에 추가
+            thread.start()  # 스레드 시작
+
+        for thread in threads:
+            thread.join()  # 모든 스레드가 완료될 때까지 대기
 
     # 데이터프레임으로 변환 후 CSV로 저장
     if all_stocks_data:  # 데이터가 있는 경우
@@ -66,4 +68,4 @@ def fetch_stock_data(market, start_date, end_date):
 if __name__ == "__main__":
     end_date = datetime.today()  # 오늘 날짜
     start_date = end_date - timedelta(days=365)  # 1년 전 날짜
-    fetch_stock_data('KOSPI', start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))  # 데이터 가져오기 실행
+    fetch_stock_data(['KOSPI', 'KOSDAQ'], start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))  # 데이터 가져오기 실행
