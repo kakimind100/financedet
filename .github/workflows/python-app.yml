@@ -29,6 +29,7 @@ jobs:
         run: |
           echo "거래일 확인 중..."
           python check_trading_day.py  # 거래일 확인 스크립트 실행
+        if: github.event_name != 'workflow_dispatch'  # 수동 실행이 아닐 때만 실행
 
       - name: Create directories
         run: |
