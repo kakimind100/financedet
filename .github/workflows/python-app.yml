@@ -24,6 +24,8 @@ jobs:
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
       - name: Check if today is a trading day
+        env:
+          KOREA_HOLIDAY_API_KEY: ${{ secrets.KOREA_HOLIDAY_API_KEY }}  # API 키 환경 변수 설정
         run: |
           echo "거래일 확인 중..."
           python check_trading_day.py  # 거래일 확인 스크립트 실행
