@@ -23,6 +23,11 @@ jobs:
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
+      - name: Check if today is a trading day
+        run: |
+          echo "거래일 확인 중..."
+          python check_trading_day.py  # 거래일 확인 스크립트 실행
+
       - name: Create directories
         run: |
           mkdir -p logs csv_results  # logs 및 csv_results 디렉토리 생성
