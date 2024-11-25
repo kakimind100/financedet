@@ -91,9 +91,9 @@ def train_model():
         for stock_code in df['Code'].unique():
             stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
             
-            # 최근 5일 데이터에서 거래량이 0인 경우 제외
-            if len(stock_data) == 5 and all(stock_data['Volume'] > 0):  # 거래량이 0이 아닌 경우
-                # 기술적 지표와 타겟을 추가
+            # 최근 5일 데이터에서 거래량이 0인 경우 제외하지 않음
+            if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
+                # 기술적 지표와 타겟 추가
                 X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
                 y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
 
@@ -144,7 +144,7 @@ def predict_next_day():
     for stock_code in today_rise_stocks['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty and all(recent_data['Volume'] > 0):  # 거래량이 0이 아닌 경우 확인
+        if not recent_data.empty:  # 데이터가 비어있지 않은 경우
             # 최근 5일 데이터를 사용하여 예측
             X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
             pred = model.predict(X_next)
