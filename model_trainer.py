@@ -73,6 +73,9 @@ def train_model():
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
         return
 
+    # 거래량이 0인 경우를 거래 정지로 처리
+    df = df[df['suspend'] == 0]  # 거래 정지인 경우 제외
+
     try:
         # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
         df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
@@ -80,7 +83,6 @@ def train_model():
         # NaN 제거
         df.dropna(subset=['Target'], inplace=True)
 
-        # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                     'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
 
@@ -91,13 +93,11 @@ def train_model():
         X = []
         y = []
 
-        # 각 주식 코드에 대해 최근 5일간의 데이터를 사용하여 훈련 데이터 생성
         for stock_code in df['Code'].unique():
             stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            if len(stock_data) == 5:  # 5일치 데이터가 있는 경우
-                # 기술적 지표와 타겟을 추가
-                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+            if len(stock_data) == 5:
+                X.append(stock_data[features].values.flatten())
+                y.append(stock_data['Target'].values[-1])
 
         X = np.array(X)
         y = np.array(y)
