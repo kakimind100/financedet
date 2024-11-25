@@ -142,26 +142,30 @@ def predict_next_day():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
         if not recent_data.empty and all(recent_data['Volume'] > 0):  # 거래량이 0이 아닌 경우 확인
-            # 마지막 날의 기술적 지표로 예측
-            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
-            pred = model.predict(X_next)
+            # 마지막 날의 데이터를 DataFrame 형태로 사용
+            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 사용하여 예측
 
-            # 예측 결과와 함께 정보를 저장
-            predictions.append({
-                'Code': stock_code,
-                'Prediction': pred[0],
-                'MA5': recent_data['MA5'].values[-1],
-                'MA20': recent_data['MA20'].values[-1],
-                'RSI': recent_data['RSI'].values[-1],
-                'MACD': recent_data['MACD'].values[-1],
-                'Bollinger_High': recent_data['Bollinger_High'].values[-1],
-                'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
-                'Stoch': recent_data['Stoch'].values[-1],
-                'ATR': recent_data['ATR'].values[-1],
-                'CCI': recent_data['CCI'].values[-1],
-                'EMA20': recent_data['EMA20'].values[-1],
-                'EMA50': recent_data['EMA50'].values[-1]
-            })
+            # 피처 수 확인
+            if X_next.shape[1] == len(features):  # 피처 수가 맞는지 확인
+                pred = model.predict(X_next)
+                # 예측 결과와 함께 정보를 저장
+                predictions.append({
+                    'Code': stock_code,
+                    'Prediction': pred[0],
+                    'MA5': recent_data['MA5'].values[-1],
+                    'MA20': recent_data['MA20'].values[-1],
+                    'RSI': recent_data['RSI'].values[-1],
+                    'MACD': recent_data['MACD'].values[-1],
+                    'Bollinger_High': recent_data['Bollinger_High'].values[-1],
+                    'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
+                    'Stoch': recent_data['Stoch'].values[-1],
+                    'ATR': recent_data['ATR'].values[-1],
+                    'CCI': recent_data['CCI'].values[-1],
+                    'EMA20': recent_data['EMA20'].values[-1],
+                    'EMA50': recent_data['EMA50'].values[-1]
+                })
+            else:
+                logging.warning(f"{stock_code}의 피처 수가 일치하지 않습니다: {X_next.shape[1]} != {len(features)}")
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
