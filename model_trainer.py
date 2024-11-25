@@ -140,13 +140,13 @@ def predict_next_day():
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = []
 
-    # 최근 며칠간의 데이터를 사용하여 예측하기
+    # 최근 5거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty:
-            # 마지막 날의 기술적 지표로 예측
-            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
+        if not recent_data.empty and all(recent_data['Volume'] > 0):  # 거래량이 0이 아닌 경우 확인
+            # 최근 5일 데이터를 사용하여 예측
+            X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
             pred = model.predict(X_next)
 
             # 예측 결과와 함께 정보를 저장
