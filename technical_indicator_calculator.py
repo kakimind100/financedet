@@ -34,9 +34,15 @@ def calculate_technical_indicators(target_code):
         'Code': 'object'
     }
 
+    # pandas_ta에서 사용할 수 있는 함수 목록 출력
+    logging.info("pandas_ta에서 사용 가능한 함수 목록:")
+    logging.info(f"{dir(ta)}")
+
+    # 데이터 로딩
     try:
         df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'), dtype=dtype)
         logging.debug(f"CSV 파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 성공적으로 읽었습니다.")
+        logging.info(f"데이터프레임의 첫 5행:\n{df.head()}")  # 첫 5행 로그
 
         # 날짜 열을 datetime 형식으로 변환
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
@@ -44,6 +50,7 @@ def calculate_technical_indicators(target_code):
 
         # 중복된 데이터 처리: 종목 코드와 날짜로 그룹화하여 평균값으로 대체
         df = df.groupby(['Code', df.index.get_level_values('Date')]).mean()
+        logging.info("중복 데이터 처리 완료.")
 
         # 데이터 타입 로그
         logging.info("데이터프레임 열의 데이터 타입:")
@@ -61,19 +68,28 @@ def calculate_technical_indicators(target_code):
         return
 
     # 이동 평균 계산
-    df['MA5'] = df['Close'].rolling(window=5).mean()
-    df['MA20'] = df['Close'].rolling(window=20).mean()
-    logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
+    try:
+        df['MA5'] = df['Close'].rolling(window=5).mean()
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
+        logging.info(f"MA5 및 MA20의 첫 5행:\n{df[['MA5', 'MA20']].head()}")
+    except Exception as e:
+        logging.error(f"이동 평균 계산 중 오류 발생: {e}")
+        return
 
     # MACD 계산
-    macd = ta.macd(df['Close'])
-    if 'MACD_12_26_9' in macd.columns:
-        df['MACD'] = macd['MACD_12_26_9']
-        df['MACD_Signal'] = macd['MACDh_12_26_9']
-        logging.info("MACD 계산 완료.")
-    else:
-        logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
-        logging.debug(f"MACD 결과:\n{macd}")
+    try:
+        macd = ta.macd(df['Close'])
+        if 'MACD_12_26_9' in macd.columns:
+            df['MACD'] = macd['MACD_12_26_9']
+            df['MACD_Signal'] = macd['MACDh_12_26_9']
+            logging.info("MACD 계산 완료.")
+        else:
+            logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
+            logging.debug(f"MACD 결과:\n{macd}")
+            return
+    except Exception as e:
+        logging.error(f"MACD 계산 중 오류 발생: {e}")
         return
 
     # Bollinger Bands 계산
@@ -111,7 +127,7 @@ def calculate_technical_indicators(target_code):
 
         # 추가 기술적 지표
         df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
-        df['Williams %R'] = ta.williams(df['High'], df['Low'], df['Close'], length=14)  # 함수 이름 수정
+        df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)  # 함수 이름 수정
         df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
         df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
 
@@ -122,6 +138,7 @@ def calculate_technical_indicators(target_code):
 
     # NaN 값이 있는 행 제거
     df.dropna(inplace=True)
+    logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
