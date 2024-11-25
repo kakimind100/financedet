@@ -141,7 +141,7 @@ def predict_next_day():
     for stock_code in df['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty and recent_data['suspend'].values[-1] == 0:  # 거래 정지 여부 확인
+        if not recent_data.empty and all(recent_data['Volume'] > 0):  # 거래량이 0이 아닌 경우 확인
             # 마지막 날의 기술적 지표로 예측
             X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
             pred = model.predict(X_next)
