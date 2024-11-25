@@ -73,9 +73,6 @@ def train_model():
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
         return
 
-    # 거래량이 0인 경우(거래 정지) 필터링
-    df = df[df['suspend'] == 0]  # 거래 정지인 경우 제외
-
     try:
         # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
         df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
@@ -96,7 +93,9 @@ def train_model():
 
         for stock_code in df['Code'].unique():
             stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            if len(stock_data) == 5:  # 5일치 데이터가 있는 경우
+            
+            # 최근 5일 데이터에서 거래량이 0인 경우 제외
+            if len(stock_data) == 5 and all(stock_data['Volume'] > 0):  # 거래량이 0이 아닌 경우
                 # 기술적 지표와 타겟을 추가
                 X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
                 y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
