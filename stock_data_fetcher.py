@@ -31,12 +31,6 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             df.reset_index(inplace=True)  # 인덱스 초기화
             df['Code'] = code  # 주식 코드 추가
             df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
-            
-            # 거래량이 0인 경우 suspend 값을 1로 설정
-            df['suspend'] = 0  # 기본값은 0 (정상)
-            if (df['Volume'] == 0).all():
-                df['suspend'] = 1  # 거래량이 0인 경우 거래 정지로 설정
-            
             all_stocks_data[code] = df  # 가져온 데이터 저장
             logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
         else:
