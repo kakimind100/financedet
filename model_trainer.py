@@ -58,9 +58,6 @@ def fetch_stock_data():
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
 
-        # 거래량이 0인 경우 suspend 값을 1로 설정
-        df['suspend'] = np.where(df['Volume'] == 0, 1, 0)
-
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
