@@ -22,9 +22,23 @@ console_handler.setLevel(logging.INFO)  # 콘솔 로그 레벨 설정
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))  # 콘솔 로그 형식
 logging.getLogger().addHandler(console_handler)  # 콘솔 핸들러 추가
 
+# 거래 정지 종목 목록을 가져오는 함수
+def get_suspended_stocks():
+    """거래 정지 종목 목록을 가져오는 함수."""
+    try:
+        suspended_stocks = fdr.StockSuspension()  # 거래 정지 종목 데이터 가져오기
+        return suspended_stocks['Code'].tolist()  # 종목 코드 리스트 반환
+    except Exception as e:
+        logging.error(f"거래 정지 종목 가져오기 중 오류 발생: {e}")
+        return []
+
 # 주식 데이터를 가져오는 스레드 함수
-def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
+def fetch_single_stock_data(code, start_date, end_date, all_stocks_data, suspended_stocks):
     """주식 코드에 대한 데이터를 가져오는 함수."""
+    if code in suspended_stocks:  # 거래 정지 종목 제외
+        logging.info(f"{code}는 거래 정지 종목으로 제외됩니다.")  # 제외 로그
+        return
+
     try:
         df = fdr.DataReader(code, start_date, end_date)  # 주식 데이터 가져오기
         if df is not None and not df.empty:  # 데이터가 유효한지 확인
@@ -41,6 +55,7 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
 def fetch_stock_data(markets, start_date, end_date):
     """주식 데이터를 가져오는 메인 함수."""
     all_stocks_data = {}  # 모든 주식 데이터를 저장할 딕셔너리
+    suspended_stocks = get_suspended_stocks()  # 거래 정지 종목 목록 가져오기
 
     for market in markets:  # 여러 시장에 대해 반복
         codes = fdr.StockListing(market)['Code'].tolist()  # 주식 코드 리스트 가져오기
@@ -48,7 +63,7 @@ def fetch_stock_data(markets, start_date, end_date):
 
         for code in codes:
             # 주식 코드에 대해 새 스레드 생성
-            thread = threading.Thread(target=fetch_single_stock_data, args=(code, start_date, end_date, all_stocks_data))
+            thread = threading.Thread(target=fetch_single_stock_data, args=(code, start_date, end_date, all_stocks_data, suspended_stocks))
             threads.append(thread)  # 스레드 리스트에 추가
             thread.start()  # 스레드 시작
 
