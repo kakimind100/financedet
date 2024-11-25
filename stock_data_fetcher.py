@@ -28,11 +28,16 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
     try:
         df = fdr.DataReader(code, start_date, end_date)  # 주식 데이터 가져오기
         if df is not None and not df.empty:  # 데이터가 유효한지 확인
-            df.reset_index(inplace=True)  # 인덱스 초기화
-            df['Code'] = code  # 주식 코드 추가
-            df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
-            all_stocks_data[code] = df  # 가져온 데이터 저장
-            logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
+            # 최근 5일의 거래량 확인
+            recent_volume = df['Volume'].tail(5)
+            if recent_volume.sum() > 0:  # 최근 5일 간 거래량이 0이 아닌 경우
+                df.reset_index(inplace=True)  # 인덱스 초기화
+                df['Code'] = code  # 주식 코드 추가
+                df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
+                all_stocks_data[code] = df  # 가져온 데이터 저장
+                logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
+            else:
+                logging.warning(f"{code}의 최근 5일 거래량이 0입니다. 데이터 제외.")  # 경고 로그
         else:
             logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")  # 경고 로그
     except Exception as e:
