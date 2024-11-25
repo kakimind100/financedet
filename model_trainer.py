@@ -57,6 +57,10 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+
+        # 거래량이 0인 경우 suspend 값을 1로 설정
+        df['suspend'] = np.where(df['Volume'] == 0, 1, 0)
+
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -197,5 +201,4 @@ if __name__ == "__main__":
 
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
-    logging.info("다음 거래일 예측 스크립트 실행 완료
-
+    logging.info("다음 거래일 예측 스크립트 실행 완료.")
