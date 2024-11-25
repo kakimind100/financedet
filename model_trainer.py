@@ -181,4 +181,11 @@ def predict_next_day():
     logging.info(f"거래 정지로 예측된 종목의 데이터가 '{output_file_path}'에 저장되었습니다.")
 
 if __name__ == "__main__":
-    logging.info("모델 훈련 스크립트 실행
+    logging.info("모델 훈련 스크립트 실행 중...")  # 실행 시작 메시지
+    train_model()  # 모델 훈련 호출
+    logging.info("모델 훈련 스크립트 실행 완료.")
+    
+    logging.info("다음 거래일 예측 스크립트 실행 중...")  # 예측 시작 메시지
+    predict_next_day()  # 다음 거래일 예측 호출
+    logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
