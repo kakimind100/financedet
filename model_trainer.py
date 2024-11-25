@@ -73,7 +73,7 @@ def train_model():
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
         return
 
-    # 거래량이 0인 경우를 거래 정지로 처리
+    # 거래량이 0인 경우(거래 정지) 필터링
     df = df[df['suspend'] == 0]  # 거래 정지인 경우 제외
 
     try:
@@ -83,6 +83,7 @@ def train_model():
         # NaN 제거
         df.dropna(subset=['Target'], inplace=True)
 
+        # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                     'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
 
@@ -95,9 +96,10 @@ def train_model():
 
         for stock_code in df['Code'].unique():
             stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            if len(stock_data) == 5:
-                X.append(stock_data[features].values.flatten())
-                y.append(stock_data['Target'].values[-1])
+            if len(stock_data) == 5:  # 5일치 데이터가 있는 경우
+                # 기술적 지표와 타겟을 추가
+                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
 
         X = np.array(X)
         y = np.array(y)
@@ -143,7 +145,7 @@ def predict_next_day():
     for stock_code in df['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty:
+        if not recent_data.empty and recent_data['suspend'].values[-1] == 0:  # 거래 정지 여부 확인
             # 마지막 날의 기술적 지표로 예측
             X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
             pred = model.predict(X_next)
@@ -202,3 +204,4 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
