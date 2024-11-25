@@ -57,6 +57,9 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+
+        # 거래량이 0인 경우 suspend 값을 1로 설정
+        df['suspend'] = np.where(df['Volume'] == 0, 1, 0)
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -70,14 +73,14 @@ def train_model():
         return
 
     try:
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
-        df.dropna(subset=['Target'], inplace=True)
+        # 'suspend' 컬럼을 타겟으로 설정
+        df.dropna(subset=['suspend'], inplace=True)
 
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                     'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
 
         # NaN 제거
-        df.dropna(subset=features + ['Target'], inplace=True)
+        df.dropna(subset=features + ['suspend'], inplace=True)
 
         # 훈련 데이터를 위한 리스트
         X = []
@@ -89,7 +92,7 @@ def train_model():
             if len(stock_data) == 5:  # 5일치 데이터가 있는 경우
                 # 기술적 지표와 타겟을 추가
                 X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+                y.append(stock_data['suspend'].values[-1])  # 마지막 날의 타겟 값
 
         X = np.array(X)
         y = np.array(y)
@@ -126,16 +129,13 @@ def predict_next_day():
     # 훈련된 모델 불러오기
     model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
-    # 오늘 종가가 29% 이상 상승한 종목 필터링
-    today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
-
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
     predictions = []
 
     # 최근 5일간의 데이터를 사용하여 예측하기
-    for stock_code in today_rise_stocks['Code'].unique():
+    for stock_code in df['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
         if not recent_data.empty:
@@ -163,37 +163,22 @@ def predict_next_day():
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
 
-    # 29% 상승할 것으로 예측된 종목 필터링
-    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
-
-    # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch 기준으로 정렬)
-    top_predictions = top_predictions.sort_values(
-        by=['MA5', 'MACD', 'RSI', 'Stoch'], 
-        ascending=[False, False, True, True]  # MA5와 MACD는 내림차순, RSI와 Stoch은 오름차순으로 정렬
-    ).head(20)
+    # 거래 정지로 예측된 종목 필터링
+    suspended_stocks = predictions_df[predictions_df['Prediction'] == 1]
 
     # 예측 결과 출력
-    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
-    for index, row in top_predictions.iterrows():
+    print("다음 거래일에 거래 정지로 예측되는 종목:")
+    for index, row in suspended_stocks.iterrows():
         print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
               f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
               f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
               f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
               f"EMA50: {row['EMA50']})")
 
-    # 상위 20개 종목의 전체 날짜 데이터 추출
-    all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
-                                    
-    # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
-    output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
-    all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
-    logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+    # 예측 결과를 data/suspended_stocks.csv 파일로 저장
+    output_file_path = os.path.join('data', 'suspended_stocks.csv')
+    suspended_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
+    logging.info(f"거래 정지로 예측된 종목의 데이터가 '{output_file_path}'에 저장되었습니다.")
 
 if __name__ == "__main__":
-    logging.info("모델 훈련 스크립트 실행 중...")
-    train_model()  # 모델 훈련
-    logging.info("모델 훈련 스크립트 실행 완료.")
-
-    logging.info("다음 거래일 예측 스크립트 실행 중...")
-    predict_next_day()  # 다음 거래일 예측
-    logging.info("다음 거래일 예측 스크립트 실행 완료.")
+    logging.info("모델 훈련 스크립트 실행
