@@ -57,7 +57,6 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -84,21 +83,8 @@ def train_model():
         # NaN 제거
         df.dropna(subset=features + ['Target'], inplace=True)
 
-        # 훈련 데이터를 위한 리스트
-        X = []
-        y = []
-
-        for stock_code in df['Code'].unique():
-            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            
-            # 최근 5일 데이터에서 거래량이 0인 경우 제외
-            if len(stock_data) == 5 and all(stock_data['Volume'] > 0):  # 거래량이 0이 아닌 경우
-                # 기술적 지표와 타겟을 추가
-                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
-
-        X = np.array(X)
-        y = np.array(y)
+        X = df[features]
+        y = df['Target']
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -141,34 +127,30 @@ def predict_next_day():
     predictions = []
 
     # 최근 며칠간의 데이터를 사용하여 예측하기
-    for stock_code in df['Code'].unique():
+    for stock_code in today_rise_stocks['Code'].unique():
         # 최근 5일간의 데이터를 가져오기
         recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty and all(recent_data['Volume'] > 0):  # 거래량이 0이 아닌 경우 확인
-            # 마지막 날의 데이터를 DataFrame 형태로 사용
-            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 사용하여 예측
+        if not recent_data.empty:
+            # 마지막 날의 기술적 지표로 예측
+            X_next = recent_data[features].iloc[-1:]  # 마지막 날의 데이터를 DataFrame 형태로 사용
+            pred = model.predict(X_next)
 
-            # 피처 수 확인
-            if X_next.shape[1] == len(features):  # 피처 수가 맞는지 확인
-                pred = model.predict(X_next)
-                # 예측 결과와 함께 정보를 저장
-                predictions.append({
-                    'Code': stock_code,
-                    'Prediction': pred[0],
-                    'MA5': recent_data['MA5'].values[-1],
-                    'MA20': recent_data['MA20'].values[-1],
-                    'RSI': recent_data['RSI'].values[-1],
-                    'MACD': recent_data['MACD'].values[-1],
-                    'Bollinger_High': recent_data['Bollinger_High'].values[-1],
-                    'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
-                    'Stoch': recent_data['Stoch'].values[-1],
-                    'ATR': recent_data['ATR'].values[-1],
-                    'CCI': recent_data['CCI'].values[-1],
-                    'EMA20': recent_data['EMA20'].values[-1],
-                    'EMA50': recent_data['EMA50'].values[-1]
-                })
-            else:
-                logging.warning(f"{stock_code}의 피처 수가 일치하지 않습니다: {X_next.shape[1]} != {len(features)}")
+            # 예측 결과와 함께 정보를 저장
+            predictions.append({
+                'Code': stock_code,
+                'Prediction': pred[0],
+                'MA5': recent_data['MA5'].values[-1],
+                'MA20': recent_data['MA20'].values[-1],
+                'RSI': recent_data['RSI'].values[-1],
+                'MACD': recent_data['MACD'].values[-1],
+                'Bollinger_High': recent_data['Bollinger_High'].values[-1],
+                'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
+                'Stoch': recent_data['Stoch'].values[-1],
+                'ATR': recent_data['ATR'].values[-1],
+                'CCI': recent_data['CCI'].values[-1],
+                'EMA20': recent_data['EMA20'].values[-1],
+                'EMA50': recent_data['EMA50'].values[-1]
+            })
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
@@ -207,4 +189,3 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
-
