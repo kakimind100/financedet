@@ -108,7 +108,14 @@ def calculate_technical_indicators(target_code):
         df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
         df['EMA20'] = ta.ema(df['Close'], length=20)
         df['EMA50'] = ta.ema(df['Close'], length=50)
-        logging.info("기술적 지표(RSI, ATR, CCI, EMA 등)를 계산했습니다.")
+
+        # 추가 기술적 지표
+        df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
+        df['Williams %R'] = ta.williams(df['High'], df['Low'], df['Close'], length=14)
+        df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
+        df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
+
+        logging.info("추가 기술적 지표(Momentum, Williams %R, ADX, Volume MA)를 계산했습니다.")
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
