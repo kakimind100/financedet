@@ -60,6 +60,16 @@ def fetch_stock_data():
 
         # 거래량이 0인 경우 suspend 값을 1로 설정
         df['suspend'] = np.where(df['Volume'] == 0, 1, 0)
+
+        # 필요한 모든 피처가 포함되어 있는지 확인
+        required_features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                             'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'suspend']
+        
+        # 피처 확인
+        for feature in required_features:
+            if feature not in df.columns:
+                logging.error(f"필요한 피처 '{feature}'가 데이터프레임에 없습니다.")
+        
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
