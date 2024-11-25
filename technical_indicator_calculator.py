@@ -111,7 +111,7 @@ def calculate_technical_indicators(target_code):
 
         # 추가 기술적 지표
         df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
-        df['Williams %R'] = ta.williams(df['High'], df['Low'], df['Close'], length=14)
+        df['Williams %R'] = ta.williams_r(df['High'], df['Low'], df['Close'], length=14)  # 함수 이름 수정
         df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
         df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
 
