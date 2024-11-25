@@ -132,6 +132,9 @@ def predict_next_day():
     # 훈련된 모델 불러오기
     model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
+    # 오늘 종가가 29% 이상 상승한 종목 필터링
+    today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
+
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
