@@ -83,8 +83,22 @@ def train_model():
         # NaN 제거
         df.dropna(subset=features + ['Target'], inplace=True)
 
-        X = df[features]
-        y = df['Target']
+        # 훈련 데이터를 위한 리스트
+        X = []
+        y = []
+
+        # 종목 코드별로 최근 5일 데이터 확인
+        for stock_code in df['Code'].unique():
+            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+            
+            # 최근 5일 데이터에서 거래량이 0인 경우 제외
+            if len(stock_data) == 5 and all(stock_data['Volume'] > 0):  # 거래량이 0이 아닌 경우
+                # 기술적 지표와 타겟을 추가
+                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+
+        X = np.array(X)
+        y = np.array(y)
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -189,3 +203,4 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
