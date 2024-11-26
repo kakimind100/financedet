@@ -254,7 +254,7 @@ def evaluate_and_retrain_model(df):
         # 모델 재훈련 조건 설정 (예: 정확도가 70% 미만인 경우 재훈련)
         if accuracy < 70:
             logging.info("정확도가 70% 미만입니다. 모델을 재훈련합니다.")
-            train_model()  # 모델 재훈련 호출
+            train_model()  # 전체 데이터셋을 사용하여 모델 재훈련 호출
         else:
             logging.info("모델 정확도가 충분합니다. 재훈련 필요 없음.")
 
