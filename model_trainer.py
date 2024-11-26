@@ -71,7 +71,6 @@ def fetch_stock_data():
         return None
 
 def train_model():
-    """모델을 훈련시키고 저장하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
@@ -79,8 +78,8 @@ def train_model():
 
     try:
         # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
-        
+        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)
+
         # NaN 제거
         df.dropna(subset=['Target'], inplace=True)
 
@@ -98,23 +97,16 @@ def train_model():
 
         # 종목 코드별로 최근 5일 데이터 확인
         for stock_code in df['Code'].unique():
-            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            
-            # 최근 5일 데이터에서 거래량이 0인 경우 제외하지 않음
-            if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
-                # 기술적 지표와 타겟 추가
-                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+            stock_data = df[df['Code'] == stock_code].tail(5)
+            if len(stock_data) == 5:
+                X.append(stock_data[features].values.flatten())
+                y.append(stock_data['Target'].values[-1])
 
         X = np.array(X)
         y = np.array(y)
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        # 테스트 데이터 확인
-        test_stock_codes = df.loc[X_test.index, 'Code'].unique()
-        logging.info(f"테스트 세트 종목 코드: {test_stock_codes}")
 
         # 모델 훈련
         model = RandomForestClassifier(n_estimators=100, random_state=42)
