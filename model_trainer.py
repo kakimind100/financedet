@@ -95,6 +95,7 @@ def train_model():
 
         # NaN 제거
         rising_stocks.dropna(subset=features + ['Target'], inplace=True)
+        logging.debug(f"특징 변수와 타겟 변수에서 NaN 제거 후 데이터 수: {len(rising_stocks)}")
 
         # 훈련 데이터를 위한 리스트
         X = []
@@ -108,6 +109,7 @@ def train_model():
                 # 기술적 지표와 타겟 추가
                 X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
                 y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+                logging.debug(f"{stock_code} 추가: {stock_data[features].values.flatten()}")
 
         X = np.array(X)
         y = np.array(y)
@@ -118,6 +120,7 @@ def train_model():
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        logging.info(f"훈련 데이터 수: {len(X_train)}, 테스트 데이터 수: {len(X_test)}")
 
         # 모델 훈련
         model = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -138,6 +141,7 @@ def train_model():
 
         # 혼동 행렬 출력
         cm = confusion_matrix(y_test, y_pred)
+        logging.info(f"혼동 행렬:\n{cm}")
         print("Confusion Matrix:")
         print(cm)
 
@@ -172,6 +176,7 @@ def predict_next_day():
             if not recent_data.empty:  # 데이터가 비어있지 않은 경우
                 X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
                 pred = model.predict(X_next)
+                logging.debug(f"{stock_code} 예측: {pred[0]}")
 
                 # 예측 결과와 함께 정보를 저장
                 predictions.append({
