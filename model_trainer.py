@@ -6,7 +6,6 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-import pandas_ta as ta  # pandas_ta 라이브러리 임포트
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -110,8 +109,13 @@ def train_model():
         y = np.array(y)
 
         # 데이터 분할
-        X_train, X_test, y_train, y_test, stock_codes_train, stock_codes_test = train_test_split(
-            X, y, stock_codes, test_size=0.2, random_state=42
+        X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
+            X, y, stock_codes, test_size=0.3, random_state=42
+        )
+
+        # 검증 및 테스트 세트 분할
+        X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
+            X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
         )
 
         # 모델 훈련
@@ -238,5 +242,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
 
