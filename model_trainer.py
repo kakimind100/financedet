@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
+import pandas_ta as ta  # pandas_ta 라이브러리 임포트
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -50,7 +51,14 @@ def fetch_stock_data():
             'ATR': 'float',
             'CCI': 'float',
             'EMA20': 'float',
-            'EMA50': 'float'
+            'EMA50': 'float',
+            'Momentum': 'float',
+            'Williams %R': 'float',
+            'ADX': 'float',
+            'Volume_MA20': 'float',
+            'ROC': 'float',
+            'CMF': 'float',
+            'OBV': 'float'
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
@@ -78,7 +86,8 @@ def train_model():
 
         # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                    'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
+                    'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                    'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
 
         # NaN 제거
         df.dropna(subset=features + ['Target'], inplace=True)
@@ -137,7 +146,8 @@ def predict_next_day():
 
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50']
+                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
     predictions = []
 
     # 최근 5거래일 데이터를 사용하여 예측하기
@@ -163,7 +173,14 @@ def predict_next_day():
                 'ATR': recent_data['ATR'].values[-1],
                 'CCI': recent_data['CCI'].values[-1],
                 'EMA20': recent_data['EMA20'].values[-1],
-                'EMA50': recent_data['EMA50'].values[-1]
+                'EMA50': recent_data['EMA50'].values[-1],
+                'Momentum': recent_data['Momentum'].values[-1],
+                'Williams %R': recent_data['Williams %R'].values[-1],
+                'ADX': recent_data['ADX'].values[-1],
+                'Volume_MA20': recent_data['Volume_MA20'].values[-1],
+                'ROC': recent_data['ROC'].values[-1],
+                'CMF': recent_data['CMF'].values[-1],
+                'OBV': recent_data['OBV'].values[-1]
             })
 
     # 예측 결과를 데이터프레임으로 변환
@@ -185,7 +202,10 @@ def predict_next_day():
               f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
               f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
               f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-              f"EMA50: {row['EMA50']})")
+              f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+              f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+              f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
+              f"CMF: {row['CMF']}, OBV: {row['OBV']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
@@ -203,3 +223,4 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
