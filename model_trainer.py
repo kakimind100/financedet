@@ -71,15 +71,16 @@ def fetch_stock_data():
         return None
 
 def train_model():
+    """모델을 훈련시키고 저장하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
-        return
+        return None, None  # None 반환
 
     try:
         # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)
-
+        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
+        
         # NaN 제거
         df.dropna(subset=['Target'], inplace=True)
 
@@ -97,10 +98,13 @@ def train_model():
 
         # 종목 코드별로 최근 5일 데이터 확인
         for stock_code in df['Code'].unique():
-            stock_data = df[df['Code'] == stock_code].tail(5)
-            if len(stock_data) == 5:
-                X.append(stock_data[features].values.flatten())
-                y.append(stock_data['Target'].values[-1])
+            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+            
+            # 최근 5일 데이터에서 거래량이 0인 경우 제외하지 않음
+            if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
+                # 기술적 지표와 타겟 추가
+                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
 
         X = np.array(X)
         y = np.array(y)
@@ -124,18 +128,18 @@ def train_model():
         logging.info(f"모델 성능 보고서:\n{report}")
         print(report)
 
+        return model, X_test  # 모델과 X_test 반환
+
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
+        return None, None  # None 반환
 
-def predict_next_day():
+def predict_next_day(model, X_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
         return
-
-    # 훈련된 모델 불러오기
-    model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
     # 오늘 종가가 29% 이상 상승한 종목 필터링
     today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
@@ -221,10 +225,13 @@ def predict_next_day():
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
-    train_model()  # 모델 훈련
+    model, X_test = train_model()  # 모델 훈련
     logging.info("모델 훈련 스크립트 실행 완료.")
 
-    logging.info("다음 거래일 예측 스크립트 실행 중...")
-    predict_next_day()  # 다음 거래일 예측
-    logging.info("다음 거래일 예측 스크립트 실행 완료.")
+    if model is not None and X_test is not None:  # 모델과 테스트 데이터가 있는 경우에만 예측 실행
+        logging.info("다음 거래일 예측 스크립트 실행 중...")
+        predict_next_day(model, X_test)  # 다음 거래일 예측
+        logging.info("다음 거래일 예측 스크립트 실행 완료.")
+    else:
+        logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
 
