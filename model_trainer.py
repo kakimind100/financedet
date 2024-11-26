@@ -112,6 +112,10 @@ def train_model():
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+        # 테스트 데이터 확인
+        test_stock_codes = df.loc[X_test.index, 'Code'].unique()
+        logging.info(f"테스트 세트 종목 코드: {test_stock_codes}")
+
         # 모델 훈련
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
@@ -149,6 +153,14 @@ def predict_next_day():
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
                 'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
     predictions = []
+
+    # 테스트 데이터와 예측 데이터의 중복 체크
+    test_stock_codes = df.loc[X_test.index, 'Code'].unique()
+    overlapping_stocks = today_rise_stocks['Code'].unique()
+    common_stocks = set(test_stock_codes).intersection(set(overlapping_stocks))
+    
+    if common_stocks:
+        logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
     # 최근 5거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
