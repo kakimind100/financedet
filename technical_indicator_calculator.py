@@ -112,7 +112,11 @@ def calculate_technical_indicators(target_code):
         df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
         df['ROC'] = ta.roc(df['Close'], length=12)  # Rate of Change 추가
 
-        logging.info("추가 기술적 지표(Momentum, Williams %R, ADX, Volume MA, ROC)를 계산했습니다.")
+        # CMF 및 OBV 계산 추가
+        df['CMF'] = ta.cmf(df['High'], df['Low'], df['Close'], df['Volume'], length=20)
+        df['OBV'] = ta.obv(df['Close'], df['Volume'])
+
+        logging.info("추가 기술적 지표(Momentum, Williams %R, ADX, Volume MA, ROC, CMF, OBV)를 계산했습니다.")
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
