@@ -34,7 +34,7 @@ def calculate_technical_indicators(target_code):
         'Code': 'object'
     }
 
-    # pandas_ta에서 사용할 수 있는 함수 목록 출력
+    # pandas_ta에서 사용 가능한 함수 목록 출력
     logging.info("pandas_ta에서 사용 가능한 함수 목록:")
     logging.info(f"{dir(ta)}")
 
