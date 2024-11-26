@@ -69,6 +69,51 @@ def fetch_stock_data():
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
+def prepare_data(df):
+    """데이터를 준비하고 분할하는 함수."""
+    # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
+    df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
+    
+    # NaN 제거
+    df.dropna(subset=['Target'], inplace=True)
+
+    # 기술적 지표를 피쳐로 사용
+    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
+
+    # NaN 제거
+    df.dropna(subset=features + ['Target'], inplace=True)
+
+    # 훈련 데이터를 위한 리스트
+    X = []
+    y = []
+    stock_codes = []  # 종목 코드를 저장할 리스트 추가
+
+    # 종목 코드별로 최근 5일 데이터 확인
+    for stock_code in df['Code'].unique():
+        stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+        
+        if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
+            X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+            y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+            stock_codes.append(stock_code)  # 종목 코드 추가
+
+    X = np.array(X)
+    y = np.array(y)
+
+    # 데이터 분할
+    X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
+        X, y, stock_codes, test_size=0.3, random_state=42
+    )
+
+    # 검증 및 테스트 세트 분할
+    X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
+        X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
+    )
+
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
+
 def train_model_with_hyperparameter_tuning():
     """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
@@ -76,83 +121,40 @@ def train_model_with_hyperparameter_tuning():
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
         return None, None  # None 반환
 
-    try:
-        # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
-        
-        # NaN 제거
-        df.dropna(subset=['Target'], inplace=True)
+    # 데이터 준비 및 분할
+    X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test = prepare_data(df)
 
-        # 기술적 지표를 피쳐로 사용
-        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                    'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
-                    'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
+    # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
+    }
 
-        # NaN 제거
-        df.dropna(subset=features + ['Target'], inplace=True)
+    model = RandomForestClassifier(random_state=42)
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+                               scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
+    
+    grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
+    
+    # 최적의 하이퍼파라미터 출력
+    logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
+    print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
 
-        # 훈련 데이터를 위한 리스트
-        X = []
-        y = []
-        stock_codes = []  # 종목 코드를 저장할 리스트 추가
+    # 최적의 모델로 재훈련
+    best_model = grid_search.best_estimator_
 
-        # 종목 코드별로 최근 5일 데이터 확인
-        for stock_code in df['Code'].unique():
-            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
-            
-            if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
-                X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-                y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
-                stock_codes.append(stock_code)  # 종목 코드 추가
+    # 모델 평가
+    y_pred = best_model.predict(X_test)
+    report = classification_report(y_test, y_pred)
+    logging.info(f"모델 성능 보고서:\n{report}")
+    print(report)
 
-        X = np.array(X)
-        y = np.array(y)
+    # 테스트 세트 종목 코드 로깅
+    logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
 
-        # 데이터 분할
-        X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
-            X, y, stock_codes, test_size=0.3, random_state=42
-        )
-
-        # 검증 및 테스트 세트 분할
-        X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
-            X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
-        )
-
-        # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
-        param_grid = {
-            'n_estimators': [50, 100, 200],
-            'max_depth': [None, 10, 20, 30],
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4]
-        }
-
-        model = RandomForestClassifier(random_state=42)
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
-                                   scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
-        
-        grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
-        
-        # 최적의 하이퍼파라미터 출력
-        logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
-        print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
-
-        # 최적의 모델로 재훈련
-        best_model = grid_search.best_estimator_
-
-        # 모델 평가
-        y_pred = best_model.predict(X_test)
-        report = classification_report(y_test, y_pred)
-        logging.info(f"모델 성능 보고서:\n{report}")
-        print(report)
-
-        # 테스트 세트 종목 코드 로깅
-        logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
-
-        return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
-
-    except Exception as e:
-        logging.error(f"모델 훈련 중 오류 발생: {e}")
-        return None, None  # None 반환
+    return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
 
 def predict_next_day(model, stock_codes_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
