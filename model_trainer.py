@@ -243,8 +243,9 @@ def predict_next_day():
 def evaluate_and_retrain_model(df):
     """모델 평가 및 재훈련 함수."""
     try:
-        # 오늘 종가와 예측된 상승 여부를 비교
-        df['Predicted_Rise'] = np.where(df['Close'] >= df['Open'] * 1.29, 1, 0)
+        # 오늘의 데이터가 있으므로 'Close'가 오늘의 종가임
+        # 어제의 종가를 기준으로 오늘의 종가가 29% 상승했는지를 확인
+        df['Predicted_Rise'] = np.where(df['Close'] >= df['Close'].shift(1) * 1.29, 1, 0)
 
         # 예측 결과와 실제 결과를 비교
         correct_predictions = df[df['Predicted_Rise'] == df['Target']]
@@ -254,7 +255,7 @@ def evaluate_and_retrain_model(df):
         # 모델 재훈련 조건 설정 (예: 정확도가 70% 미만인 경우 재훈련)
         if accuracy < 70:
             logging.info("정확도가 70% 미만입니다. 모델을 재훈련합니다.")
-            train_model()  # 전체 데이터셋을 사용하여 모델 재훈련 호출
+            train_model()  # 전체 데이터를 사용하여 모델 재훈련 호출
         else:
             logging.info("모델 정확도가 충분합니다. 재훈련 필요 없음.")
 
