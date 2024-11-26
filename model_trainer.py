@@ -81,7 +81,7 @@ def train_model():
         logging.debug(f"상승 종목 수: {len(rising_stocks)}")
 
         # 타겟 설정: 다음 날 종가가 오늘 종가의 1.29배 이상일 경우
-        rising_stocks.loc[:, 'Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
+        rising_stocks['Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
 
         # 무한대 값을 NaN으로 교체하고 NaN 제거
         rising_stocks.replace([np.inf, -np.inf], np.nan, inplace=True)
@@ -168,10 +168,8 @@ def predict_next_day():
 
         # 최근 5거래일 데이터를 사용하여 예측하기
         for stock_code in today_rise_stocks['Code'].unique():
-            # 최근 5일간의 데이터를 가져오기
             recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
             if not recent_data.empty:  # 데이터가 비어있지 않은 경우
-                # 최근 5일 데이터를 사용하여 예측
                 X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
                 pred = model.predict(X_next)
 
@@ -205,7 +203,7 @@ def predict_next_day():
         # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch, Momentum 기준으로 정렬)
         top_predictions = top_predictions.sort_values(
             by=['MA5', 'MACD', 'Momentum', 'RSI', 'Stoch'], 
-            ascending=[False, False, False, True, True]  # MA5, MACD, Momentum은 내림차순, RSI와 Stoch은 오름차순으로 정렬
+            ascending=[False, False, False, True, True]
         ).head(20)
 
         # 예측 결과 출력
@@ -222,16 +220,40 @@ def predict_next_day():
                              f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
                              f"Volume_MA20: {row['Volume_MA20']})")
 
-        # 상위 20개 종목의 전체 날짜 데이터 추출
-        all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
+            # 상위 20개 종목의 전체 날짜 데이터 추출
+            all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
 
-        # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
-        output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
-        all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
-        logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+            # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
+            output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
+            all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')
+            logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+
+            # 예측 결과와 실제 결과를 비교하여 모델 재훈련 여부 결정
+            evaluate_and_retrain_model(df)
 
     except Exception as e:
         logging.error(f"예측 중 오류 발생: {e}")
+
+def evaluate_and_retrain_model(df):
+    """모델 평가 및 재훈련 함수."""
+    try:
+        # 오늘 종가와 예측된 상승 여부를 비교
+        df['Predicted_Rise'] = np.where(df['Close'] >= df['Open'] * 1.29, 1, 0)
+
+        # 예측 결과와 실제 결과를 비교
+        correct_predictions = df[df['Predicted_Rise'] == df['Target']]
+        accuracy = len(correct_predictions) / len(df) * 100 if len(df) > 0 else 0
+        logging.info(f"모델 정확도: {accuracy:.2f}%")
+
+        # 모델 재훈련 조건 설정 (예: 정확도가 70% 미만인 경우 재훈련)
+        if accuracy < 70:
+            logging.info("정확도가 70% 미만입니다. 모델을 재훈련합니다.")
+            train_model()  # 모델 재훈련 호출
+        else:
+            logging.info("모델 정확도가 충분합니다. 재훈련 필요 없음.")
+
+    except Exception as e:
+        logging.error(f"모델 평가 및 재훈련 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
