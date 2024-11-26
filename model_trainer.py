@@ -74,11 +74,15 @@ def train_model():
         return
 
     try:
-        # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-        df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
-        
+        # 오늘 종가가 29% 이상 상승한 종목 필터링
+        df['Today_Rise'] = df['Close'] >= df['Open'] * 1.29
+        rising_stocks = df[df['Today_Rise']]
+
+        # 타겟 설정: 다음 날 종가가 오늘 종가의 1.29배 이상일 경우
+        rising_stocks['Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
+
         # NaN 제거
-        df.dropna(subset=['Target'], inplace=True)
+        rising_stocks.dropna(subset=['Target'], inplace=True)
 
         # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
@@ -86,15 +90,15 @@ def train_model():
                     'Williams %R', 'ADX', 'Volume_MA20']
 
         # NaN 제거
-        df.dropna(subset=features + ['Target'], inplace=True)
+        rising_stocks.dropna(subset=features + ['Target'], inplace=True)
 
         # 훈련 데이터를 위한 리스트
         X = []
         y = []
 
         # 종목 코드별로 최근 5일 데이터 확인
-        for stock_code in df['Code'].unique():
-            stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+        for stock_code in rising_stocks['Code'].unique():
+            stock_data = rising_stocks[rising_stocks['Code'] == stock_code].tail(5)  # 최근 5일 데이터
             
             if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
                 # 기술적 지표와 타겟 추가
