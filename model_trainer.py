@@ -4,7 +4,7 @@ import logging
 import os
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 
 # 로그 디렉토리 설정
@@ -69,8 +69,8 @@ def fetch_stock_data():
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
-def train_model():
-    """모델을 훈련시키고 저장하는 함수."""
+def train_model_with_hyperparameter_tuning():
+    """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
@@ -118,18 +118,29 @@ def train_model():
             X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
         )
 
-        # 모델 훈련
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
+        # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
+        }
 
-        # 모델 저장
-        models_dir = 'models'
-        os.makedirs(models_dir, exist_ok=True)
-        joblib.dump(model, os.path.join(models_dir, 'stock_model.pkl'))
-        logging.info("모델 훈련 완료 및 'models/stock_model.pkl'로 저장되었습니다.")
+        model = RandomForestClassifier(random_state=42)
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+                                   scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
+        
+        grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
+        
+        # 최적의 하이퍼파라미터 출력
+        logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
+        print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
+
+        # 최적의 모델로 재훈련
+        best_model = grid_search.best_estimator_
 
         # 모델 평가
-        y_pred = model.predict(X_test)
+        y_pred = best_model.predict(X_test)
         report = classification_report(y_test, y_pred)
         logging.info(f"모델 성능 보고서:\n{report}")
         print(report)
@@ -137,7 +148,7 @@ def train_model():
         # 테스트 세트 종목 코드 로깅
         logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
 
-        return model, stock_codes_test  # 모델과 테스트 종목 코드 반환
+        return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
 
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
@@ -233,7 +244,7 @@ def predict_next_day(model, stock_codes_test):
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
-    model, stock_codes_test = train_model()  # 모델 훈련
+    model, stock_codes_test = train_model_with_hyperparameter_tuning()  # 하이퍼파라미터 튜닝 모델 훈련
     logging.info("모델 훈련 스크립트 실행 완료.")
 
     if model is not None and stock_codes_test is not None:  # 모델과 테스트 데이터가 있는 경우에만 예측 실행
