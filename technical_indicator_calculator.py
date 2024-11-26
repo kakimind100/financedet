@@ -34,10 +34,6 @@ def calculate_technical_indicators(target_code):
         'Code': 'object'
     }
 
-    # pandas_ta에서 사용 가능한 함수 목록 출력
-    logging.info("pandas_ta에서 사용 가능한 함수 목록:")
-    logging.info(f"{dir(ta)}")
-
     # 데이터 로딩
     try:
         df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'), dtype=dtype)
@@ -51,11 +47,6 @@ def calculate_technical_indicators(target_code):
         # 중복된 데이터 처리: 종목 코드와 날짜로 그룹화하여 평균값으로 대체
         df = df.groupby(['Code', df.index.get_level_values('Date')]).mean()
         logging.info("중복 데이터 처리 완료.")
-
-        # 데이터 타입 로그
-        logging.info("데이터프레임 열의 데이터 타입:")
-        for column, dtype in df.dtypes.items():
-            logging.info(f"{column}: {dtype}")
 
     except FileNotFoundError:
         logging.error(f"파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 찾을 수 없습니다.")
@@ -72,7 +63,6 @@ def calculate_technical_indicators(target_code):
         df['MA5'] = df['Close'].rolling(window=5).mean()
         df['MA20'] = df['Close'].rolling(window=20).mean()
         logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
-        logging.info(f"MA5 및 MA20의 첫 5행:\n{df[['MA5', 'MA20']].head()}")
     except Exception as e:
         logging.error(f"이동 평균 계산 중 오류 발생: {e}")
         return
@@ -80,14 +70,10 @@ def calculate_technical_indicators(target_code):
     # MACD 계산
     try:
         macd = ta.macd(df['Close'])
-        if 'MACD_12_26_9' in macd.columns:
-            df['MACD'] = macd['MACD_12_26_9']
-            df['MACD_Signal'] = macd['MACDh_12_26_9']
-            logging.info("MACD 계산 완료.")
-        else:
-            logging.error("MACD 계산 결과에 'MACD' 열이 없습니다.")
-            logging.debug(f"MACD 결과:\n{macd}")
-            return
+        df['MACD'] = macd['MACD_12_26_9']
+        df['MACD_Signal'] = macd['MACDh_12_26_9']
+        df['MACD_Hist'] = macd['MACD_12_26_9'] - macd['MACDh_12_26_9']  # MACD 히스토그램 추가
+        logging.info("MACD 계산 완료.")
     except Exception as e:
         logging.error(f"MACD 계산 중 오류 발생: {e}")
         return
@@ -95,8 +81,7 @@ def calculate_technical_indicators(target_code):
     # Bollinger Bands 계산
     try:
         bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
-        logging.debug(f"Bollinger Bands 결과:\n{bollinger_bands}")  # 결과 로그
-        df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']  # 중간선 (상한선 대신)
+        df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']  # 중간선
         df['Bollinger_Low'] = bollinger_bands['BBL_20_2.0']  # 하한선
         logging.info("Bollinger Bands 계산 완료.")
     except Exception as e:
@@ -106,13 +91,8 @@ def calculate_technical_indicators(target_code):
     # Stochastic Oscillator 추가
     try:
         stoch = ta.stoch(df['High'], df['Low'], df['Close'])
-        logging.debug(f"Stochastic 결과:\n{stoch}")  # 결과 로그
-        if 'STOCHk_14_3_3' in stoch.columns:
-            df['Stoch'] = stoch['STOCHk_14_3_3']  # 올바른 열 이름 사용
-            logging.info("Stochastic Oscillator 계산 완료.")
-        else:
-            logging.error("Stochastic Oscillator 계산 결과에 'STOCHK' 열이 없습니다.")
-            return
+        df['Stoch'] = stoch['STOCHk_14_3_3']  # 올바른 열 이름 사용
+        logging.info("Stochastic Oscillator 계산 완료.")
     except Exception as e:
         logging.error(f"Stochastic Oscillator 계산 중 오류 발생: {e}")
         return
@@ -127,11 +107,12 @@ def calculate_technical_indicators(target_code):
 
         # 추가 기술적 지표
         df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
-        df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)  # 함수 이름 수정
+        df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)
         df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
         df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
+        df['ROC'] = ta.roc(df['Close'], length=12)  # Rate of Change 추가
 
-        logging.info("추가 기술적 지표(Momentum, Williams %R, ADX, Volume MA)를 계산했습니다.")
+        logging.info("추가 기술적 지표(Momentum, Williams %R, ADX, Volume MA, ROC)를 계산했습니다.")
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
