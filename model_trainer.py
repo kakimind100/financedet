@@ -5,7 +5,7 @@ import os
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, confusion_matrix
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -96,7 +96,6 @@ def train_model():
         for stock_code in df['Code'].unique():
             stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
             
-            # 최근 5일 데이터에서 거래량이 0인 경우 제외하지 않음
             if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
                 # 기술적 지표와 타겟 추가
                 X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
@@ -123,6 +122,11 @@ def train_model():
         report = classification_report(y_test, y_pred)
         logging.info(f"모델 성능 보고서:\n{report}")
         print(report)
+
+        # 혼동 행렬 출력
+        cm = confusion_matrix(y_test, y_pred)
+        print("Confusion Matrix:")
+        print(cm)
 
     except Exception as e:
         logging.error(f"모델 훈련 중 오류 발생: {e}")
@@ -215,3 +219,4 @@ if __name__ == "__main__":
     logging.info("다음 거래일 예측 스크립트 실행 중...")
     predict_next_day()  # 다음 거래일 예측
     logging.info("다음 거래일 예측 스크립트 실행 완료.")
+
