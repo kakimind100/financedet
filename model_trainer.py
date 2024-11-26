@@ -209,15 +209,18 @@ def predict_next_day():
         ).head(20)
 
         # 예측 결과 출력
-        logging.info("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
-        for index, row in top_predictions.iterrows():
-            logging.info(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
-                         f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-                         f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-                         f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-                         f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
-                         f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
-                         f"Volume_MA20: {row['Volume_MA20']})")
+        if top_predictions.empty:
+            logging.info("예측된 종목이 없습니다.")
+        else:
+            logging.info("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+            for index, row in top_predictions.iterrows():
+                logging.info(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+                             f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+                             f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+                             f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+                             f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+                             f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+                             f"Volume_MA20: {row['Volume_MA20']})")
 
         # 상위 20개 종목의 전체 날짜 데이터 추출
         all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
