@@ -79,9 +79,10 @@ def train_model():
         rising_stocks = df[df['Today_Rise']]
 
         # 타겟 설정: 다음 날 종가가 오늘 종가의 1.29배 이상일 경우
-        rising_stocks['Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
+        rising_stocks.loc[:, 'Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
 
-        # NaN 제거
+        # 무한대 값을 NaN으로 교체하고 NaN 제거
+        rising_stocks.replace([np.inf, -np.inf], np.nan, inplace=True)
         rising_stocks.dropna(subset=['Target'], inplace=True)
 
         # 기술적 지표를 피쳐로 사용
@@ -107,6 +108,10 @@ def train_model():
 
         X = np.array(X)
         y = np.array(y)
+
+        if len(X) == 0 or len(y) == 0:
+            logging.error("훈련 데이터가 없습니다. 모델 훈련을 중단합니다.")
+            return
 
         # 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -142,78 +147,82 @@ def predict_next_day():
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
         return
 
-    # 훈련된 모델 불러오기
-    model = joblib.load(os.path.join('models', 'stock_model.pkl'))
+    try:
+        # 훈련된 모델 불러오기
+        model = joblib.load(os.path.join('models', 'stock_model.pkl'))
 
-    # 오늘 종가가 29% 이상 상승한 종목 필터링
-    today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
+        # 오늘 종가가 29% 이상 상승한 종목 필터링
+        today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
 
-    # 예측할 데이터 준비 (모든 기술적 지표 포함)
-    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
-                'Williams %R', 'ADX', 'Volume_MA20']
-    predictions = []
+        # 예측할 데이터 준비 (모든 기술적 지표 포함)
+        features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                    'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                    'Williams %R', 'ADX', 'Volume_MA20']
+        predictions = []
 
-    # 최근 5거래일 데이터를 사용하여 예측하기
-    for stock_code in today_rise_stocks['Code'].unique():
-        # 최근 5일간의 데이터를 가져오기
-        recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
-        if not recent_data.empty:  # 데이터가 비어있지 않은 경우
-            # 최근 5일 데이터를 사용하여 예측
-            X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
-            pred = model.predict(X_next)
+        # 최근 5거래일 데이터를 사용하여 예측하기
+        for stock_code in today_rise_stocks['Code'].unique():
+            # 최근 5일간의 데이터를 가져오기
+            recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
+            if not recent_data.empty:  # 데이터가 비어있지 않은 경우
+                # 최근 5일 데이터를 사용하여 예측
+                X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
+                pred = model.predict(X_next)
 
-            # 예측 결과와 함께 정보를 저장
-            predictions.append({
-                'Code': stock_code,
-                'Prediction': pred[0],
-                'MA5': recent_data['MA5'].values[-1],
-                'MA20': recent_data['MA20'].values[-1],
-                'RSI': recent_data['RSI'].values[-1],
-                'MACD': recent_data['MACD'].values[-1],
-                'Bollinger_High': recent_data['Bollinger_High'].values[-1],
-                'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
-                'Stoch': recent_data['Stoch'].values[-1],
-                'ATR': recent_data['ATR'].values[-1],
-                'CCI': recent_data['CCI'].values[-1],
-                'EMA20': recent_data['EMA20'].values[-1],
-                'EMA50': recent_data['EMA50'].values[-1],
-                'Momentum': recent_data['Momentum'].values[-1],
-                'Williams %R': recent_data['Williams %R'].values[-1],
-                'ADX': recent_data['ADX'].values[-1],
-                'Volume_MA20': recent_data['Volume_MA20'].values[-1]
-            })
+                # 예측 결과와 함께 정보를 저장
+                predictions.append({
+                    'Code': stock_code,
+                    'Prediction': pred[0],
+                    'MA5': recent_data['MA5'].values[-1],
+                    'MA20': recent_data['MA20'].values[-1],
+                    'RSI': recent_data['RSI'].values[-1],
+                    'MACD': recent_data['MACD'].values[-1],
+                    'Bollinger_High': recent_data['Bollinger_High'].values[-1],
+                    'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
+                    'Stoch': recent_data['Stoch'].values[-1],
+                    'ATR': recent_data['ATR'].values[-1],
+                    'CCI': recent_data['CCI'].values[-1],
+                    'EMA20': recent_data['EMA20'].values[-1],
+                    'EMA50': recent_data['EMA50'].values[-1],
+                    'Momentum': recent_data['Momentum'].values[-1],
+                    'Williams %R': recent_data['Williams %R'].values[-1],
+                    'ADX': recent_data['ADX'].values[-1],
+                    'Volume_MA20': recent_data['Volume_MA20'].values[-1]
+                })
 
-    # 예측 결과를 데이터프레임으로 변환
-    predictions_df = pd.DataFrame(predictions)
+        # 예측 결과를 데이터프레임으로 변환
+        predictions_df = pd.DataFrame(predictions)
 
-    # 29% 상승할 것으로 예측된 종목 필터링
-    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
+        # 29% 상승할 것으로 예측된 종목 필터링
+        top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch, Momentum 기준으로 정렬)
-    top_predictions = top_predictions.sort_values(
-        by=['MA5', 'MACD', 'Momentum', 'RSI', 'Stoch'], 
-        ascending=[False, False, False, True, True]  # MA5, MACD, Momentum은 내림차순, RSI와 Stoch은 오름차순으로 정렬
-    ).head(20)
+        # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch, Momentum 기준으로 정렬)
+        top_predictions = top_predictions.sort_values(
+            by=['MA5', 'MACD', 'Momentum', 'RSI', 'Stoch'], 
+            ascending=[False, False, False, True, True]  # MA5, MACD, Momentum은 내림차순, RSI와 Stoch은 오름차순으로 정렬
+        ).head(20)
 
-    # 예측 결과 출력
-    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
-    for index, row in top_predictions.iterrows():
-        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
-              f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-              f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
-              f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
-              f"Volume_MA20: {row['Volume_MA20']})")
+        # 예측 결과 출력
+        print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+        for index, row in top_predictions.iterrows():
+            print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+                  f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+                  f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+                  f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+                  f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+                  f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+                  f"Volume_MA20: {row['Volume_MA20']})")
 
-    # 상위 20개 종목의 전체 날짜 데이터 추출
-    all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
+        # 상위 20개 종목의 전체 날짜 데이터 추출
+        all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
 
-    # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
-    output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
-    all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
-    logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+        # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
+        output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
+        all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
+        logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+
+    except Exception as e:
+        logging.error(f"예측 중 오류 발생: {e}")
 
 if __name__ == "__main__":
     logging.info("모델 훈련 스크립트 실행 중...")
