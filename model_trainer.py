@@ -61,6 +61,7 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        logging.debug("날짜 형식 변환 완료.")
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -77,6 +78,7 @@ def train_model():
         # 오늘 종가가 29% 이상 상승한 종목 필터링
         df['Today_Rise'] = df['Close'] >= df['Open'] * 1.29
         rising_stocks = df[df['Today_Rise']]
+        logging.debug(f"상승 종목 수: {len(rising_stocks)}")
 
         # 타겟 설정: 다음 날 종가가 오늘 종가의 1.29배 이상일 경우
         rising_stocks.loc[:, 'Target'] = np.where(rising_stocks['Close'].shift(-1) >= rising_stocks['Close'] * 1.29, 1, 0)
@@ -84,6 +86,7 @@ def train_model():
         # 무한대 값을 NaN으로 교체하고 NaN 제거
         rising_stocks.replace([np.inf, -np.inf], np.nan, inplace=True)
         rising_stocks.dropna(subset=['Target'], inplace=True)
+        logging.debug(f"NaN 제거 후 상승 종목 수: {len(rising_stocks)}")
 
         # 기술적 지표를 피쳐로 사용
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
@@ -119,12 +122,13 @@ def train_model():
         # 모델 훈련
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
+        logging.info("모델 훈련 완료.")
 
         # 모델 저장
         models_dir = 'models'
         os.makedirs(models_dir, exist_ok=True)
         joblib.dump(model, os.path.join(models_dir, 'stock_model.pkl'))
-        logging.info("모델 훈련 완료 및 'models/stock_model.pkl'로 저장되었습니다.")
+        logging.info("모델 저장 완료: 'models/stock_model.pkl'")
 
         # 모델 평가
         y_pred = model.predict(X_test)
@@ -150,9 +154,11 @@ def predict_next_day():
     try:
         # 훈련된 모델 불러오기
         model = joblib.load(os.path.join('models', 'stock_model.pkl'))
+        logging.info("모델 로드 완료.")
 
         # 오늘 종가가 29% 이상 상승한 종목 필터링
         today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
+        logging.debug(f"오늘 상승 종목 수: {len(today_rise_stocks)}")
 
         # 예측할 데이터 준비 (모든 기술적 지표 포함)
         features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
@@ -203,15 +209,15 @@ def predict_next_day():
         ).head(20)
 
         # 예측 결과 출력
-        print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+        logging.info("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
         for index, row in top_predictions.iterrows():
-            print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
-                  f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-                  f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-                  f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-                  f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
-                  f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
-                  f"Volume_MA20: {row['Volume_MA20']})")
+            logging.info(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+                         f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+                         f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+                         f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+                         f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+                         f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+                         f"Volume_MA20: {row['Volume_MA20']})")
 
         # 상위 20개 종목의 전체 날짜 데이터 추출
         all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
