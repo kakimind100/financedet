@@ -136,6 +136,10 @@ def train_model_with_hyperparameter_tuning():
     X_train = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
     y_train = np.nan_to_num(y_train, nan=0.0, posinf=0.0, neginf=0.0)
 
+    # 데이터 타입 강제 변환
+    X_train = X_train.astype(np.float64)
+    y_train = y_train.astype(np.float64)
+
     # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
     param_grid = {
         'n_estimators': [50, 100, 200],
@@ -145,10 +149,6 @@ def train_model_with_hyperparameter_tuning():
     }
 
     model = RandomForestClassifier(random_state=42)
-
-    # 데이터 타입 강제 변환
-    X_train = X_train.astype(np.float64)
-    y_train = y_train.astype(np.float64)
 
     try:
         logging.info("모델 훈련 시작...")
@@ -167,10 +167,14 @@ def train_model_with_hyperparameter_tuning():
     best_model = grid_search.best_estimator_
 
     # 모델 평가
-    y_pred = best_model.predict(X_test)
-    report = classification_report(y_test, y_pred)
-    logging.info(f"모델 성능 보고서:\n{report}")
-    print(report)
+    try:
+        y_pred = best_model.predict(X_test.astype(np.float64))  # X_test를 float64로 변환
+        report = classification_report(y_test, y_pred)
+        logging.info(f"모델 성능 보고서:\n{report}")
+        print(report)
+    except ValueError as e:
+        logging.error(f"예측 중 오류 발생: {e}")
+        return None, None
 
     # 테스트 세트 종목 코드 로깅
     logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
@@ -277,4 +281,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
