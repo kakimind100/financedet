@@ -33,36 +33,35 @@ def fetch_stock_data():
         dtype = {
             'Code': 'object',
             'Date': 'str',
-            'Open': 'float64',
-            'High': 'float64',
-            'Low': 'float64',
-            'Close': 'float64',
-            'Volume': 'float64',
-            'Change': 'float64',
-            'MA5': 'float64',
-            'MA20': 'float64',
-            'MACD': 'float64',
-            'MACD_Signal': 'float64',
-            'Bollinger_High': 'float64',
-            'Bollinger_Low': 'float64',
-            'Stoch': 'float64',
-            'RSI': 'float64',
-            'ATR': 'float64',
-            'CCI': 'float64',
-            'EMA20': 'float64',
-            'EMA50': 'float64',
-            'Momentum': 'float64',
-            'Williams %R': 'float64',
-            'ADX': 'float64',
-            'Volume_MA20': 'float64',
-            'ROC': 'float64',
-            'CMF': 'float64',
-            'OBV': 'float64'
+            'Open': 'float',
+            'High': 'float',
+            'Low': 'float',
+            'Close': 'float',
+            'Volume': 'float',
+            'Change': 'float',
+            'MA5': 'float',
+            'MA20': 'float',
+            'MACD': 'float',
+            'MACD_Signal': 'float',
+            'Bollinger_High': 'float',
+            'Bollinger_Low': 'float',
+            'Stoch': 'float',
+            'RSI': 'float',
+            'ATR': 'float',
+            'CCI': 'float',
+            'EMA20': 'float',
+            'EMA50': 'float',
+            'Momentum': 'float',
+            'Williams %R': 'float',
+            'ADX': 'float',
+            'Volume_MA20': 'float',
+            'ROC': 'float',
+            'CMF': 'float',
+            'OBV': 'float'
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
-        logging.debug(f"가져온 데이터 샘플:\n{df.head()}")  # 데이터 샘플 로그
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
         return df
@@ -72,8 +71,6 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    logging.debug("데이터 준비 중...")
-    
     # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
     df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
     
@@ -88,26 +85,22 @@ def prepare_data(df):
     # NaN 제거
     df.dropna(subset=features + ['Target'], inplace=True)
 
-    logging.debug(f"유효한 데이터 수: {len(df)}")  # 유효한 데이터 수 로그
-
     # 훈련 데이터를 위한 리스트
     X = []
     y = []
-    stock_codes = []
+    stock_codes = []  # 종목 코드를 저장할 리스트 추가
 
-    # 종목 코드별로 최근 26일 데이터 확인
+    # 종목 코드별로 최근 5일 데이터 확인
     for stock_code in df['Code'].unique():
-        stock_data = df[df['Code'] == stock_code].tail(26)  # 최근 26일 데이터
+        stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
         
-        if len(stock_data) == 26:  # 최근 26일 데이터가 있는 경우
-            X.append(stock_data[features].values.flatten().astype(np.float64))  # 26일의 피쳐를 1D 배열로 변환
-            y.append(float(stock_data['Target'].values[-1]))  # 마지막 날의 타겟 값
+        if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
+            X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+            y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
             stock_codes.append(stock_code)  # 종목 코드 추가
 
-    logging.info(f"총 {len(stock_codes)} 종목의 데이터를 수집했습니다.")  # 수집된 종목 수 로그
-
-    X = np.array(X, dtype=np.float64)  # X를 float64로 변환
-    y = np.array(y, dtype=np.float64)  # y도 float64로 변환
+    X = np.array(X)
+    y = np.array(y)
 
     # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
@@ -119,7 +112,6 @@ def prepare_data(df):
         X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
     )
 
-    logging.debug("데이터 분할 완료.")
     return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
 
 def train_model_with_hyperparameter_tuning():
@@ -132,14 +124,6 @@ def train_model_with_hyperparameter_tuning():
     # 데이터 준비 및 분할
     X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test = prepare_data(df)
 
-    # NaN 및 무한대 처리
-    X_train = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
-    y_train = np.nan_to_num(y_train, nan=0.0, posinf=0.0, neginf=0.0)
-
-    # 데이터 타입 강제 변환
-    X_train = X_train.astype(np.float64)
-    y_train = y_train.astype(np.float64)
-
     # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
     param_grid = {
         'n_estimators': [50, 100, 200],
@@ -149,16 +133,11 @@ def train_model_with_hyperparameter_tuning():
     }
 
     model = RandomForestClassifier(random_state=42)
-
-    try:
-        logging.info("모델 훈련 시작...")
-        grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
-                                   scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
-        grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
-    except ValueError as e:
-        logging.error(f"모델 훈련 중 오류 발생: {e}")
-        return None, None
-
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+                               scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
+    
+    grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
+    
     # 최적의 하이퍼파라미터 출력
     logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
     print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
@@ -167,14 +146,10 @@ def train_model_with_hyperparameter_tuning():
     best_model = grid_search.best_estimator_
 
     # 모델 평가
-    try:
-        y_pred = best_model.predict(X_test.astype(np.float64))  # X_test를 float64로 변환
-        report = classification_report(y_test, y_pred)
-        logging.info(f"모델 성능 보고서:\n{report}")
-        print(report)
-    except ValueError as e:
-        logging.error(f"예측 중 오류 발생: {e}")
-        return None, None
+    y_pred = best_model.predict(X_test)
+    report = classification_report(y_test, y_pred)
+    logging.info(f"모델 성능 보고서:\n{report}")
+    print(report)
 
     # 테스트 세트 종목 코드 로깅
     logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
@@ -185,12 +160,11 @@ def predict_next_day(model, stock_codes_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
-        logging.error("데이터프레임이 None입니다.     # 예측을 중단합니다.")
+        logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
         return
 
     # 오늘 종가가 29% 이상 상승한 종목 필터링
     today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
-    logging.info(f"오늘 상승한 종목 수: {len(today_rise_stocks)}")  # 상승 종목 수 로그
 
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
@@ -205,13 +179,13 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    # 최근 26거래일 데이터를 사용하여 예측하기
+    # 최근 5거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
-            recent_data = df[df['Code'] == stock_code].tail(26)  # 마지막 26일 데이터 가져오기
+            recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
             if not recent_data.empty:  # 데이터가 비어있지 않은 경우
-                # 최근 26일 데이터를 사용하여 예측
-                X_next = recent_data[features].values.flatten().astype(np.float64).reshape(1, -1)  # 26일 데이터로 2D 배열로 변환
+                # 최근 5일 데이터를 사용하여 예측
+                X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
                 pred = model.predict(X_next)
 
                 # 예측 결과와 함께 정보를 저장
@@ -281,4 +255,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
