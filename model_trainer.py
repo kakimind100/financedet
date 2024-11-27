@@ -132,6 +132,10 @@ def train_model_with_hyperparameter_tuning():
     # 데이터 준비 및 분할
     X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test = prepare_data(df)
 
+    # NaN 및 무한대 처리
+    X_train = np.nan_to_num(X_train, nan=0.0, posinf=0.0, neginf=0.0)
+    y_train = np.nan_to_num(y_train, nan=0.0, posinf=0.0, neginf=0.0)
+
     # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
     param_grid = {
         'n_estimators': [50, 100, 200],
@@ -141,12 +145,20 @@ def train_model_with_hyperparameter_tuning():
     }
 
     model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
-                               scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
-    
-    logging.info("모델 훈련 시작...")
-    grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
-    
+
+    # 데이터 타입 강제 변환
+    X_train = X_train.astype(np.float64)
+    y_train = y_train.astype(np.float64)
+
+    try:
+        logging.info("모델 훈련 시작...")
+        grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+                                   scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
+        grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
+    except ValueError as e:
+        logging.error(f"모델 훈련 중 오류 발생: {e}")
+        return None, None
+
     # 최적의 하이퍼파라미터 출력
     logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
     print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
