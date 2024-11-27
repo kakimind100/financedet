@@ -90,7 +90,7 @@ def prepare_data(df):
     y = []
     stock_codes = []  # 종목 코드를 저장할 리스트 추가
 
-    # 종목 코드별로 최근 26일 데이터 확인
+    # 종목 코드별로 최근 5일 데이터 확인
     for stock_code in df['Code'].unique():
         stock_data = df[df['Code'] == stock_code].tail(26)  # 최근 26일 데이터
         
@@ -179,7 +179,7 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    # 최근 26거래일 데이터를 사용하여 예측하기
+    # 최근 5거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
             recent_data = df[df['Code'] == stock_code].tail(26)  # 마지막 26일 데이터 가져오기
@@ -255,4 +255,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
