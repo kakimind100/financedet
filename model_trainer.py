@@ -185,7 +185,7 @@ def predict_next_day(model, stock_codes_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
-        logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
+        logging.error("데이터프레임이 None입니다.     # 예측을 중단합니다.")
         return
 
     # 오늘 종가가 29% 이상 상승한 종목 필터링
@@ -281,3 +281,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+
