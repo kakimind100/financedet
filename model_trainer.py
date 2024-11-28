@@ -90,7 +90,7 @@ def prepare_data(df):
             close_price = stock_data['Close'].iloc[-1]
         
             # 타겟 설정
-            target_today = 1 if close_price >= open_price * 1.29 else 0
+            target_today = 1 if close_price > open_price * 1.29 else 0
             
             # 로그 추가
             logging.debug(f"{stock_code} - Open: {open_price}, Close: {close_price}, Target: {target_today}")
