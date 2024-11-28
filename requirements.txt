@@ -23,3 +23,4 @@ tensorflow>=2.10.0     # TensorFlow 라이브러리
 xgboost>=1.6.2         # XGBoost 알고리즘
 lightgbm>=3.3.2        # LightGBM 알고리즘
 sqlalchemy>=1.4.37     # SQLAlchemy ORM
+imbalanced-learn        # 클래스 불균형 문제 해결 라이브러리
