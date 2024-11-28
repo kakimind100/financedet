@@ -89,12 +89,13 @@ def prepare_data(df):
             open_price = stock_data['Open'].iloc[-1]
             close_price = stock_data['Close'].iloc[-1]
         
-            # 타겟 설정
+            # 타겟 설정: 오늘 종가가 오늘 시작가의 29% 이상 상승했는지 여부
             target_today = 1 if close_price > open_price * 1.29 else 0
             
             # 로그 추가
             logging.debug(f"{stock_code} - Open: {open_price}, Close: {close_price}, Target: {target_today}")
         
+            # 마지막 날 제외한 5일의 피쳐를 1D 배열로 변환
             X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
             y.append(target_today)  # 오늘의 타겟 값
             stock_codes.append(stock_code)  # 종목 코드 추가
@@ -258,3 +259,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+
