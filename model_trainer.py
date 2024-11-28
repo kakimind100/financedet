@@ -91,15 +91,17 @@ def prepare_data(df):
             high_price = stock_data['High'].max()  # 최근 6일 중 최고가
             
             # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
-            target_today = 1 if high_price > open_price * 1.17 else 0
+            target_today = 1 if high_price > low_price * 1.2 else 0
             
             # 로그 추가
             logging.debug(f"{stock_code} - Open: {open_price}, Low: {low_price}, High: {high_price}, Target: {target_today}")
         
-            # 마지막 날 제외한 5일의 피쳐를 1D 배열로 변환
-            X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
-            y.append(target_today)  # 오늘의 타겟 값
-            stock_codes.append(stock_code)  # 종목 코드 추가
+            # 타겟이 1인 경우에만 데이터 추가
+            if target_today == 1:
+                # 마지막 날 제외한 5일의 피쳐를 1D 배열로 변환
+                X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
+                y.append(target_today)  # 오늘의 타겟 값
+                stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
     y = np.array(y)
