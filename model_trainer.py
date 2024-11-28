@@ -108,7 +108,7 @@ def prepare_data(df):
     )
 
     # 훈련 종목 코드 리스트 로깅
-    ​<light>logging.info(f"훈련에 사용된 종목 코드: {stock_codes_train}")</light>​
+    logging.info(f"훈련에 사용된 종목 코드: {stock_codes_train}")
 
     # 검증 및 테스트 세트 분할
     X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
