@@ -87,14 +87,14 @@ def prepare_data(df):
             open_price = stock_data['Open'].iloc[-1]
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
-            
+
             # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.2 else 0
-            
+
             # 마지막 날의 피처와 타겟을 함께 추가
             X.append(stock_data[features].values[-1])  # 마지막 날의 피처 사용
-            y.append(target_today)  # 직접 계산한 타겟 값 사용
-            stock_codes.append(stock_code)  # 모든 경우에 대해 종목 코드 추가
+            y.append(target_today)  # 오늘의 타겟 값 사용
+            stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
     y = np.array(y)
