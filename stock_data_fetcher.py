@@ -28,9 +28,16 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
     try:
         df = fdr.DataReader(code, start_date, end_date)  # 주식 데이터 가져오기
         if df is not None and not df.empty:  # 데이터가 유효한지 확인
+            # 최근 10일 종가 확인
+            recent_close = df['Close'].tail(10)  # 최근 10일 종가 확인
+            
+            # 연속적으로 동일한 종가가 2일 이상 있는지 확인
+            if (recent_close.diff() == 0).sum() >= 2:  # 동일한 종가가 2일 이상
+                logging.warning(f"{code}의 최근 10일 이내에 2거래일 이상 종가가 동일하므로 데이터 제외.")  # 경고 로그
+                return
+            
             # 최근 10일의 거래량 확인
             recent_volume = df['Volume'].tail(10)
-            recent_close = df['Close'].tail(10)  # 최근 10일 종가 확인
             
             if recent_volume.sum() > 0:  # 최근 10일 간 거래량이 0이 아닌 경우
                 if all(recent_close >= 3000):  # 최근 10일 종가가 3000 이상인지 확인
