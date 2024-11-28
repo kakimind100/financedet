@@ -31,6 +31,9 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             # 최근 10일 데이터 확인
             recent_data = df.tail(10)  # 최근 10일 데이터
             
+            # 최근 5일 데이터 로그 출력
+            logging.info(f"{code}의 최근 5일 데이터:\n{recent_data.tail(5)}")
+
             # 시작가, 고가, 저가, 종가가 모두 동일한지 확인
             if (recent_data['Open'].nunique() == 1 and
                 recent_data['High'].nunique() == 1 and
