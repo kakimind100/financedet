@@ -30,7 +30,15 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
         if df is not None and not df.empty:  # 데이터가 유효한지 확인
             # 최근 10일 데이터 확인
             recent_data = df.tail(10)  # 최근 10일 데이터
-            
+
+            # 오늘의 시작가 확인
+            today_open = recent_data['Open'].iloc[-1]  # 오늘의 시작가
+
+            # 시작가가 0인 경우 제외
+            if today_open == 0:
+                logging.warning(f"{code}의 오늘 시작가(Open)가 0이므로 데이터 제외.")  # 경고 로그
+                return
+
             # 최근 10일 중 시작가, 고가, 저가, 종가가 모두 동일한 날이 있는지 확인
             identical_prices = (recent_data['Open'] == recent_data['High']) & \
                                (recent_data['High'] == recent_data['Low']) & \
