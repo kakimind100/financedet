@@ -94,7 +94,7 @@ def prepare_data(df):
             # 모든 경우를 추가
             X.append(stock_data[features].values[:-1].flatten())
             y.append(target_today)
-            stock_codes.append(stock_code)
+            stock_codes.append(stock_code)  # 모든 경우에 대해 종목 코드 추가
 
     X = np.array(X)
     y = np.array(y)
