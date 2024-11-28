@@ -71,33 +71,27 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-    df['Target'] = np.where(df['Close'] >= df['Open'] * 1.29, 1, 0)  # 오늘 시작가 기준
-    
-    # NaN 제거
-    df.dropna(subset=['Target'], inplace=True)
-
     # 기술적 지표를 피쳐로 사용
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
                 'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
-
-    # NaN 제거
-    df.dropna(subset=features + ['Target'], inplace=True)
 
     # 훈련 데이터를 위한 리스트
     X = []
     y = []
     stock_codes = []  # 종목 코드를 저장할 리스트 추가
 
-    # 종목 코드별로 최근 5일 데이터 확인
+    # 종목 코드별로 최근 6일 데이터 확인
     for stock_code in df['Code'].unique():
         stock_data = df[df['Code'] == stock_code].tail(6)  # 최근 6일 데이터 (오늘 포함)
         
         if len(stock_data) == 6:  # 최근 6일 데이터가 있는 경우
+            # 오늘 종가가 오늘 시작가의 29% 이상인 경우 타겟 설정
+            target_today = 1 if stock_data['Close'].iloc[-1] >= stock_data['Open'].iloc[-1] * 1.29 else 0
+            
             # 오늘(마지막 날)을 제외한 5일의 피쳐를 1D 배열로 변환
             X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
-            y.append(stock_data['Target'].values[-1])  # 오늘의 타겟 값
+            y.append(target_today)  # 오늘의 타겟 값
             stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
