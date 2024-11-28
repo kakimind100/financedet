@@ -87,13 +87,14 @@ def prepare_data(df):
 
         if len(stock_data) == 6:  # 최근 6일 데이터가 있는 경우
             open_price = stock_data['Open'].iloc[-1]
+            low_price = stock_data['Low'].min()  # 최근 6일 중 최저가
             high_price = stock_data['High'].max()  # 최근 6일 중 최고가
             
-            # 타겟 설정: 오늘 시작가에서 최고가가 20% 이상 상승했는지 여부
-            target_today = 1 if high_price > open_price * 1.2 else 0
+            # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
+            target_today = 1 if high_price > low_price * 1.2 else 0
             
             # 로그 추가
-            logging.debug(f"{stock_code} - Open: {open_price}, High: {high_price}, Target: {target_today}")
+            logging.debug(f"{stock_code} - Open: {open_price}, Low: {low_price}, High: {high_price}, Target: {target_today}")
         
             # 마지막 날 제외한 5일의 피쳐를 1D 배열로 변환
             X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
