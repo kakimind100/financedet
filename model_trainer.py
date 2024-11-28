@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
+from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -106,9 +107,13 @@ def prepare_data(df):
     X = np.array(X)
     y = np.array(y)
 
+    # SMOTE 적용
+    smote = SMOTE(random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X, y)
+
     # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
-        X, y, stock_codes, test_size=0.3, random_state=42
+        X_resampled, y_resampled, stock_codes, test_size=0.3, random_state=42
     )
 
     # 훈련 종목 코드 리스트 로깅
@@ -262,4 +267,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
