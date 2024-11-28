@@ -203,31 +203,18 @@ def predict_next_day(model, stock_codes_test):
             recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
             if not recent_data.empty:  # 데이터가 비어있지 않은 경우
                 # 최근 5일 데이터를 사용하여 예측
-                X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
+                X_next = recent_data[features].values[-1].reshape(1, -1)  # 마지막 날의 피처로 2D 배열로 변환
+                logging.debug(f"예측할 데이터 X_next: {X_next}")
+
+                # 예측
                 pred = model.predict(X_next)
 
                 # 예측 결과와 함께 정보를 저장
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
-                    'MA5': recent_data['MA5'].values[-1],
-                    'MA20': recent_data['MA20'].values[-1],
-                    'RSI': recent_data['RSI'].values[-1],
-                    'MACD': recent_data['MACD'].values[-1],
-                    'Bollinger_High': recent_data['Bollinger_High'].values[-1],
-                    'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
-                    'Stoch': recent_data['Stoch'].values[-1],
-                    'ATR': recent_data['ATR'].values[-1],
-                    'CCI': recent_data['CCI'].values[-1],
-                    'EMA20': recent_data['EMA20'].values[-1],
-                    'EMA50': recent_data['EMA50'].values[-1],
-                    'Momentum': recent_data['Momentum'].values[-1],
-                    'Williams %R': recent_data['Williams %R'].values[-1],
-                    'ADX': recent_data['ADX'].values[-1],
-                    'Volume_MA20': recent_data['Volume_MA20'].values[-1],
-                    'ROC': recent_data['ROC'].values[-1],
-                    'CMF': recent_data['CMF'].values[-1],
-                    'OBV': recent_data['OBV'].values[-1]
+                    # 피처 값도 저장할 수 있음
+                    **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
     # 예측 결과를 데이터프레임으로 변환
