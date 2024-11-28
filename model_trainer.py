@@ -88,12 +88,13 @@ def prepare_data(df):
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
             
+            # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.2 else 0
             
-            if target_today == 1:
-                X.append(stock_data[features].values[:-1].flatten())
-                y.append(target_today)
-                stock_codes.append(stock_code)
+            # 모든 경우를 추가
+            X.append(stock_data[features].values[:-1].flatten())
+            y.append(target_today)
+            stock_codes.append(stock_code)
 
     X = np.array(X)
     y = np.array(y)
