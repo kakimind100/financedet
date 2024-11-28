@@ -84,12 +84,16 @@ def prepare_data(df):
     # 종목 코드별로 최근 6일 데이터 확인
     for stock_code in df['Code'].unique():
         stock_data = df[df['Code'] == stock_code].tail(6)  # 최근 6일 데이터 (오늘 포함)
-    
+
         if len(stock_data) == 6:  # 최근 6일 데이터가 있는 경우
-            target_today = 1 if stock_data['Close'].iloc[-1] >= stock_data['Open'].iloc[-1] * 1.29 else 0
+            open_price = stock_data['Open'].iloc[-1]
+            close_price = stock_data['Close'].iloc[-1]
         
+            # 타겟 설정
+            target_today = 1 if close_price >= open_price * 1.29 else 0
+            
             # 로그 추가
-            logging.debug(f"{stock_code} - Open: {stock_data['Open'].iloc[-1]}, Close: {stock_data['Close'].iloc[-1]}, Target: {target_today}")
+            logging.debug(f"{stock_code} - Open: {open_price}, Close: {close_price}, Target: {target_today}")
         
             X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
             y.append(target_today)  # 오늘의 타겟 값
