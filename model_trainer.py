@@ -72,54 +72,50 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    # 기술적 지표를 피쳐로 사용
     features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
                 'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
                 'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
 
-    # 훈련 데이터를 위한 리스트
     X = []
     y = []
-    stock_codes = []  # 종목 코드를 저장할 리스트 추가
+    stock_codes = []
 
-    # 종목 코드별로 최근 6일 데이터 확인
     for stock_code in df['Code'].unique():
-        stock_data = df[df['Code'] == stock_code].tail(6)  # 최근 6일 데이터 (오늘 포함)
+        stock_data = df[df['Code'] == stock_code].tail(6)
 
-        if len(stock_data) == 6:  # 최근 6일 데이터가 있는 경우
+        if len(stock_data) == 6:
             open_price = stock_data['Open'].iloc[-1]
-            low_price = stock_data['Low'].min()  # 최근 6일 중 최저가
-            high_price = stock_data['High'].max()  # 최근 6일 중 최고가
+            low_price = stock_data['Low'].min()
+            high_price = stock_data['High'].max()
             
-            # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.2 else 0
             
-            # 로그 추가
-            logging.debug(f"{stock_code} - Open: {open_price}, Low: {low_price}, High: {high_price}, Target: {target_today}")
-        
-            # 타겟이 1인 경우에만 데이터 추가
             if target_today == 1:
-                # 마지막 날 제외한 5일의 피쳐를 1D 배열로 변환
-                X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
-                y.append(target_today)  # 오늘의 타겟 값
-                stock_codes.append(stock_code)  # 종목 코드 추가
+                X.append(stock_data[features].values[:-1].flatten())
+                y.append(target_today)
+                stock_codes.append(stock_code)
 
     X = np.array(X)
     y = np.array(y)
 
+    # 클래스 분포 확인
+    logging.info(f"타겟 클래스 분포: {np.bincount(y)}")
+
     # SMOTE 적용
-    smote = SMOTE(random_state=42)
-    X_resampled, y_resampled = smote.fit_resample(X, y)
+    if len(np.unique(y)) > 1:  # 클래스가 2개 이상인 경우에만 SMOTE 적용
+        smote = SMOTE(random_state=42)
+        X_resampled, y_resampled = smote.fit_resample(X, y)
+    else:
+        logging.warning("타겟 클래스가 1개만 존재합니다. SMOTE를 적용하지 않습니다.")
+        X_resampled, y_resampled = X, y  # 원본 데이터 유지
 
     # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
         X_resampled, y_resampled, stock_codes, test_size=0.3, random_state=42
     )
 
-    # 훈련 종목 코드 리스트 로깅
     logging.info(f"훈련에 사용된 종목 코드: {stock_codes_train}")
 
-    # 검증 및 테스트 세트 분할
     X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
         X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
     )
