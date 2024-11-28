@@ -72,7 +72,7 @@ def fetch_stock_data():
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
     # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
-    df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
+    df['Target'] = np.where(df['Close'] >= df['Open'] * 1.29, 1, 0)  # 오늘 시작가 기준
     
     # NaN 제거
     df.dropna(subset=['Target'], inplace=True)
@@ -92,11 +92,12 @@ def prepare_data(df):
 
     # 종목 코드별로 최근 5일 데이터 확인
     for stock_code in df['Code'].unique():
-        stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+        stock_data = df[df['Code'] == stock_code].tail(6)  # 최근 6일 데이터 (오늘 포함)
         
-        if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
-            X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
-            y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+        if len(stock_data) == 6:  # 최근 6일 데이터가 있는 경우
+            # 오늘(마지막 날)을 제외한 5일의 피쳐를 1D 배열로 변환
+            X.append(stock_data[features].values[:-1].flatten())  # 마지막 날 제외
+            y.append(stock_data['Target'].values[-1])  # 오늘의 타겟 값
             stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
