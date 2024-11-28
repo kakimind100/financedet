@@ -96,29 +96,32 @@ def prepare_data(df):
             y.append(target_today)  # 오늘의 타겟 값 사용
             stock_codes.append(stock_code)  # 종목 코드 추가
 
-            # 현재 상태 로그 출력
-            logging.debug(f"종목 코드: {stock_code}, X: {stock_data[features].values[-1]}, y: {target_today}")
-
     X = np.array(X)
     y = np.array(y)
 
     # 클래스 분포 확인
     logging.info(f"타겟 클래스 분포: {np.bincount(y)}")
 
-    # 길이 확인 로그 추가
-    logging.info(f"X의 길이: {len(X)}, y의 길이: {len(y)}, stock_codes의 길이: {len(stock_codes)}")
-
     # SMOTE 적용
     if len(np.unique(y)) > 1:  # 클래스가 2개 이상인 경우에만 SMOTE 적용
         smote = SMOTE(random_state=42)
         X_resampled, y_resampled = smote.fit_resample(X, y)
+
+        # stock_codes에 대한 재조정
+        # SMOTE는 X, y에 대해서만 작동하므로, stock_codes는 원래 데이터에 기반하여 다시 설정
+        # 여기서는 stock_codes를 유지하기 위해 원본 stock_codes를 필터링하여 유지하는 방법을 사용
+        stock_codes_resampled = []
+        for i in range(len(y_resampled)):
+            stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
+
     else:
         logging.warning("타겟 클래스가 1개만 존재합니다. SMOTE를 적용하지 않습니다.")
         X_resampled, y_resampled = X, y  # 원본 데이터 유지
+        stock_codes_resampled = stock_codes  # 원본 stock_codes 유지
 
     # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
-        X_resampled, y_resampled, stock_codes, test_size=0.3, random_state=42
+        X_resampled, y_resampled, stock_codes_resampled, test_size=0.3, random_state=42
     )
 
     logging.info(f"훈련에 사용된 종목 코드: {stock_codes_train}")
