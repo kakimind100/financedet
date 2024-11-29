@@ -223,10 +223,10 @@ def predict_next_day(model, stock_codes_test):
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch 기준으로 정렬)
+    # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
     top_predictions = top_predictions.sort_values(
-        by=['MA5', 'MACD', 'RSI', 'Stoch'], 
-        ascending=[False, False, True, True]  # MA5와 MACD는 내림차순, RSI와 Stoch은 오름차순으로 정렬
+        by=['MA5', 'MA20', 'MACD', 'RSI', 'ATR', 'OBV', 'Stoch', 'CCI', 'ADX'], 
+        ascending=[False, False, False, True, False, False, True, True, True]  # 각 피처의 정렬 방식 설정
     ).head(20)
 
     # 예측 결과 출력
