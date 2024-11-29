@@ -28,8 +28,8 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
     try:
         df = fdr.DataReader(code, start_date, end_date)  # 주식 데이터 가져오기
         if df is not None and not df.empty:  # 데이터가 유효한지 확인
-            # 최근 10일 데이터 확인
-            recent_data = df.tail(10)  # 최근 10일 데이터
+            # 최근 26일 데이터 확인
+            recent_data = df.tail(26)  # 최근 26일 데이터
 
             # 오늘의 시작가 확인
             today_open = recent_data['Open'].iloc[-1]  # 오늘의 시작가
@@ -39,29 +39,29 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
                 logging.warning(f"{code}의 오늘 시작가(Open)가 0이므로 데이터 제외.")  # 경고 로그
                 return
 
-            # 최근 10일 중 시작가, 고가, 저가, 종가가 모두 동일한 날이 있는지 확인
+            # 최근 26일 중 시작가, 고가, 저가, 종가가 모두 동일한 날이 있는지 확인
             identical_prices = (recent_data['Open'] == recent_data['High']) & \
                                (recent_data['High'] == recent_data['Low']) & \
                                (recent_data['Low'] == recent_data['Close'])
 
             if identical_prices.any():  # 한 번이라도 동일한 날이 있는 경우
-                logging.warning(f"{code}의 최근 10일 이내에 시작가, 고가, 저가, 종가가 동일한 날이 있으므로 데이터 제외.")  # 경고 로그
+                logging.warning(f"{code}의 최근 26일 이내에 시작가, 고가, 저가, 종가가 동일한 날이 있으므로 데이터 제외.")  # 경고 로그
                 return
             
-            # 최근 10일의 거래량 확인
-            recent_volume = df['Volume'].tail(10)
+            # 최근 26일의 거래량 확인
+            recent_volume = df['Volume'].tail(26)
 
-            if recent_volume.sum() > 0:  # 최근 10일 간 거래량이 0이 아닌 경우
-                if all(recent_data['Close'] >= 3000):  # 최근 10일 종가가 3000 이상인지 확인
+            if recent_volume.sum() > 0:  # 최근 26일 간 거래량이 0이 아닌 경우
+                if all(recent_data['Close'] >= 3000):  # 최근 26일 종가가 3000 이상인지 확인
                     df.reset_index(inplace=True)  # 인덱스 초기화
                     df['Code'] = code  # 주식 코드 추가
                     df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
                     all_stocks_data[code] = df  # 가져온 데이터 저장
                     logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
                 else:
-                    logging.warning(f"{code}의 최근 10일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
+                    logging.warning(f"{code}의 최근 26일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
             else:
-                logging.warning(f"{code}의 최근 10일 거래량이 0입니다. 데이터 제외.")  # 경고 로그
+                logging.warning(f"{code}의 최근 26일 거래량이 0입니다. 데이터 제외.")  # 경고 로그
         else:
             logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")  # 경고 로그
     except Exception as e:
