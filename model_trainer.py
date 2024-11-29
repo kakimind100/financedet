@@ -81,9 +81,9 @@ def prepare_data(df):
     stock_codes = []
 
     for stock_code in df['Code'].unique():
-        stock_data = df[df['Code'] == stock_code].tail(11)
+        stock_data = df[df['Code'] == stock_code].tail(27)
 
-        if len(stock_data) == 11:
+        if len(stock_data) == 27:
             open_price = stock_data['Open'].iloc[-1]
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
@@ -197,12 +197,12 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    # 최근 10거래일 데이터를 사용하여 예측하기
+    # 최근 26거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
-            recent_data = df[df['Code'] == stock_code].tail(10)  # 마지막 10일 데이터 가져오기
-            if not recent_data.empty and len(recent_data) == 10:  # 데이터가 비어있지 않고 10일인 경우
-                # 최근 10일 데이터를 사용하여 예측
+            recent_data = df[df['Code'] == stock_code].tail(26)  # 마지막 26일 데이터 가져오기
+            if not recent_data.empty and len(recent_data) == 26:  # 데이터가 비어있지 않고 26일인 경우
+                # 최근 26일 데이터를 사용하여 예측
                 X_next = recent_data[features].values[-1].reshape(1, -1)  # 마지막 날의 피처로 2D 배열로 변환
                 logging.debug(f"예측할 데이터 X_next: {X_next}")
 
