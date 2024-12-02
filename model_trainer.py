@@ -3,7 +3,8 @@ import joblib
 import logging
 import os
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
@@ -72,26 +73,11 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
     features = [
-        'RSI',                  # 과매도 상태를 나타내는 지표
-        'MACD',                 # 추세 반전을 나타내는 지표
-        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
-        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
-        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
-        'MA5',                  # 단기 이동 평균
-        'MA20',                 # 중기 이동 평균
-        'EMA20',                # 지수 이동 평균
-        'EMA50',                # 지수 이동 평균
-        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
-        'ATR',                  # 변동성 지표
-        'Momentum',             # 가격 변화의 속도를 나타내는 지표
-        'ADX',                  # 추세의 강도를 나타내는 지표
-        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
-        'Volume_MA20',          # 거래량의 이동 평균
-        'ROC',                  # 가격 변화율
-        'CMF',                  # 자금 흐름 지표
-        'OBV'                   # 거래량 기반의 지표
+        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
+        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 
+        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 
+        'ROC', 'CMF', 'OBV'
     ]
 
     X = []
@@ -106,37 +92,29 @@ def prepare_data(df):
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
 
-            # 타겟 설정: 오늘 최저가에서 최고가가 29% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.29 else 0
 
-            # 마지막 날의 피처와 타겟을 함께 추가
-            X.append(stock_data[features].values[-1])  # 마지막 날의 피처 사용
-            y.append(target_today)  # 오늘의 타겟 값 사용
-            stock_codes.append(stock_code)  # 종목 코드 추가
+            X.append(stock_data[features].values[-1])
+            y.append(target_today)
+            stock_codes.append(stock_code)
 
     X = np.array(X)
     y = np.array(y)
 
-    # 클래스 분포 확인
     logging.info(f"타겟 클래스 분포: {np.bincount(y)}")
 
-    # SMOTE 적용
-    if len(np.unique(y)) > 1:  # 클래스가 2개 이상인 경우에만 SMOTE 적용
+    if len(np.unique(y)) > 1:
         smote = SMOTE(random_state=42)
         X_resampled, y_resampled = smote.fit_resample(X, y)
 
-        # stock_codes에 대한 재조정
-        # SMOTE는 X, y에 대해서만 작동하므로, stock_codes는 원래 데이터에 기반하여 다시 설정
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
-            stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
-
+            stock_codes_resampled.append(stock_codes[i % len(stock_codes)])
     else:
         logging.warning("타겟 클래스가 1개만 존재합니다. SMOTE를 적용하지 않습니다.")
-        X_resampled, y_resampled = X, y  # 원본 데이터 유지
-        stock_codes_resampled = stock_codes  # 원본 stock_codes 유지
+        X_resampled, y_resampled = X, y
+        stock_codes_resampled = stock_codes
 
-    # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
         X_resampled, y_resampled, stock_codes_resampled, test_size=0.3, random_state=42
     )
@@ -151,94 +129,82 @@ def prepare_data(df):
 
 def train_model_with_hyperparameter_tuning():
     """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
-    df = fetch_stock_data()  # 주식 데이터 가져오기
+    df = fetch_stock_data()  
     if df is None:
         logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
-        return None, None  # None 반환
+        return None, None  
 
-    # 데이터 준비 및 분할
     X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test = prepare_data(df)
+
+    # 랜덤 포레스트와 XGBoost 모델 초기화
+    rf_model = RandomForestClassifier(random_state=42)
+    xgb_model = XGBClassifier(random_state=42)
+
+    # Voting Classifier 생성 (소프트 투표)
+    voting_model = VotingClassifier(estimators=[
+        ('rf', rf_model),
+        ('xgb', xgb_model)
+    ], voting='soft')
 
     # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
     param_grid = {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [None, 10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
+        'rf__n_estimators': [50, 100, 200],
+        'rf__max_depth': [None, 10, 20, 30],
+        'rf__min_samples_split': [2, 5, 10],
+        'rf__min_samples_leaf': [1, 2, 4],
+        'xgb__n_estimators': [50, 100, 200],
+        'xgb__max_depth': [3, 5, 7],
+        'xgb__learning_rate': [0.01, 0.1, 0.2]
     }
 
-    model = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+    grid_search = GridSearchCV(estimator=voting_model, param_grid=param_grid,
                                scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
     
     grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
     
-    # 최적의 하이퍼파라미터 출력
     logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
     print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
 
-    # 최적의 모델로 재훈련
     best_model = grid_search.best_estimator_
 
-    # 모델 평가
     y_pred = best_model.predict(X_test)
     report = classification_report(y_test, y_pred)
     logging.info(f"모델 성능 보고서:\n{report}")
     print(report)
 
-    # 테스트 세트 종목 코드 로깅
     logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
 
-    return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
+    return best_model, stock_codes_test  
 
 def predict_next_day(model, stock_codes_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
-    df = fetch_stock_data()  # 주식 데이터 가져오기
+    df = fetch_stock_data()  
     if df is None:
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
         return
 
-    # 오늘 종가가 29% 이상 상승한 종목 필터링
     today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
 
-    # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = [
-        'RSI',                  # 과매도 상태를 나타내는 지표
-        'MACD',                 # 추세 반전을 나타내는 지표
-        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
-        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
-        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
-        'MA5',                  # 단기 이동 평균
-        'MA20',                 # 중기 이동 평균
-        'EMA20',                # 지수 이동 평균
-        'EMA50',                # 지수 이동 평균
-        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
-        'ATR',                  # 변동성 지표
-        'Momentum',             # 가격 변화의 속도를 나타내는 지표
-        'ADX',                  # 추세의 강도를 나타내는 지표
-        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
-        'Volume_MA20',          # 거래량의 이동 평균
-        'ROC',                  # 가격 변화율
-        'CMF',                  # 자금 흐름 지표
-        'OBV'                   # 거래량 기반의 지표
+        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
+        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 
+        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 
+        'ROC', 'CMF', 'OBV'
     ]
 
-    predictions = []  # 예측 결과를 저장할 리스트
+    predictions = []  
 
-    # 테스트 데이터와 예측 데이터의 중복 체크
     overlapping_stocks = today_rise_stocks['Code'].unique()
     common_stocks = set(stock_codes_test).intersection(set(overlapping_stocks))
     
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    # 최근 10거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
-        if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
-            recent_data = df[df['Code'] == stock_code].tail(10)  # 마지막 10일 데이터 가져오기
-            if not recent_data.empty and len(recent_data) == 10:  # 데이터가 비어있지 않고 10일인 경우
-                # 최근 10일 데이터를 사용하여 예측
-                X_next = recent_data[features].values[-1].reshape(1, -1)  # 마지막 날의 피처로 2D 배열로 변환
+        if stock_code in stock_codes_test:
+            recent_data = df[df['Code'] == stock_code].tail(10)
+            if not recent_data.empty and len(recent_data) == 10:
+                X_next = recent_data[features].values[-1].reshape(1, -1)
                 logging.debug(f"예측할 데이터 X_next: {X_next}")
 
                 # 예측
@@ -248,7 +214,6 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
-                    # 피처 값도 저장할 수 있음
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
