@@ -16,48 +16,49 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.9'  # 사용할 Python 버전 설정
+          python-version: '3.8'  # 사용할 Python 버전 설정
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip  # pip 업그레이드
           pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
 
-      - name: Create directories
-        run: |
-          mkdir -p logs csv_results  # logs 및 csv_results 디렉토리 생성
-
       - name: Check if today is a trading day
         env:
           KOREA_HOLIDAY_API_KEY: ${{ secrets.KOREA_HOLIDAY_API_KEY }}  # API 키 환경 변수 설정
         run: |
           echo "거래일 확인 중..."
-          python check_trading_day.py || exit 1  # 거래일 확인 스크립트 실행
+          python check_trading_day.py  # 거래일 확인 스크립트 실행
         if: github.event_name != 'workflow_dispatch'  # 수동 실행이 아닐 때만 실행
+
+      - name: Create directories
+        run: |
+          mkdir -p logs csv_results  # logs 및 csv_results 디렉토리 생성
+
+      - name: Check current directory
+        run: |
+          echo "현재 디렉토리:"
+          pwd
+          echo "현재 디렉토리의 파일 목록:"
+          ls -al  # 현재 디렉토리의 파일 목록 확인
 
       - name: Run Stock Data Fetcher
         run: |
           echo "주식 데이터 가져오기 스크립트 실행 중..."  # 실행 시작 메시지
-          python stock_data_fetcher.py || exit 1  # 주식 데이터 가져오기 스크립트 실행
+          python stock_data_fetcher.py  # 주식 데이터 가져오기 스크립트 실행
           echo "주식 데이터 가져오기 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Run Technical Indicator Calculator
         run: |
           echo "기술 지표 계산 스크립트 실행 중..."  # 실행 시작 메시지
-          python technical_indicator_calculator.py || exit 1  # 기술 지표 계산 스크립트 실행
+          python technical_indicator_calculator.py  # 기술 지표 계산 스크립트 실행
           echo "기술 지표 계산 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Run Model Trainer
         run: |
           echo "모델 훈련 스크립트 실행 중..."  # 실행 시작 메시지
-          python model_trainer.py || exit 1  # 모델 훈련 스크립트 실행
+          python model_trainer.py  # 모델 훈련 스크립트 실행
           echo "모델 훈련 스크립트 실행 완료."  # 실행 완료 메시지
-
-      - name: Run Prediction Script
-        run: |
-          echo "모델 예측 스크립트 실행 중..."  # 실행 시작 메시지
-          python predict.py || exit 1  # 예측 스크립트 실행
-          echo "모델 예측 스크립트 실행 완료."  # 실행 완료 메시지
 
       - name: Run Discord Webhook Script
         env:
@@ -65,14 +66,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
         run: |
           echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
-          python discord_webhook.py || exit 1  # Discord 웹훅 스크립트 실행
+          python discord_webhook.py  # Discord 웹훅 스크립트 실행
           echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
 
-      - name: Upload log files
+      - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
         with:
           name: discord-webhook-log  # 업로드할 아티팩트의 이름
-          path: logs/  # 로그 파일 경로 (필요시 수정)
+          path: logs/discord_webhook.log  # 로그 파일 경로 (필요시 수정)
 
       - name: Get Korean Time
         run: |
