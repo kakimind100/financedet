@@ -58,9 +58,9 @@ def main():
     logging.debug(f"파일 경로: {filename}")
 
     try:
-        # CSV 파일 읽기
+        # CSV 파일 읽기 (종목 코드를 object 타입으로 읽기)
         logging.info("CSV 파일을 읽는 중...")
-        top_stocks = pd.read_csv(filename)
+        top_stocks = pd.read_csv(filename, dtype={'Code': 'object'})  # 종목 코드를 object로 지정
         logging.debug(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
         # 데이터 확인
