@@ -97,11 +97,14 @@ def main():
         # AI에게 전달할 분석 프롬프트 (하나의 종목 추천으로 변경)
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
-            f"각 종목 코드에 대한 오늘 날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
+            f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
             f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 하나를 추천해 주세요. "
-            f"모든 기술적 지표를 검토하여 추천 종목 코드와 그 이유를 50자 내외로 설명해 주세요. "
-        f"AI가 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
-    )
+            f"추천 시 다음 조건을 고려해 주세요:\n"
+            f"1. 모든 기술적 지표가 긍정적인 신호를 나타내는지 검토\n"
+            f"2. 추천 종목에 대한 확신을 가지고 이유를 50자 내외로 설명\n"
+            f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요. "
+            f"추천 종목이 적합하지 않을 경우, '추천할 종목이 없습니다.'라고 답변해 주세요."
+        )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
