@@ -8,6 +8,7 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
+from concurrent.futures import ThreadPoolExecutor  # 멀티스레딩을 위한 모듈
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -64,7 +65,6 @@ def fetch_stock_data():
 
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
-
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
         return df
     except Exception as e:
@@ -138,9 +138,7 @@ def train_model_with_hyperparameter_tuning():
 
     # 랜덤 포레스트와 XGBoost 모델 초기화
     rf_model = RandomForestClassifier(random_state=42)
-    
-    # XGBoost 모델을 GPU로 설정
-    xgb_model = XGBClassifier(tree_method='gpu_hist', gpu_id=0, random_state=42)
+    xgb_model = XGBClassifier(random_state=42)
 
     # Voting Classifier 생성 (소프트 투표)
     voting_model = VotingClassifier(estimators=[
@@ -202,22 +200,29 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    for stock_code in today_rise_stocks['Code'].unique():
-        if stock_code in stock_codes_test:
-            recent_data = df[df['Code'] == stock_code].tail(10)
-            if not recent_data.empty and len(recent_data) == 10:
-                X_next = recent_data[features].values[-1].reshape(1, -1)
-                logging.debug(f"예측할 데이터 X_next: {X_next}")
+    def make_prediction(stock_code):
+        recent_data = df[df['Code'] == stock_code].tail(10)
+        if not recent_data.empty and len(recent_data) == 10:
+            X_next = recent_data[features].values[-1].reshape(1, -1)
+            logging.debug(f"예측할 데이터 X_next: {X_next}")
 
-                # 예측
-                pred = model.predict(X_next)
+            # 예측
+            pred = model.predict(X_next)
 
-                # 예측 결과와 함께 정보를 저장
-                predictions.append({
-                    'Code': stock_code,
-                    'Prediction': pred[0],
-                    **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
-                })
+            # 예측 결과와 함께 정보를 저장
+            return {
+                'Code': stock_code,
+                'Prediction': pred[0],
+                **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
+            }
+        return None
+
+    # 멀티스레딩을 사용하여 예측 수행
+    with ThreadPoolExecutor() as executor:
+        prediction_results = list(executor.map(make_prediction, today_rise_stocks['Code'].unique()))
+
+    # None 값을 필터링하여 유효한 예측 결과만 남김
+    predictions = [result for result in prediction_results if result is not None]
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
