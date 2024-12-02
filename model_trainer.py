@@ -226,11 +226,11 @@ def predict_next_day(model, stock_codes_test):
     # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
     top_predictions = top_predictions.sort_values(
         by=['RSI', 'MACD', 'Stoch', 'Momentum', 'Volume_MA20', 
-            'Bollinger_Low', 'ATR', 'OBV', 
-            'CCI', 'ADX', 'MA5', 'MA20'], 
+            'Bollinger_Low', 'ATR', 'CMF', 'OBV', 
+            'CCI', 'ADX', 'ROC', 'MA5', 'MA20'], 
         ascending=[True, False, True, False, False, 
-                   True, True, False, 
-                   True, True, True, True]
+                   True, True, True, False, 
+                   True, True, True, True, True]
     ).head(20)
 
     # 예측 결과 출력
