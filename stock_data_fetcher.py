@@ -57,7 +57,11 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
                     df['Code'] = code  # 주식 코드 추가
                     df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
                     all_stocks_data[code] = df  # 가져온 데이터 저장
-                    logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
+
+                    # 한 종목의 데이터 로그 기록
+                    logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
+                    logging.info(f"가져온 데이터:\n{df.head()}")  # 가져온 데이터의 첫 5행 로그
+
                 else:
                     logging.warning(f"{code}의 최근 26일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
             else:
