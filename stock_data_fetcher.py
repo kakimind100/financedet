@@ -64,7 +64,7 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
                     logging.info(f"가져온 데이터:\n{df.head()}")  # 가져온 데이터의 첫 5행 로그
 
                     # 재무제표 데이터 가져오기
-                    financials = fetch_financials(code)
+                    financials = fetch_financials(f"{code}.KS")  # 주식 코드에 .KS 추가
                     if not financials.empty:  # 재무제표 데이터가 있는지 확인
                         logging.info(f"{code} 재무제표 데이터:\n{financials}")  # 재무제표 로그 기록
                     else:
