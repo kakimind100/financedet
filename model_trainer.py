@@ -7,7 +7,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
-from skopt import BayesSearchCV  # Bayesian Optimization을 위한 임포트
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -82,15 +81,15 @@ def prepare_data(df):
     stock_codes = []
 
     for stock_code in df['Code'].unique():
-        stock_data = df[df['Code'] == stock_code].tail(27)
+        stock_data = df[df['Code'] == stock_code].tail(11)
 
-        if len(stock_data) == 27:
+        if len(stock_data) == 11:
             open_price = stock_data['Open'].iloc[-1]
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
 
-            # 타겟 설정: 오늘 최저가에서 최고가가 29% 이상 상승했는지 여부
-            target_today = 1 if high_price > low_price * 1.29 else 0
+            # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
+            target_today = 1 if high_price > low_price * 1.2 else 0
 
             # 마지막 날의 피처와 타겟을 함께 추가
             X.append(stock_data[features].values[-1])  # 마지막 날의 피처 사용
@@ -109,6 +108,8 @@ def prepare_data(df):
         X_resampled, y_resampled = smote.fit_resample(X, y)
 
         # stock_codes에 대한 재조정
+        # SMOTE는 X, y에 대해서만 작동하므로, stock_codes는 원래 데이터에 기반하여 다시 설정
+        # 여기서는 stock_codes를 유지하기 위해 원본 stock_codes를 필터링하여 유지하는 방법을 사용
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
             stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
@@ -173,61 +174,6 @@ def train_model_with_hyperparameter_tuning():
 
     return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
 
-def score_function(weights, top_predictions):
-    """가중치를 사용하여 점수를 계산하는 함수."""
-    weights_dict = {
-        'MA5': weights[0],
-        'MA20': weights[1],
-        'MACD': weights[2],
-        'RSI': weights[3],
-        'ATR': weights[4],
-        'OBV': weights[5],
-        'Stoch': weights[6],
-        'CCI': weights[7],
-        'ADX': weights[8]
-    }
-
-    # 점수 계산
-    top_predictions['Score'] = (
-        weights_dict['MA5'] * top_predictions['MA5'] +
-        weights_dict['MA20'] * top_predictions['MA20'] +
-        weights_dict['MACD'] * top_predictions['MACD'] +
-        weights_dict['RSI'] * (100 - top_predictions['RSI']) +
-        weights_dict['ATR'] * top_predictions['ATR'] +
-        weights_dict['OBV'] * top_predictions['OBV'] +
-        weights_dict['Stoch'] * (100 - top_predictions['Stoch']) +  # Stoch도 낮을수록 좋음
-        weights_dict['CCI'] * top_predictions['CCI'] +
-        weights_dict['ADX'] * top_predictions['ADX']
-    )
-
-    # 점수의 평균을 반환
-    return top_predictions['Score'].mean()
-
-def optimize_weights(top_predictions):
-    """가중치를 최적화하는 함수."""
-    from skopt import gp_minimize  # Bayesian Optimization을 위한 임포트
-
-    # 가중치의 범위 설정 (0.0에서 1.0 사이)
-    space = [
-        (0.0, 1.0),  # MA5
-        (0.0, 1.0),  # MA20
-        (0.0, 1.0),  # MACD
-        (0.0, 1.0),  # RSI
-        (0.0, 1.0),  # ATR
-        (0.0, 1.0),  # OBV
-        (0.0, 1.0),  # Stoch
-        (0.0, 1.0),  # CCI
-        (0.0, 1.0)   # ADX
-    ]
-
-    # 최적화 수행
-    res = gp_minimize(lambda w: -score_function(w, top_predictions),  # 점수를 최소화하는 것이므로 부호 반전
-                       space,
-                       n_calls=50,  # 호출 횟수
-                       random_state=42)
-
-    return res.x  # 최적의 가중치 반환
-
 def predict_next_day(model, stock_codes_test):
     """다음 거래일의 상승 여부를 예측하는 함수."""
     df = fetch_stock_data()  # 주식 데이터 가져오기
@@ -251,12 +197,12 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    # 최근 26거래일 데이터를 사용하여 예측하기
+    # 최근 10거래일 데이터를 사용하여 예측하기
     for stock_code in today_rise_stocks['Code'].unique():
         if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
-            recent_data = df[df['Code'] == stock_code].tail(26)  # 마지막 26일 데이터 가져오기
-            if not recent_data.empty and len(recent_data) == 26:  # 데이터가 비어있지 않고 26일인 경우
-                # 최근 26일 데이터를 사용하여 예측
+            recent_data = df[df['Code'] == stock_code].tail(10)  # 마지막 10일 데이터 가져오기
+            if not recent_data.empty and len(recent_data) == 10:  # 데이터가 비어있지 않고 10일인 경우
+                # 최근 10일 데이터를 사용하여 예측
                 X_next = recent_data[features].values[-1].reshape(1, -1)  # 마지막 날의 피처로 2D 배열로 변환
                 logging.debug(f"예측할 데이터 X_next: {X_next}")
 
@@ -267,6 +213,7 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
+                    # 피처 값도 저장할 수 있음
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
@@ -276,24 +223,12 @@ def predict_next_day(model, stock_codes_test):
     # 29% 상승할 것으로 예측된 종목 필터링
     top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    # 최적의 가중치 찾기
-    optimal_weights = optimize_weights(top_predictions)
+    # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
+    top_predictions = top_predictions.sort_values(
+        by=['RSI', 'MACD', 'MA5', 'MA20', 'ATR', 'OBV', 'Stoch', 'CCI', 'ADX'], 
+        ascending=[True, False, False, False, False, False, True, True, True]  # 각 피처의 정렬 방식 설정
+    ).head(20)
 
-    # 점수 계산
-    top_predictions['Score'] = (
-        optimal_weights[0] * top_predictions['MA5'] +
-        optimal_weights[1] * top_predictions['MA20'] +
-        optimal_weights[2] * top_predictions['MACD'] +
-        optimal_weights[3] * (100 - top_predictions['RSI']) +
-        optimal_weights[4] * top_predictions['ATR'] +
-        optimal_weights[5] * top_predictions['OBV'] +
-        optimal_weights[6] * (100 - top_predictions['Stoch']) +
-        optimal_weights[7] * top_predictions['CCI'] +
-        optimal_weights[8] * top_predictions['ADX']
-    )
-
-    # 점수로 정렬
-    top_predictions = top_predictions.sort_values(by='Score', ascending=False).head(20)
 
     # 예측 결과 출력
     print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
