@@ -97,13 +97,22 @@ def main():
         # AI에게 전달할 분석 프롬프트
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
-            f"각 종목 코드에 대한 오늘날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
-            f"내일 29% 이상 상승할 가능성이 있는 저평가된 종목 코드를 예측해주세요. "
-            f"예측은 최근 가격, 거래량, 그리고 기술적 지표(예: 이동 평균, RSI 등)를 기반으로 하며, "
-            f"상승 가능성이 29% 이상인 종목 코드와 그 상승 가능성을 높은 순서로 나열해 주세요. "
-            f"상승 가능성이 29% 이상인 경우, 그 이유를 30자 내외로 기술적 지표와 함께 분석하여 설명해 주세요.\n"
-            f"예시 출력 형식: 종목 코드: 상승 가능성 %, 이유 (예: 기술적 지표에 따른 분석)"
+            f"각 종목 코드에 대한 오늘 날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
+            f"내일 29% 이상 상승할 가능성이 있는 종목 코드를 예측해주세요. "
+            f"예측은 다음 기술적 지표를 기반으로 하세요:\n"
+            f"- 이동 평균(MA5, MA20)\n"
+            f"- MACD 및 MACD 신호\n"
+            f"- 볼린저 밴드(Bollinger High, Bollinger Low)\n"
+            f"- 상대 강도 지수(RSI)\n"
+            f"- 평균 진동 범위(ATR)\n"
+            f"- 모멘텀\n"
+            f"- 윌리엄스 %R\n"
+            f"- ADX\n"
+            f"- 거래량 평균(Volume MA20)\n"
+            f"상승 가능성이 29% 이상인 종목 코드와 그 이유를 30자 내외로 설명해 주세요.\n"
+            f"예시 출력 형식: 종목 코드: 상승 가능성 %, 이유"
         )
+
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
