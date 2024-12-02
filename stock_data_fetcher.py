@@ -65,7 +65,10 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
 
                     # 재무제표 데이터 가져오기
                     financials = fetch_financials(code)
-                    logging.info(f"{code} 재무제표 데이터:\n{financials}")  # 재무제표 로그 기록
+                    if not financials.empty:  # 재무제표 데이터가 있는지 확인
+                        logging.info(f"{code} 재무제표 데이터:\n{financials}")  # 재무제표 로그 기록
+                    else:
+                        logging.warning(f"{code}의 재무제표 데이터가 비어 있습니다.")  # 경고 로그
 
                 else:
                     logging.warning(f"{code}의 최근 26일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
