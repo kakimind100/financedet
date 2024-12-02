@@ -83,7 +83,11 @@ def predict_next_day(model):
             logging.debug(f"예측할 데이터 X_next: {X_next}")
 
             # 예측
-            pred = model.predict(X_next)
+            try:
+                pred = model.predict(X_next)
+            except Exception as e:
+                logging.error(f"예측 중 오류 발생: {e}")
+                continue
 
             # 예측 결과와 함께 정보를 저장
             predictions.append({
@@ -126,7 +130,11 @@ def predict_next_day(model):
 
 if __name__ == "__main__":
     logging.info("모델 예측 스크립트 실행 중...")
-    model = joblib.load('best_model.pkl')  # 저장된 모델 로드
+    try:
+        model = joblib.load('best_model.pkl')  # 저장된 모델 로드
+    except Exception as e:
+        logging.error(f"모델 로드 중 오류 발생: {e}")
+        exit(1)
+
     predict_next_day(model)  # 다음 거래일 예측
     logging.info("모델 예측 스크립트 실행 완료.")
-
