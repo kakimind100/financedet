@@ -15,8 +15,15 @@ jobs:
 
       - name: Set up CUDA
         run: |
-          echo "CUDA 설치 중..."
+          echo "CUDA 저장소 추가 중..."
           sudo apt-get update
+          sudo apt-get install -y gnupg2
+          wget https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY
+          sudo apt-key add NVIDIA-GPG-KEY
+          echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /" | sudo tee /etc/apt/sources.list.d/cuda.list
+          echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/ /" | sudo tee /etc/apt/sources.list.d/cuda.list
+          sudo apt-get update
+          echo "CUDA 설치 중..."
           sudo apt-get install -y cuda  # CUDA 설치
 
       - name: Set up Python
