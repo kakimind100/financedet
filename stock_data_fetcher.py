@@ -1,4 +1,5 @@
 import FinanceDataReader as fdr
+import yfinance as yf
 import pandas as pd
 import logging
 import os
@@ -62,6 +63,10 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
                     logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
                     logging.info(f"가져온 데이터:\n{df.head()}")  # 가져온 데이터의 첫 5행 로그
 
+                    # 재무제표 데이터 가져오기
+                    financials = fetch_financials(code)
+                    logging.info(f"{code} 재무제표 데이터:\n{financials}")  # 재무제표 로그 기록
+
                 else:
                     logging.warning(f"{code}의 최근 26일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
             else:
@@ -70,6 +75,12 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")  # 경고 로그
     except Exception as e:
         logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")  # 오류 로그
+
+def fetch_financials(ticker):
+    """지정한 주식의 재무제표 데이터를 가져오는 함수."""
+    stock = yf.Ticker(ticker)
+    financials = stock.financials
+    return financials
 
 def fetch_stock_data(markets, start_date, end_date):
     """주식 데이터를 가져오는 메인 함수."""
