@@ -70,11 +70,29 @@ def fetch_stock_data():
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
-def prepare_data(df):
-    """데이터를 준비하고 분할하는 함수."""
-    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
-                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
+    def prepare_data(df):
+        """데이터를 준비하고 분할하는 함수."""
+        # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
+        features = [
+            'RSI',                  # 과매도 상태를 나타내는 지표
+            'MACD',                 # 추세 반전을 나타내는 지표
+            'Stoch',                # 과매수/과매도 신호를 나타내는 지표
+            'Bollinger_High',       # 가격의 상한선을 나타내는 지표
+            'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
+            'MA5',                  # 단기 이동 평균
+            'MA20',                 # 중기 이동 평균
+            'EMA20',                # 지수 이동 평균
+            'EMA50',                # 지수 이동 평균
+            'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
+            'ATR',                  # 변동성 지표
+            'Momentum',             # 가격 변화의 속도를 나타내는 지표
+            'ADX',                  # 추세의 강도를 나타내는 지표
+            'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
+            'Volume_MA20',          # 거래량의 이동 평균
+            'ROC',                  # 가격 변화율
+            'CMF',                  # 자금 흐름 지표
+            'OBV'                   # 거래량 기반의 지표
+        ]
 
     X = []
     y = []
@@ -185,10 +203,27 @@ def predict_next_day(model, stock_codes_test):
     today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
 
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
-    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
-                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
-                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
-    predictions = []
+    features = [
+        'RSI',                  # 과매도 상태를 나타내는 지표
+        'MACD',                 # 추세 반전을 나타내는 지표
+        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
+        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
+        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
+        'MA5',                  # 단기 이동 평균
+        'MA20',                 # 중기 이동 평균
+        'EMA20',                # 지수 이동 평균
+        'EMA50',                # 지수 이동 평균
+        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
+        'ATR',                  # 변동성 지표
+        'Momentum',             # 가격 변화의 속도를 나타내는 지표
+        'ADX',                  # 추세의 강도를 나타내는 지표
+        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
+        'Volume_MA20',          # 거래량의 이동 평균
+        'ROC',                  # 가격 변화율
+        'CMF',                  # 자금 흐름 지표
+        'OBV'                   # 거래량 기반의 지표
+    ]
+
 
     # 테스트 데이터와 예측 데이터의 중복 체크
     overlapping_stocks = today_rise_stocks['Code'].unique()
