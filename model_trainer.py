@@ -157,6 +157,7 @@ def train_model_with_hyperparameter_tuning():
         'xgb__learning_rate': [0.01, 0.1, 0.2]
     }
 
+    # n_jobs=-1로 설정하여 가능한 모든 CPU 코어를 사용
     grid_search = GridSearchCV(estimator=voting_model, param_grid=param_grid,
                                scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
     
