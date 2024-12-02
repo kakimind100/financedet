@@ -87,22 +87,25 @@ def fetch_financials(ticker):
     """지정한 주식의 재무제표 데이터를 가져오는 함수."""
     stock = yf.Ticker(ticker)
     financials = stock.financials
-    return financials
+    # 최근 데이터만 선택 (가장 최근 연도)
+    if not financials.empty:
+        return financials.iloc[:, 0]  # 가장 최근 열만 반환
+    return pd.DataFrame()  # 비어 있는 데이터프레임 반환
 
 def calculate_financial_ratios(financials):
     """재무제표에서 재무 비율을 계산하는 함수."""
     ratios = {}
     try:
-        current_assets = financials.loc['Total Assets'].values[0]  # 총 자산
-        current_liabilities = financials.loc['Total Liabilities Net Minority Interest'].values[0]  # 총 부채
-        net_income = financials.loc['Net Income'].values[0]  # 순이익
-        total_equity = financials.loc['Ordinary Shares Number'].values[0]  # 자기자본
+        current_assets = financials.get('Total Assets', None)  # 총 자산
+        current_liabilities = financials.get('Total Liabilities Net Minority Interest', None)  # 총 부채
+        net_income = financials.get('Net Income', None)  # 순이익
+        total_equity = financials.get('Ordinary Shares Number', None)  # 자기자본
 
         # 계산
-        ratios['Current Ratio'] = current_assets / current_liabilities if current_liabilities != 0 else None
-        ratios['Debt Ratio'] = current_liabilities / current_assets if current_assets != 0 else None
-        ratios['ROA'] = net_income / current_assets if current_assets != 0 else None
-        ratios['ROE'] = net_income / total_equity if total_equity != 0 else None
+        ratios['Current Ratio'] = current_assets / current_liabilities if current_liabilities else None
+        ratios['Debt Ratio'] = current_liabilities / current_assets if current_assets else None
+        ratios['ROA'] = net_income / current_assets if current_assets else None
+        ratios['ROE'] = net_income / total_equity if total_equity else None
     except KeyError as e:
         logging.warning(f"재무 비율 계산 중 오류 발생: {e}")
 
