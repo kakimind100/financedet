@@ -1,5 +1,4 @@
 import FinanceDataReader as fdr
-import yfinance as yf
 import pandas as pd
 import logging
 import os
@@ -57,23 +56,8 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
                     df.reset_index(inplace=True)  # 인덱스 초기화
                     df['Code'] = code  # 주식 코드 추가
                     df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
-                    
-                    # 재무제표 데이터 가져오기
-                    financials = fetch_financials(f"{code}.KS")  # 주식 코드에 .KS 추가
-                    if not financials.empty:  # 재무제표 데이터가 있는지 확인
-                        ratios = calculate_financial_ratios(financials)
-                        for ratio_name, ratio_value in ratios.items():
-                            df[ratio_name] = ratio_value  # 재무 비율 추가
-                        logging.info(f"{code} 재무제표 데이터:\n{financials}")  # 재무제표 로그 기록
-                    else:
-                        logging.warning(f"{code}의 재무제표 데이터가 비어 있습니다.")  # 경고 로그
-
                     all_stocks_data[code] = df  # 가져온 데이터 저장
-
-                    # 한 종목의 데이터 로그 기록
-                    logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")
-                    logging.info(f"가져온 데이터:\n{df.head()}")  # 가져온 데이터의 첫 5행 로그
-
+                    logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
                 else:
                     logging.warning(f"{code}의 최근 26일 종가가 3000 미만입니다. 데이터 제외.")  # 경고 로그
             else:
@@ -82,34 +66,6 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             logging.warning(f"{code} 데이터가 비어 있거나 가져오기 실패")  # 경고 로그
     except Exception as e:
         logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")  # 오류 로그
-
-def fetch_financials(ticker):
-    """지정한 주식의 재무제표 데이터를 가져오는 함수."""
-    stock = yf.Ticker(ticker)
-    financials = stock.financials
-    # 최근 데이터만 선택 (가장 최근 연도)
-    if not financials.empty:
-        return financials.iloc[:, 0]  # 가장 최근 열만 반환
-    return pd.DataFrame()  # 비어 있는 데이터프레임 반환
-
-def calculate_financial_ratios(financials):
-    """재무제표에서 재무 비율을 계산하는 함수."""
-    ratios = {}
-    try:
-        current_assets = financials.get('Total Assets', None)  # 총 자산
-        current_liabilities = financials.get('Total Liabilities Net Minority Interest', None)  # 총 부채
-        net_income = financials.get('Net Income', None)  # 순이익
-        total_equity = financials.get('Ordinary Shares Number', None)  # 자기자본
-
-        # 계산
-        ratios['Current Ratio'] = current_assets / current_liabilities if current_liabilities else None
-        ratios['Debt Ratio'] = current_liabilities / current_assets if current_assets else None
-        ratios['ROA'] = net_income / current_assets if current_assets else None
-        ratios['ROE'] = net_income / total_equity if total_equity else None
-    except KeyError as e:
-        logging.warning(f"재무 비율 계산 중 오류 발생: {e}")
-
-    return ratios
 
 def fetch_stock_data(markets, start_date, end_date):
     """주식 데이터를 가져오는 메인 함수."""
@@ -133,8 +89,8 @@ def fetch_stock_data(markets, start_date, end_date):
         data_dir = 'data'
         os.makedirs(data_dir, exist_ok=True)  # data 디렉토리가 없으면 생성
         all_data = pd.concat(all_stocks_data.values(), ignore_index=True)  # 모든 데이터 결합
-        all_data.to_csv(os.path.join(data_dir, 'stock_data_with_ratios.csv'), index=False)  # CSV로 저장
-        logging.info("주식 데이터가 'data/stock_data_with_ratios.csv'로 저장되었습니다.")  # 성공 로그
+        all_data.to_csv(os.path.join(data_dir, 'stock_data.csv'), index=False)  # CSV로 저장
+        logging.info("주식 데이터가 'data/stock_data.csv'로 저장되었습니다.")  # 성공 로그
     else:
         logging.warning("가져온 주식 데이터가 없습니다.")  # 경고 로그
 
