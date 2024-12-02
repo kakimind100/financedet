@@ -99,8 +99,9 @@ def main():
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"각 종목 코드에 대한 오늘 날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
             f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 하나를 추천해 주세요. "
-            f"모든 기술적 지표를 검토하여 추천 종목 코드와 그 이유를 50자 내외로 설명해 주세요."
-        )
+            f"모든 기술적 지표를 검토하여 추천 종목 코드와 그 이유를 50자 내외로 설명해 주세요. "
+        f"AI가 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
+    )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
