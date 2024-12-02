@@ -7,11 +7,17 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Ubuntu 최신 버전에서 실행
+    runs-on: ubuntu-22.04  # Ubuntu 22.04에서 실행 (GPU 지원)
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v2  # 리포지토리의 코드를 체크아웃
+
+      - name: Set up CUDA
+        run: |
+          echo "CUDA 설치 중..."
+          sudo apt-get update
+          sudo apt-get install -y cuda  # CUDA 설치
 
       - name: Set up Python
         uses: actions/setup-python@v2
@@ -33,7 +39,7 @@ jobs:
 
       - name: Create directories
         run: |
-          mkdir -p logs csv_results  # logs 및 csv_results 디렉토리 생성
+          mkdir -p logs csv_results || true  # logs 및 csv_results 디렉토리 생성, 실패 시 무시
 
       - name: Check current directory
         run: |
@@ -44,30 +50,30 @@ jobs:
 
       - name: Run Stock Data Fetcher
         run: |
-          echo "주식 데이터 가져오기 스크립트 실행 중..."  # 실행 시작 메시지
-          python stock_data_fetcher.py  # 주식 데이터 가져오기 스크립트 실행
-          echo "주식 데이터 가져오기 스크립트 실행 완료."  # 실행 완료 메시지
+          echo "주식 데이터 가져오기 스크립트 실행 중..."
+          python stock_data_fetcher.py || exit 1  # 주식 데이터 가져오기 스크립트 실행, 실패 시 종료
+          echo "주식 데이터 가져오기 스크립트 실행 완료."
 
       - name: Run Technical Indicator Calculator
         run: |
-          echo "기술 지표 계산 스크립트 실행 중..."  # 실행 시작 메시지
-          python technical_indicator_calculator.py  # 기술 지표 계산 스크립트 실행
-          echo "기술 지표 계산 스크립트 실행 완료."  # 실행 완료 메시지
+          echo "기술 지표 계산 스크립트 실행 중..."
+          python technical_indicator_calculator.py || exit 1  # 기술 지표 계산 스크립트 실행, 실패 시 종료
+          echo "기술 지표 계산 스크립트 실행 완료."
 
       - name: Run Model Trainer
         run: |
-          echo "모델 훈련 스크립트 실행 중..."  # 실행 시작 메시지
-          python model_trainer.py  # 모델 훈련 스크립트 실행
-          echo "모델 훈련 스크립트 실행 완료."  # 실행 완료 메시지
+          echo "모델 훈련 스크립트 실행 중..."
+          python model_trainer.py || exit 1  # 모델 훈련 스크립트 실행, 실패 시 종료
+          echo "모델 훈련 스크립트 실행 완료."
 
       - name: Run Discord Webhook Script
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # Discord 웹훅 URL 시크릿 사용
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
         run: |
-          echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
-          python discord_webhook.py  # Discord 웹훅 스크립트 실행
-          echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
+          echo "Discord 웹훅 스크립트 실행 중..."
+          python discord_webhook.py || exit 1  # Discord 웹훅 스크립트 실행, 실패 시 종료
+          echo "Discord 웹훅 스크립트 실행 완료."
 
       - name: Upload log file
         uses: actions/upload-artifact@v3  # 로그 파일 업로드
