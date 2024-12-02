@@ -138,7 +138,9 @@ def train_model_with_hyperparameter_tuning():
 
     # 랜덤 포레스트와 XGBoost 모델 초기화
     rf_model = RandomForestClassifier(random_state=42)
-    xgb_model = XGBClassifier(random_state=42)
+    
+    # XGBoost 모델을 GPU로 설정
+    xgb_model = XGBClassifier(tree_method='gpu_hist', gpu_id=0, random_state=42)
 
     # Voting Classifier 생성 (소프트 투표)
     voting_model = VotingClassifier(estimators=[
