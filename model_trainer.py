@@ -106,7 +106,7 @@ def prepare_data(df):
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
 
-            # 타겟 설정: 오늘 최저가에서 최고가가 20% 이상 상승했는지 여부
+            # 타겟 설정: 오늘 최저가에서 최고가가 29% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.29 else 0
 
             # 마지막 날의 피처와 타겟을 함께 추가
