@@ -194,7 +194,7 @@ def score_function(weights, top_predictions):
         weights_dict['MACD'] * top_predictions['MACD'] +
         weights_dict['RSI'] * (100 - top_predictions['RSI']) +
         weights_dict['ATR'] * top_predictions['ATR'] +
-        weights_dict['OBV'] * top_predictions['OBV']
+        weights_dict['OBV'] * top_predictions['OBV'] +
         weights_dict['Stoch'] * (100 - top_predictions['Stoch']) +  # Stoch도 낮을수록 좋음
         weights_dict['CCI'] * top_predictions['CCI'] +
         weights_dict['ADX'] * top_predictions['ADX']
