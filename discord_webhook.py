@@ -99,7 +99,7 @@ def main():
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"각 종목 코드에 대한 오늘 날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
             f"모든 기술적 지표를 검토하여 추천할 종목 코드 하나를 알려주세요. "
-            f"추천 종목 코드와 그 이유를 30자 내외로 설명해 주세요."
+            f"추천 종목 코드와 그 이유를 50자 내외로 설명해 주세요."
         )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
