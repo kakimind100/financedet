@@ -94,15 +94,12 @@ def main():
         filtered_df = pd.DataFrame(filtered_stocks)
         logging.info(f"필터링된 데이터 개수: {len(filtered_df)}개")
 
-        # AI에게 전달할 분석 프롬프트
+        # AI에게 전달할 분석 프롬프트 (하나의 종목 추천으로 변경)
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"각 종목 코드에 대한 오늘 날짜(현재 날짜: {current_date.strftime('%Y-%m-%d')}) 기준으로, "
-            f"내일 29% 이상 상승할 가능성이 있는 종목 코드를 예측해주세요. "
-            f"예측은 전체 기술적 지표를 참고하여 진행해 주세요.\n"
-            f"상승 가능성이 29% 이상인 종목 코드와 그 이유를 30자 내외로 설명해 주세요.\n"
-            f"상승 확률은 기술적 지표와 과거 데이터를 기반으로 한 통계적 추정입니다.\n"
-            f"예시 출력 형식: 종목 코드: 123456, 상승 확률: 35%, 이유: 긍정적인 MACD 신호"
+            f"모든 기술적 지표를 검토하여 추천할 종목 코드 하나를 알려주세요. "
+            f"추천 종목 코드와 그 이유를 30자 내외로 설명해 주세요."
         )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
