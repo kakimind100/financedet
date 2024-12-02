@@ -102,7 +102,6 @@ def main():
             f"모든 기술적 지표를 검토하여 추천 종목 코드와 그 이유를 50자 내외로 설명해 주세요."
         )
 
-
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
 
