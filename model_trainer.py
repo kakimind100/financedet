@@ -70,29 +70,29 @@ def fetch_stock_data():
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
-    def prepare_data(df):
-        """데이터를 준비하고 분할하는 함수."""
-        # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
-        features = [
-            'RSI',                  # 과매도 상태를 나타내는 지표
-            'MACD',                 # 추세 반전을 나타내는 지표
-            'Stoch',                # 과매수/과매도 신호를 나타내는 지표
-            'Bollinger_High',       # 가격의 상한선을 나타내는 지표
-            'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
-            'MA5',                  # 단기 이동 평균
-            'MA20',                 # 중기 이동 평균
-            'EMA20',                # 지수 이동 평균
-            'EMA50',                # 지수 이동 평균
-            'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
-            'ATR',                  # 변동성 지표
-            'Momentum',             # 가격 변화의 속도를 나타내는 지표
-            'ADX',                  # 추세의 강도를 나타내는 지표
-            'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
-            'Volume_MA20',          # 거래량의 이동 평균
-            'ROC',                  # 가격 변화율
-            'CMF',                  # 자금 흐름 지표
-            'OBV'                   # 거래량 기반의 지표
-        ]
+def prepare_data(df):
+    """데이터를 준비하고 분할하는 함수."""
+    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
+    features = [
+        'RSI',                  # 과매도 상태를 나타내는 지표
+        'MACD',                 # 추세 반전을 나타내는 지표
+        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
+        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
+        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
+        'MA5',                  # 단기 이동 평균
+        'MA20',                 # 중기 이동 평균
+        'EMA20',                # 지수 이동 평균
+        'EMA50',                # 지수 이동 평균
+        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
+        'ATR',                  # 변동성 지표
+        'Momentum',             # 가격 변화의 속도를 나타내는 지표
+        'ADX',                  # 추세의 강도를 나타내는 지표
+        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
+        'Volume_MA20',          # 거래량의 이동 평균
+        'ROC',                  # 가격 변화율
+        'CMF',                  # 자금 흐름 지표
+        'OBV'                   # 거래량 기반의 지표
+    ]
 
     X = []
     y = []
@@ -127,7 +127,6 @@ def fetch_stock_data():
 
         # stock_codes에 대한 재조정
         # SMOTE는 X, y에 대해서만 작동하므로, stock_codes는 원래 데이터에 기반하여 다시 설정
-        # 여기서는 stock_codes를 유지하기 위해 원본 stock_codes를 필터링하여 유지하는 방법을 사용
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
             stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
@@ -224,6 +223,7 @@ def predict_next_day(model, stock_codes_test):
         'OBV'                   # 거래량 기반의 지표
     ]
 
+    predictions = []  # 예측 결과를 저장할 리스트
 
     # 테스트 데이터와 예측 데이터의 중복 체크
     overlapping_stocks = today_rise_stocks['Code'].unique()
@@ -299,3 +299,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+
