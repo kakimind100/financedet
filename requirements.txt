@@ -23,7 +23,7 @@ tensorflow>=2.10.0      # TensorFlow 라이브러리 (GPU 지원)
 xgboost>=1.6.2          # XGBoost 알고리즘
 lightgbm>=3.3.2         # LightGBM 알고리즘
 sqlalchemy>=1.4.37      # SQLAlchemy ORM
-imbalanced-learn==0.9.3 # 클래스 불균형 문제 해결 라이브러리
+imbalanced-learn>=0.10.1 # 클래스 불균형 문제 해결 라이브러리
 scikit-optimize==0.8.1  # Bayesian Optimization을 위한 라이브러리
 
 # GPU 관련 추가
