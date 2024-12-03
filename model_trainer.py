@@ -58,7 +58,7 @@ def fetch_stock_data():
             'Volume_MA20': 'float',
             'ROC': 'float',
             'CMF': 'float',
-            'OBV': 'float'
+            'OBV': 'float',
             'Anomaly': 'int'
         }
 
