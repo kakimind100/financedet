@@ -262,8 +262,8 @@ def predict_next_day(model, stock_codes_test):
                      f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
                      f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
                      f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
-                     f"Anomaly: {low['Anomaly']})")
-
+                     f"Anomaly: {row['Anomaly']})")  # low를 row로 변경
+    
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
 
