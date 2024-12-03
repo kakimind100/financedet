@@ -16,9 +16,29 @@ logging.basicConfig(
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # DEBUG로 변경하여 모든 로그를 출력하도록 설정
+console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
+
+def detect_correction_periods(df, drop_threshold=0.05, min_duration=5):
+    """주식 데이터에서 조정 기간을 자동으로 감지하고 라벨링하는 함수."""
+    df['Correction'] = 0  # 기본값 0으로 설정
+    correction_start = None
+
+    for i in range(1, len(df)):
+        # 오늘 종가가 어제 종가에서 일정 비율 하락했는지 확인
+        if df['Close'].iloc[i] < df['Close'].iloc[i - 1] * (1 - drop_threshold):
+            if correction_start is None:
+                correction_start = i  # 조정 시작 인덱스 기록
+            df['Correction'].iloc[i] = 1  # 조정 상태로 라벨링
+        else:
+            # 조정이 끝났다면 기간 확인
+            if correction_start is not None:
+                if i - correction_start >= min_duration:
+                    df.loc[correction_start:i, 'Correction'] = 1  # 조정 기간으로 라벨링
+                correction_start = None  # 조정 시작 인덱스 초기화
+
+    return df
 
 def calculate_technical_indicators(target_code):
     """기술적 지표를 계산하는 함수."""
@@ -121,6 +141,9 @@ def calculate_technical_indicators(target_code):
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
 
+    # 조정 기간 감지
+    df = detect_correction_periods(df)  # 조정 기간 감지 함수 호출
+
     # NaN 값이 있는 행 제거
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
@@ -135,11 +158,4 @@ def calculate_technical_indicators(target_code):
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
-    logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
-    logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")  # 저장된 데이터프레임 정보 로그
-
-if __name__ == "__main__":
-    target_code = '006280'  # 특정 종목 코드를 입력하세요.
-    logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
-    calculate_technical_indicators(target_code)
-    logging.info("기술 지표 계산 스크립트 실행 완료.")
+    logging.info("기
