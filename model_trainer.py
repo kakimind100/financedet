@@ -76,12 +76,12 @@ def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
     logging.debug("데이터 준비 및 분할 시작...")
     
-    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트에 'Anomaly' 포함
+    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트에 'Adjustment' 포함
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
         'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly'  # 'Anomaly'가 포함됨
+        'ROC', 'CMF', 'OBV', 'Adjustment'  # 'Adjustment'가 포함됨
     ]
 
     X = []
@@ -202,7 +202,7 @@ def predict_next_day(model, stock_codes_test):
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
         'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly'
+        'ROC', 'CMF', 'OBV', 'Adjustment'
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -230,7 +230,7 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
-                    'Anomaly': recent_data['Anomaly'].iloc[-1],  # 마지막 날의 이상치 탐지 결과 추가
+                    'Adjustment': recent_data['Adjustment'].iloc[-1],  # 마지막 날의 이상치 탐지 결과 추가
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
@@ -238,7 +238,7 @@ def predict_next_day(model, stock_codes_test):
     predictions_df = pd.DataFrame(predictions)
 
     # 29% 상승할 것으로 예측된 종목 필터링
-    top_predictions = predictions_df[(predictions_df['Prediction'] == 1) & (predictions_df['Anomaly'] == 1)]
+    top_predictions = predictions_df[(predictions_df['Prediction'] == 1) & (predictions_df['Adjustment'] == 0)]
 
     # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
     top_predictions = top_predictions.sort_values(
@@ -262,7 +262,7 @@ def predict_next_day(model, stock_codes_test):
                      f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
                      f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
                      f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
-                     f"Anomaly: {row['Anomaly']})")
+                     f"Adjustment: {high['Adjustment']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
