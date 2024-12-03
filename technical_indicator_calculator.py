@@ -66,47 +66,42 @@ def calculate_technical_indicators(target_code):
         df['MA5'] = df['Close'].rolling(window=5).mean()
         df['MA20'] = df['Close'].rolling(window=20).mean()
         logging.debug("이동 평균(MA5, MA20)을 계산했습니다.")
-    except Exception as e:
-        logging.error(f"이동 평균 계산 중 오류 발생: {e}")
-        return
-
-    # MACD 계산
-    try:
+        
+        # MACD 계산
         macd = ta.macd(df['Close'])
         df['MACD'] = macd['MACD_12_26_9']
         df['MACD_Signal'] = macd['MACDh_12_26_9']
         logging.info("MACD 계산 완료.")
-    except Exception as e:
-        logging.error(f"MACD 계산 중 오류 발생: {e}")
-        return
 
-    # Bollinger Bands 계산
-    try:
+        # Bollinger Bands 계산
         bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
         df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']
         df['Bollinger_Low'] = bollinger_bands['BBL_20_2.0']
         logging.info("Bollinger Bands 계산 완료.")
-    except Exception as e:
-        logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
-        return
 
-    # Stochastic Oscillator 추가
-    try:
+        # Stochastic Oscillator 추가
         stoch = ta.stoch(df['High'], df['Low'], df['Close'])
         df['Stoch'] = stoch['STOCHk_14_3_3']
         logging.info("Stochastic Oscillator 계산 완료.")
-    except Exception as e:
-        logging.error(f"Stochastic Oscillator 계산 중 오류 발생: {e}")
-        return
 
-    # 추가 기술적 지표 계산
-    try:
+        # 추가 기술적 지표 계산
         df['RSI'] = ta.rsi(df['Close'], length=14)
         df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
         df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
         df['EMA20'] = ta.ema(df['Close'], length=20)
         df['EMA50'] = ta.ema(df['Close'], length=50)
+
+        # 추가 지표
+        df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
+        df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
+        df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)
+        df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
+        df['ROC'] = ta.roc(df['Close'], length=12)  # Rate of Change 추가
+        df['CMF'] = ta.cmf(df['High'], df['Low'], df['Close'], df['Volume'], length=20)
+        df['OBV'] = ta.obv(df['Close'], df['Volume'])
+        
         logging.info("추가 기술적 지표 계산 완료.")
+
     except Exception as e:
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
@@ -120,13 +115,8 @@ def calculate_technical_indicators(target_code):
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     # 가격 조정 및 기간 조정 조건 설정
-    # 가격 조정: 현재 가격이 이전 가격보다 낮은 경우
     df['Price_Adjustment'] = np.where(df['Close'] < df['Close'].shift(1), 1, 0)
-
-    # 기간 조정: 가격 변동성이 낮고 거래량 변화가 적은 경우
     df['Volume_Change'] = df['Volume'].pct_change()
-
-    # 가격 변동이 1% 이하이고 거래량 변화가 5% 이하인 경우를 기간 조정으로 설정
     df['Period_Adjustment'] = np.where(
         (df['Price_Change'].abs() < 0.01) & (df['Volume_Change'].abs() < 0.05), 1, 0
     )
@@ -171,7 +161,7 @@ def calculate_technical_indicators(target_code):
         logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
 
     # 최종 예측 결과를 데이터프레임에 추가 (1과 -1로 저장)
-    df['Anomaly'] = np.where(final_predictions == -1, -1, 1)  # '조정'을 -1로, '정상'을 1로 변경
+    df['Anomaly'] = np.where(final_predictions == -1, -1, 1)
 
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
