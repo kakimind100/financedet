@@ -115,7 +115,7 @@ def calculate_technical_indicators(target_code):
     df['Price_Change'] = df['Close'].pct_change() * 100
     logging.info("가격 변화율(Price Change) 계산 완료.")
 
-    # NaN 값 제거
+    # NaN 값 제거 (모든 기술적 지표 계산 후에)
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
@@ -124,7 +124,6 @@ def calculate_technical_indicators(target_code):
     df['Price_Adjustment'] = np.where(df['Close'] < df['Close'].shift(1), 1, 0)
 
     # 기간 조정: 가격 변동성이 낮고 거래량 변화가 적은 경우
-    df['Price_Change'] = df['Close'].pct_change()
     df['Volume_Change'] = df['Volume'].pct_change()
 
     # 가격 변동이 1% 이하이고 거래량 변화가 5% 이하인 경우를 기간 조정으로 설정
