@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.8'  # 사용할 Python 버전 고정
+          python-version: '3.11'  # 사용할 Python 버전 고정
 
       - name: Install CUDA Toolkit
         run: |
