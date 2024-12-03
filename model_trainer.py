@@ -6,8 +6,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
-from sklearn.feature_selection import RFE
-from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
+from imblearn.over_sampling import SMOTE
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -66,41 +65,42 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-
-        # 새로운 피처 추가: 이동 평균 변화율 및 변동성
-        df['MA5_change'] = df['MA5'].pct_change()
-        df['MA20_change'] = df['MA20'].pct_change()
-        df['volatility'] = df['Close'].rolling(window=5).std()  # 5일간의 표준편차
-
-        return df.dropna()  # 결측치 제거하여 반환
+        return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
+def predict_next_day_movement(df, threshold=0.05):
+    """강한 상승 후 다음 날 조정 여부를 예측하는 함수."""
+    df['Next_Movement'] = 0  # 기본값 0으로 설정 (조정)
+
+    for i in range(1, len(df)):
+        # 오늘의 종가와 어제의 종가 비교
+        if df['Close'].iloc[i] > df['Close'].iloc[i - 1] * (1 + threshold):
+            # 강한 상승 상태 감지
+            if i + 1 < len(df):  # 다음 날 데이터가 있는지 확인
+                next_day_close = df['Close'].iloc[i + 1]
+                # 조정 여부 판단
+                if next_day_close < df['Close'].iloc[i]:
+                    df['Next_Movement'].iloc[i] = -1  # 조정
+                else:
+                    df['Next_Movement'].iloc[i] = 1  # 상승 지속
+
+    return df
+
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
+    # 조정 기간 감지
+    df = detect_correction_periods(df)  # 기존 함수 사용 (필요시 추가)
+    df = predict_next_day_movement(df)  # 강한 상승 후 다음 날 조정 여부 예측
+    df = create_correction_features(df)  # 조정 피처 생성
+
     features = [
-        'RSI',                  # 과매도 상태를 나타내는 지표
-        'MACD',                 # 추세 반전을 나타내는 지표
-        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
-        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
-        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
-        'MA5',                  # 단기 이동 평균
-        'MA20',                 # 중기 이동 평균
-        'EMA20',                # 지수 이동 평균
-        'EMA50',                # 지수 이동 평균
-        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
-        'ATR',                  # 변동성 지표
-        'Momentum',             # 가격 변화의 속도를 나타내는 지표
-        'ADX',                  # 추세의 강도를 나타내는 지표
-        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
-        'Volume_MA20',          # 거래량의 이동 평균
-        'ROC',                  # 가격 변화율
-        'CMF',                  # 자금 흐름 지표
-        'OBV',                  # 거래량 기반의 지표
-        'MA5_change',          # 추가된 피처: MA5 변화율
-        'MA20_change',         # 추가된 피처: MA20 변화율
-        'volatility'           # 추가된 피처: 변동성
+        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
+        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 'Momentum',
+        'ADX', 'Williams %R', 'Volume_MA20', 'ROC', 'CMF', 'OBV',
+        'Correction_Length', 'Correction_Avg_Change',  # 조정 기간 관련 피처
+        'Next_Movement'  # 다음 날의 조정 여부 피처 추가
     ]
 
     X = []
@@ -155,17 +155,7 @@ def prepare_data(df):
         X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
     )
 
-    # RFE를 통해 중요한 피처 선택
-    model = RandomForestClassifier(random_state=42)
-    selector = RFE(model, n_features_to_select=10)
-    selector = selector.fit(X_train, y_train)
-
-    # 선택된 피처로 데이터 변환
-    X_train_selected = selector.transform(X_train)
-    X_valid_selected = selector.transform(X_valid)
-    X_test_selected = selector.transform(X_test)
-
-    return X_train_selected, X_valid_selected, X_test_selected, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
 
 def train_model_with_hyperparameter_tuning():
     """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
@@ -188,7 +178,7 @@ def train_model_with_hyperparameter_tuning():
     model = RandomForestClassifier(random_state=42)
     grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
                                scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
-
+    
     grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
     
     # 최적의 하이퍼파라미터 출력
@@ -239,9 +229,9 @@ def predict_next_day(model, stock_codes_test):
         'ROC',                  # 가격 변화율
         'CMF',                  # 자금 흐름 지표
         'OBV',                  # 거래량 기반의 지표
-        'MA5_change',           # 추가된 피처: MA5 변화율
-        'MA20_change',          # 추가된 피처: MA20 변화율
-        'volatility'            # 추가된 피처: 변동성
+        'Correction_Length',     # 조정 기간 길이
+        'Correction_Avg_Change', # 조정 평균 변화율
+        'Next_Movement'          # 다음 날의 조정 여부 피처
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -269,7 +259,7 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
-                    # 피처 값도 저장할 수 있음
+                    'Next_Movement': recent_data['Next_Movement'].iloc[-1],  # 최근 조정 여부 추가
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
@@ -299,7 +289,8 @@ def predict_next_day(model, stock_codes_test):
               f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
               f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
               f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
-              f"CMF: {row['CMF']}, OBV: {row['OBV']})")
+              f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
+              f"Next_Movement: {'조정' if row['Next_Movement'] == -1 else '상승 지속'})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
@@ -320,4 +311,5 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-                       
+
+   
