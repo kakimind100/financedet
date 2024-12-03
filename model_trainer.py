@@ -193,8 +193,8 @@ def predict_next_day(model, stock_codes_test):
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
-        return
-
+        return None, None  # None 반환
+        
     # 오늘 종가가 29% 이상 상승한 종목 필터링
     today_data = df[df['Code'].isin(stock_codes_test)].tail(1)
     if today_data.empty:
