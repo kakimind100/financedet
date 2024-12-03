@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
+from sklearn.feature_selection import RFE
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
 
 # 로그 디렉토리 설정
@@ -65,14 +66,19 @@ def fetch_stock_data():
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-        return df
+
+        # 새로운 피처 추가: 이동 평균 변화율 및 변동성
+        df['MA5_change'] = df['MA5'].pct_change()
+        df['MA20_change'] = df['MA20'].pct_change()
+        df['volatility'] = df['Close'].rolling(window=5).std()  # 5일간의 표준편차
+
+        return df.dropna()  # 결측치 제거하여 반환
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
     features = [
         'RSI',                  # 과매도 상태를 나타내는 지표
         'MACD',                 # 추세 반전을 나타내는 지표
@@ -91,7 +97,10 @@ def prepare_data(df):
         'Volume_MA20',          # 거래량의 이동 평균
         'ROC',                  # 가격 변화율
         'CMF',                  # 자금 흐름 지표
-        'OBV'                   # 거래량 기반의 지표
+        'OBV',                  # 거래량 기반의 지표
+        'MA5_change',          # 추가된 피처: MA5 변화율
+        'MA20_change',         # 추가된 피처: MA20 변화율
+        'volatility'           # 추가된 피처: 변동성
     ]
 
     X = []
@@ -126,7 +135,6 @@ def prepare_data(df):
         X_resampled, y_resampled = smote.fit_resample(X, y)
 
         # stock_codes에 대한 재조정
-        # SMOTE는 X, y에 대해서만 작동하므로, stock_codes는 원래 데이터에 기반하여 다시 설정
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
             stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
@@ -147,7 +155,17 @@ def prepare_data(df):
         X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
     )
 
-    return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
+    # RFE를 통해 중요한 피처 선택
+    model = RandomForestClassifier(random_state=42)
+    selector = RFE(model, n_features_to_select=10)
+    selector = selector.fit(X_train, y_train)
+
+    # 선택된 피처로 데이터 변환
+    X_train_selected = selector.transform(X_train)
+    X_valid_selected = selector.transform(X_valid)
+    X_test_selected = selector.transform(X_test)
+
+    return X_train_selected, X_valid_selected, X_test_selected, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
 
 def train_model_with_hyperparameter_tuning():
     """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
@@ -170,7 +188,7 @@ def train_model_with_hyperparameter_tuning():
     model = RandomForestClassifier(random_state=42)
     grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
                                scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
-    
+
     grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
     
     # 최적의 하이퍼파라미터 출력
@@ -220,7 +238,10 @@ def predict_next_day(model, stock_codes_test):
         'Volume_MA20',          # 거래량의 이동 평균
         'ROC',                  # 가격 변화율
         'CMF',                  # 자금 흐름 지표
-        'OBV'                   # 거래량 기반의 지표
+        'OBV',                  # 거래량 기반의 지표
+        'MA5_change',           # 추가된 피처: MA5 변화율
+        'MA20_change',          # 추가된 피처: MA20 변화율
+        'volatility'            # 추가된 피처: 변동성
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -299,3 +320,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+                       
