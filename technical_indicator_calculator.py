@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import os
 import pandas_ta as ta  # pandas_ta 임포트 추가
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import IsolationForest  # Isolation Forest 임포트 추가
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -133,19 +133,15 @@ def calculate_technical_indicators(target_code):
     # 특징 및 레이블 설정
     features = ['Close', 'MA5', 'MA20', 'MACD', 'RSI', 'Bollinger_High', 'Bollinger_Low', 'Stoch']
     X = df[features]
-    y = df['Adjustment']
 
-    # Random Forest 모델을 사용하여 조정 상태 탐지
+    # Isolation Forest 모델을 사용하여 조정 상태 탐지
     try:
-        rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-        rf_model.fit(X, y)
-
-        # 예측
-        df['Predicted_Adjustment'] = rf_model.predict(X)
-        df['Adjustment'] = np.where(df['Predicted_Adjustment'] == 1, '조정', '정상')  # 조정 상태 해석
-        logging.info("랜덤 포레스트를 사용한 조정 상태 탐지 완료.")
+        isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        df['Anomaly'] = isolation_forest.fit_predict(X)
+        df['Adjustment'] = np.where(df['Anomaly'] == -1, '조정', '정상')  # 조정 상태 해석
+        logging.info("Isolation Forest를 사용한 조정 상태 탐지 완료.")
     except Exception as e:
-        logging.error(f"랜덤 포레스트 모델 학습 중 오류 발생: {e}")
+        logging.error(f"Isolation Forest 모델 학습 중 오류 발생: {e}")
         return
 
     # 특정 종목 코드의 데이터 로그하기
@@ -166,4 +162,3 @@ if __name__ == "__main__":
     logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
     calculate_technical_indicators(target_code)
     logging.info("기술 지표 계산 스크립트 실행 완료.")
-
