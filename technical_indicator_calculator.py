@@ -129,7 +129,7 @@ def calculate_technical_indicators(target_code):
 
     # 이상치 탐지
     try:
-        isolation_forest = IsolationForest(contamination=0.05, random_state=42)
+        isolation_forest = IsolationForest(contamination=0.10, random_state=42)
         df['Anomaly'] = isolation_forest.fit_predict(df[['Close', 'Open', 'High', 'Low', 'Volume', 'MA5', 'MA20', 'RSI', 'MACD', 'Stoch', 'ATR']])
         df['Adjustment'] = np.where(df['Anomaly'] == -1, '조정', '정상')  # 조정 상태 해석
         logging.info("이상치 탐지 완료.")
