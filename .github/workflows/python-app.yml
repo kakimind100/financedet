@@ -31,7 +31,7 @@ jobs:
         run: |
           echo "CUDA Toolkit 설치 중..."
           # 최신 CUDA Toolkit 설치 스크립트 다운로드
-          wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_515.43.04_linux.run
+          wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_515.43.04_linux.run || { echo "CUDA Toolkit 다운로드 실패"; exit 1; }
           sudo sh cuda_11.8.0_515.43.04_linux.run --silent --toolkit
 
       - name: Install dependencies
