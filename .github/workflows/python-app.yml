@@ -32,12 +32,15 @@ jobs:
           echo "CUDA Toolkit 설치 중..."
           # NVIDIA GPG 키 추가 (최신 키 사용)
           sudo mkdir -p /etc/apt/keyrings
-          wget -O /etc/apt/keyrings/nvidia-archive-keyring.gpg https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY
-          
-          # CUDA 리포지토리 추가
+          sudo wget -O /etc/apt/keyrings/nvidia-archive-keyring.gpg https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY
+
+          # CUDA 리포지토리 추가 (Ubuntu 22.04)
           echo "deb [signed-by=/etc/apt/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu22.04/x86_64/ /" | sudo tee /etc/apt/sources.list.d/cuda.list
-          
+
+          # 패키지 목록 업데이트
           sudo apt-get update
+
+          # CUDA Toolkit 설치
           sudo apt-get install -y cuda-toolkit-12-6  # CUDA Toolkit 설치
 
       - name: Install dependencies
