@@ -78,10 +78,8 @@ def prepare_data(df):
     
     # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트에 'Anomaly' 포함
     features = [
-        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
-        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
-        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly'  # 'Anomaly'가 포함됨
+        'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low',  # RSI, MACD, Bollinger Bands
+        'EMA20', 'EMA50', 'ATR', 'Volume', 'Anomaly'  # EMA, ATR, Volume, Anomaly
     ]
 
     X = []
@@ -199,10 +197,8 @@ def predict_next_day(model, stock_codes_test):
 
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = [
-        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
-        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
-        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly'
+        'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low',  # RSI, MACD, Bollinger Bands
+        'EMA20', 'EMA50', 'ATR', 'Volume', 'Anomaly'  # EMA, ATR, Volume, Anomaly
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
