@@ -81,9 +81,6 @@ def detect_corrections(df):
     isolation_forest = IsolationForest(contamination=0.05, random_state=42)
     df['Anomaly'] = isolation_forest.fit_predict(df[features])
     
-    # Anomaly가 -1이면 조정 상태로 표시
-    df['Correction'] = df['Anomaly'].apply(lambda x: 1 if x == -1 else 0)
-    
     return df
 
 def prepare_data(df):
@@ -91,7 +88,7 @@ def prepare_data(df):
     features = [
         'RSI', 'MACD', 'Stoch', 
         'Bollinger_High', 'Bollinger_Low',
-        'MA5', 'MA20', 'Correction'  # Correction 추가
+        'MA5', 'MA20', 'Anomaly'  # Correction 대신 Anomaly 추가
     ]
 
     X = []
@@ -212,7 +209,7 @@ def predict_next_day(model, stock_codes_test):
         'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
         'MA5',                  # 단기 이동 평균
         'MA20',                 # 중기 이동 평균
-        'Correction'            # 조정 상태를 나타내는 지표
+        'Anomaly'               # 조정 상태를 나타내는 지표
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -282,4 +279,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
