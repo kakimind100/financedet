@@ -10,8 +10,8 @@ ta>=0.7.0                # 기술적 지표 계산을 위한 라이브러리
 plotly>=5.9.0           # 데이터 시각화 라이브러리
 discord.py>=2.0.1       # 디스코드 API와 상호작용하기 위한 라이브러리
 mysql-connector-python>=8.0.30  # MySQL Connector/Python
-matplotlib               # 데이터 시각화 라이브러리
-pyyaml                  # YAML 파일 처리 라이브러리
+matplotlib==3.7.5       # 데이터 시각화 라이브러리
+pyyaml==6.0.2           # YAML 파일 처리 라이브러리
 scikit-learn>=1.0.2     # 안정적인 이전 버전으로 설정
 joblib>=1.1.0           # 모델 저장 및 로드를 위한 라이브러리
 seaborn>=0.11.2         # 데이터 시각화 라이브러리
@@ -23,8 +23,8 @@ tensorflow>=2.10.0      # TensorFlow 라이브러리 (GPU 지원)
 xgboost>=1.6.2          # XGBoost 알고리즘
 lightgbm>=3.3.2         # LightGBM 알고리즘
 sqlalchemy>=1.4.37      # SQLAlchemy ORM
-imbalanced-learn        # 클래스 불균형 문제 해결 라이브러리
-scikit-optimize         # Bayesian Optimization을 위한 라이브러리
+imbalanced-learn==0.9.3 # 클래스 불균형 문제 해결 라이브러리
+scikit-optimize==0.8.1  # Bayesian Optimization을 위한 라이브러리
 
 # GPU 관련 추가
 tensorflow-gpu>=2.10.0  # TensorFlow GPU 지원
