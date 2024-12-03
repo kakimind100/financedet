@@ -209,7 +209,6 @@ def predict_next_day(model, stock_codes_test):
         'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
         'MA5',                  # 단기 이동 평균
         'MA20',                 # 중기 이동 평균
-        'Anomaly'               # 조정 상태를 나타내는 지표
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
