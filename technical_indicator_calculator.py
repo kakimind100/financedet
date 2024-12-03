@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 import os
 import pandas_ta as ta  # pandas_ta 라이브러리 임포트
+from sklearn.ensemble import IsolationForest  # Isolation Forest 임포트
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -124,6 +125,15 @@ def calculate_technical_indicators(target_code):
     # NaN 값이 있는 행 제거
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
+
+    # Isolation Forest를 사용하여 이상치 탐지
+    try:
+        isolation_forest = IsolationForest(contamination=0.05, random_state=42)
+        df['Anomaly'] = isolation_forest.fit_predict(df[['Close', 'MA5', 'MA20', 'MACD', 'Stoch', 'RSI', 'ATR']])
+        logging.info("이상치 탐지를 위한 Isolation Forest 모델이 적용되었습니다.")
+    except Exception as e:
+        logging.error(f"이상치 탐지 중 오류 발생: {e}")
+        return
 
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
