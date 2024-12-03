@@ -123,13 +123,15 @@ def calculate_technical_indicators(target_code):
         logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
         return
 
+    # Price Change 계산
+    df['Price_Change'] = df['Close'].pct_change() * 100  # 백분율 변화 계산
+    logging.info("가격 변화율(Price Change) 계산 완료.")
+
     # NaN 값이 있는 행 제거
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     # 조정 상태 레이블 생성
-    # 기본적으로 가격이 하락하는 경우를 조정으로 설정하되,
-    # RSI가 70 이상일 때 하락하는 경우를 추가하여 조정으로 판단
     df['Adjustment'] = np.where(
         (df['Close'] < df['Close'].shift(1)) | 
         ((df['RSI'] > 70) & (df['Close'] < df['Close'].shift(1))),
@@ -138,7 +140,7 @@ def calculate_technical_indicators(target_code):
     )
 
     # 특징 및 레이블 설정
-    features = ['Close', 'MA5', 'MA20', 'MACD', 'RSI', 'Bollinger_High', 'Bollinger_Low', 'Stoch']
+    features = ['Price_Change', 'RSI']
     X = df[features]
 
     # Isolation Forest 모델을 사용하여 조정 상태 탐지
@@ -167,5 +169,3 @@ def calculate_technical_indicators(target_code):
 if __name__ == "__main__":
     target_code = '006280'  # 특정 종목 코드를 입력하세요.
     logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
-    calculate_technical_indicators(target_code)
-    logging.info("기술 지표 계산 스크립트 실행 완료.")
