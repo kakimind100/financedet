@@ -208,17 +208,7 @@ def predict_next_day(model, stock_codes_test):
         'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
         'MA5',                  # 단기 이동 평균
         'MA20',                 # 중기 이동 평균
-        'EMA20',                # 지수 이동 평균
-        'EMA50',                # 지수 이동 평균
-        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
-        'ATR',                  # 변동성 지표
-        'Momentum',             # 가격 변화의 속도를 나타내는 지표
-        'ADX',                  # 추세의 강도를 나타내는 지표
-        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
-        'Volume_MA20',          # 거래량의 이동 평균
-        'ROC',                  # 가격 변화율
-        'CMF',                  # 자금 흐름 지표
-        'OBV'                   # 거래량 기반의 지표
+        'Correction'            # 조정 상태를 나타내는 지표
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -276,16 +266,3 @@ def predict_next_day(model, stock_codes_test):
     output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
     all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
     logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
-
-if __name__ == "__main__":
-    logging.info("모델 훈련 스크립트 실행 중...")
-    model, stock_codes_test = train_model_with_hyperparameter_tuning()  # 하이퍼파라미터 튜닝 모델 훈련
-    logging.info("모델 훈련 스크립트 실행 완료.")
-
-    if model is not None and stock_codes_test is not None:  # 모델과 테스트 데이터가 있는 경우에만 예측 실행
-        logging.info("다음 거래일 예측 스크립트 실행 중...")
-        predict_next_day(model, stock_codes_test)  # 다음 거래일 예측
-        logging.info("다음 거래일 예측 스크립트 실행 완료.")
-    else:
-        logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
