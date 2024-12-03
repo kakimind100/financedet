@@ -158,4 +158,10 @@ def calculate_technical_indicators(target_code):
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
-    logging.info("기
+    logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
+
+if __name__ == "__main__":
+    target_code = '006280'  # 특정 종목 코드를 입력하세요.
+    logging.info("기술 지표 계산 스크립트 실행 중...")
+    calculate_technical_indicators(target_code)
+    logging.info("기술 지표 계산 스크립트 실행 완료.")
