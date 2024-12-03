@@ -5,8 +5,10 @@ import os
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.metrics import classification_report
-from imblearn.over_sampling import SMOTE
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
+import pandas_ta as ta  # pandas_ta 라이브러리 임포트
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -24,6 +26,107 @@ console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
+
+def calculate_technical_indicators(target_code):
+    """기술적 지표를 계산하는 함수."""
+    data_dir = 'data'
+    dtype = {
+        'Date': 'str',
+        'Open': 'float',
+        'High': 'float',
+        'Low': 'float',
+        'Close': 'float',
+        'Volume': 'float',
+        'Change': 'float',
+        'Code': 'object'
+    }
+
+    # 데이터 로딩
+    try:
+        df = pd.read_csv(os.path.join(data_dir, 'stock_data.csv'), dtype=dtype)
+        logging.debug(f"CSV 파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 성공적으로 읽었습니다.")
+        logging.info(f"데이터프레임의 첫 5행:\n{df.head()}")  # 첫 5행 로그
+
+        # 날짜 열을 datetime 형식으로 변환
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        df.set_index(['Code', 'Date'], inplace=True)  # 종목 코드와 날짜를 인덱스로 설정
+
+        # 중복된 데이터 처리: 종목 코드와 날짜로 그룹화하여 평균값으로 대체
+        df = df.groupby(['Code', df.index.get_level_values('Date')]).mean()
+        logging.info("중복 데이터 처리 완료.")
+    except FileNotFoundError:
+        logging.error(f"파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 찾을 수 없습니다.")
+        return
+    except pd.errors.EmptyDataError:
+        logging.error("CSV 파일이 비어 있습니다.")
+        return
+    except Exception as e:
+        logging.error(f"CSV 파일 읽기 중 오류 발생: {e}")
+        return
+
+    # 기술적 지표 계산
+    try:
+        df['MA5'] = df['Close'].rolling(window=5).mean()
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        macd = ta.macd(df['Close'])
+        df['MACD'] = macd['MACD_12_26_9']
+        df['MACD_Signal'] = macd['MACDh_12_26_9']
+        df['Bollinger_High'], df['Bollinger_Low'] = ta.bbands(df['Close'], length=20, std=2)['BBM_20_2.0'], ta.bbands(df['Close'], length=20, std=2)['BBL_20_2.0']
+        stoch = ta.stoch(df['High'], df['Low'], df['Close'])
+        df['Stoch'] = stoch['STOCHk_14_3_3']
+        df['RSI'] = ta.rsi(df['Close'], length=14)
+        df['ATR'] = ta.atr(df['High'], df['Low'], df['Close'], length=14)
+        df['CCI'] = ta.cci(df['High'], df['Low'], df['Close'], length=20)
+        df['EMA20'] = ta.ema(df['Close'], length=20)
+        df['EMA50'] = ta.ema(df['Close'], length=50)
+        df['Momentum'] = df['Close'].diff(4)
+        df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)
+        df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
+        df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()
+        df['ROC'] = ta.roc(df['Close'], length=12)
+        df['CMF'] = ta.cmf(df['High'], df['Low'], df['Close'], df['Volume'], length=20)
+        df['OBV'] = ta.obv(df['Close'], df['Volume'])
+        logging.info("기술적 지표 계산 완료.")
+    except Exception as e:
+        logging.error(f"기술적 지표 계산 중 오류 발생: {e}")
+        return
+
+    # NaN 값이 있는 행 제거
+    df.dropna(inplace=True)
+    logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
+
+    # 조정 상태 추가
+    detect_correction_periods(df)  # 조정 상태 감지 함수 호출
+
+    # 특정 종목 코드의 데이터 로그하기
+    if target_code in df.index.levels[0]:
+        target_data = df.loc[target_code]
+        logging.info(f"{target_code} 종목 코드의 계산된 데이터:\n{target_data}")
+    else:
+        logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
+
+    # 계산된 데이터프레임을 CSV로 저장
+    output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
+    df.to_csv(output_file)
+    logging.info("기술적 지표가 'stock_data_with_indicators.csv'로 저장되었습니다.")
+
+def detect_correction_periods(df, drop_threshold=0.05, min_duration=5):
+    """주식 데이터에서 조정 기간을 자동으로 감지하고 라벨링하는 함수."""
+    df['Correction'] = 0  # 기본값 0으로 설정
+    correction_start = None
+
+    for i in range(1, len(df)):
+        # 오늘 종가가 어제 종가에서 일정 비율 하락했는지 확인
+        if df['Close'].iloc[i] < df['Close'].iloc[i - 1] * (1 - drop_threshold):
+            if correction_start is None:
+                correction_start = i  # 조정 시작 인덱스 기록
+            df['Correction'].iloc[i] = 1  # 조정 상태로 라벨링
+        else:
+            # 조정이 끝났다면 기간 확인
+            if correction_start is not None:
+                if i - correction_start >= min_duration:
+                    df.loc[correction_start:i, 'Correction'] = 1  # 조정 기간으로 라벨링
+                correction_start = None  # 조정 시작 인덱스 초기화
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -58,7 +161,8 @@ def fetch_stock_data():
             'Volume_MA20': 'float',
             'ROC': 'float',
             'CMF': 'float',
-            'OBV': 'float'
+            'OBV': 'float',
+            'Correction': 'int'  # 조정 상태 추가
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
@@ -70,37 +174,13 @@ def fetch_stock_data():
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
 
-def predict_next_day_movement(df, threshold=0.05):
-    """강한 상승 후 다음 날 조정 여부를 예측하는 함수."""
-    df['Next_Movement'] = 0  # 기본값 0으로 설정 (조정)
-
-    for i in range(1, len(df)):
-        # 오늘의 종가와 어제의 종가 비교
-        if df['Close'].iloc[i] > df['Close'].iloc[i - 1] * (1 + threshold):
-            # 강한 상승 상태 감지
-            if i + 1 < len(df):  # 다음 날 데이터가 있는지 확인
-                next_day_close = df['Close'].iloc[i + 1]
-                # 조정 여부 판단
-                if next_day_close < df['Close'].iloc[i]:
-                    df['Next_Movement'].iloc[i] = -1  # 조정
-                else:
-                    df['Next_Movement'].iloc[i] = 1  # 상승 지속
-
-    return df
-
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
-    # 조정 기간 감지
-    df = detect_correction_periods(df)  # 기존 함수 사용 (필요시 추가)
-    df = predict_next_day_movement(df)  # 강한 상승 후 다음 날 조정 여부 예측
-    df = create_correction_features(df)  # 조정 피처 생성
-
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 'Momentum',
         'ADX', 'Williams %R', 'Volume_MA20', 'ROC', 'CMF', 'OBV',
-        'Correction_Length', 'Correction_Avg_Change',  # 조정 기간 관련 피처
-        'Next_Movement'  # 다음 날의 조정 여부 피처 추가
+        'Correction'  # 조정 상태 추가
     ]
 
     X = []
@@ -143,6 +223,10 @@ def prepare_data(df):
         logging.warning("타겟 클래스가 1개만 존재합니다. SMOTE를 적용하지 않습니다.")
         X_resampled, y_resampled = X, y  # 원본 데이터 유지
         stock_codes_resampled = stock_codes  # 원본 stock_codes 유지
+
+    # 데이터 정규화
+    scaler = StandardScaler()
+    X_resampled = scaler.fit_transform(X_resampled)
 
     # 데이터 분할
     X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
@@ -194,6 +278,10 @@ def train_model_with_hyperparameter_tuning():
     logging.info(f"모델 성능 보고서:\n{report}")
     print(report)
 
+    # 혼동 행렬 출력
+    cm = confusion_matrix(y_test, y_pred)
+    logging.info(f"혼동 행렬:\n{cm}")
+
     # 테스트 세트 종목 코드 로깅
     logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
 
@@ -229,9 +317,7 @@ def predict_next_day(model, stock_codes_test):
         'ROC',                  # 가격 변화율
         'CMF',                  # 자금 흐름 지표
         'OBV',                  # 거래량 기반의 지표
-        'Correction_Length',     # 조정 기간 길이
-        'Correction_Avg_Change', # 조정 평균 변화율
-        'Next_Movement'          # 다음 날의 조정 여부 피처
+        'Correction'            # 조정 상태 추가
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -259,7 +345,6 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
-                    'Next_Movement': recent_data['Next_Movement'].iloc[-1],  # 최근 조정 여부 추가
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
@@ -289,8 +374,7 @@ def predict_next_day(model, stock_codes_test):
               f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
               f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
               f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
-              f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
-              f"Next_Movement: {'조정' if row['Next_Movement'] == -1 else '상승 지속'})")
+              f"CMF: {row['CMF']}, OBV: {row['OBV']}, Correction: {row['Correction']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
@@ -301,6 +385,11 @@ def predict_next_day(model, stock_codes_test):
     logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
 
 if __name__ == "__main__":
+    target_code = '006280'  # 특정 종목 코드를 입력하세요.
+    logging.info("기술 지표 계산 스크립트 실행 중...")
+    calculate_technical_indicators(target_code)
+    logging.info("기술 지표 계산 스크립트 실행 완료.")
+
     logging.info("모델 훈련 스크립트 실행 중...")
     model, stock_codes_test = train_model_with_hyperparameter_tuning()  # 하이퍼파라미터 튜닝 모델 훈련
     logging.info("모델 훈련 스크립트 실행 완료.")
@@ -312,4 +401,4 @@ if __name__ == "__main__":
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
 
-   
+
