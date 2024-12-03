@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import logging
 import os
+import pandas_ta as ta  # pandas_ta 임포트 추가
 from sklearn.ensemble import RandomForestClassifier
 
 # 로그 디렉토리 설정
