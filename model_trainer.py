@@ -92,6 +92,7 @@ def prepare_data(df):
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
 
+            # 조정 상태를 1(조정) 또는 0(정상)으로 설정
             target_today = 1 if high_price > low_price * 1.29 else 0
 
             X.append(stock_data[features].values[-1])
@@ -105,8 +106,7 @@ def prepare_data(df):
 
     if len(np.unique(y)) > 1:
         smote = SMOTE(random_state=42)
-        X_resampled, y_resampled = smote.fit_resample
-        # SMOTE를 적용하여 균형 잡힌 데이터 세트를 생성
+        X_resampled, y_resampled = smote.fit_resample(X, y)  # SMOTE를 적용하여 균형 잡힌 데이터 세트를 생성
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
             stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 원본 stock_codes에서 순환
@@ -219,11 +219,11 @@ def predict_next_day(model, stock_codes_test):
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
 
-    # 29% 상승할 것으로 예측된 종목 필터링
-    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
+    # 조정 상태로 예측된 종목 필터링
+    adjustment_predictions = predictions_df[predictions_df['Prediction'] == 1]  # 조정 상태로 예측한 종목
 
     # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
-    top_predictions = top_predictions.sort_values(
+    top_predictions = adjustment_predictions.sort_values(
         by=['RSI', 'MACD', 'Stoch', 'Momentum', 'Volume_MA20', 
             'Bollinger_Low', 'ATR', 'CMF', 'OBV', 
             'CCI', 'ADX', 'ROC', 'MA5', 'MA20'], 
@@ -233,7 +233,7 @@ def predict_next_day(model, stock_codes_test):
     ).head(20)
 
     # 예측 결과 출력
-    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+    print("다음 거래일에 조정 상태로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
         print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
               f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
