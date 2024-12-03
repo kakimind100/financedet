@@ -1,32 +1,93 @@
-Run echo "NVIDIA 드라이버 및 CUDA Toolkit 설치 중..."
-NVIDIA 드라이버 및 CUDA Toolkit 설치 중...
-Warning: apt-key is deprecated. Manage keyring files in trusted.gpg.d instead (see apt-key(8)).
-Executing: /tmp/apt-key-gpghome.jYiSVYUMgF/gpg.1.sh --fetch-keys https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY
-gpg: requesting key from 'https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY'
-gpg: WARNING: unable to fetch URI https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY: No data
-deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu22.04/x86_64/ /
-Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [142 B]
-Hit:2 http://azure.archive.ubuntu.com/ubuntu jammy InRelease
-Hit:6 https://packages.microsoft.com/repos/azure-cli jammy InRelease
-Get:3 http://azure.archive.ubuntu.com/ubuntu jammy-updates InRelease [128 kB]
-Get:4 http://azure.archive.ubuntu.com/ubuntu jammy-backports InRelease [127 kB]
-Get:5 http://azure.archive.ubuntu.com/ubuntu jammy-security InRelease [129 kB]
-Get:7 https://packages.microsoft.com/ubuntu/22.04/prod jammy InRelease [3632 B]
-Ign:8 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu22.04/x86_64  InRelease
-Get:9 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main amd64 Packages [2180 kB]
-Get:10 http://azure.archive.ubuntu.com/ubuntu jammy-updates/main Translation-en [372 kB]
-Get:11 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe amd64 Packages [1177 kB]
-Err:13 https://developer.download.nvidia.com/compute/cuda/repos/ubuntu22.04/x86_64  Release
-  404  Not Found [IP: 152.195.19.142 443]
-Get:12 http://azure.archive.ubuntu.com/ubuntu jammy-updates/universe Translation-en [287 kB]
-Get:14 http://azure.archive.ubuntu.com/ubuntu jammy-backports/universe amd64 Packages [28.9 kB]
-Get:15 http://azure.archive.ubuntu.com/ubuntu jammy-security/main amd64 Packages [1956 kB]
-Get:16 http://azure.archive.ubuntu.com/ubuntu jammy-security/main Translation-en [313 kB]
-Get:17 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe amd64 Packages [957 kB]
-Get:18 http://azure.archive.ubuntu.com/ubuntu jammy-security/universe Translation-en [203 kB]
-Get:19 https://packages.microsoft.com/ubuntu/22.04/prod jammy/main armhf Packages [15.7 kB]
-Get:20 https://packages.microsoft.com/ubuntu/22.04/prod jammy/main arm64 Packages [40.2 kB]
-Get:21 https://packages.microsoft.com/ubuntu/22.04/prod jammy/main amd64 Packages [173 kB]
-Reading package lists...
-E: The repository 'https://developer.download.nvidia.com/compute/cuda/repos/ubuntu22.04/x86_64  Release' does not have a Release file.
-Error: Process completed with exit code 100.
+name: Run Stock Analysis with GPU Support
+
+on:
+  schedule:
+    - cron: '30 6 * * *'  # 매일 16:00 KST에 실행 (UTC 07:00)
+  workflow_dispatch:  # 수동 실행을 위한 설정
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # Ubuntu 최신 버전에서 실행
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2  # 리포지토리의 코드를 체크아웃
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'  # 사용할 Python 버전 설정
+
+      - name: Install NVIDIA Driver and CUDA Toolkit
+        run: |
+          echo "NVIDIA 드라이버 및 CUDA Toolkit 설치 중..."
+          # NVIDIA 패키지 리포지토리 추가
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:graphics-drivers/ppa
+          sudo apt-get update
+          sudo apt-get install -y nvidia-driver-470  # 적절한 드라이버 버전으로 설정
+          
+          # CUDA Toolkit 설치
+          wget https://developer.download.nvidia.com/compute/cuda/11.2.0/local_installers/cuda_11.2.0_460.32.03_linux.run
+          sudo sh cuda_11.2.0_460.32.03_linux.run --silent --toolkit
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip  # pip 업그레이드
+          pip install -r requirements.txt  # requirements.txt에 명시된 패키지 설치
+
+      - name: Check if today is a trading day
+        env:
+          KOREA_HOLIDAY_API_KEY: ${{ secrets.KOREA_HOLIDAY_API_KEY }}  # API 키 환경 변수 설정
+        run: |
+          echo "거래일 확인 중..."
+          python check_trading_day.py  # 거래일 확인 스크립트 실행
+
+      - name: Create directories
+        run: |
+          mkdir -p logs csv_results  # logs 및 csv_results 디렉토리 생성
+
+      - name: Check current directory
+        run: |
+          echo "현재 디렉토리:"
+          pwd
+          echo "현재 디렉토리의 파일 목록:"
+          ls -al  # 현재 디렉토리의 파일 목록 확인
+
+      - name: Run Stock Data Fetcher
+        run: |
+          echo "주식 데이터 가져오기 스크립트 실행 중..."  # 실행 시작 메시지
+          python stock_data_fetcher.py  # 주식 데이터 가져오기 스크립트 실행
+          echo "주식 데이터 가져오기 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Run Technical Indicator Calculator
+        run: |
+          echo "기술 지표 계산 스크립트 실행 중..."  # 실행 시작 메시지
+          python technical_indicator_calculator.py  # 기술 지표 계산 스크립트 실행
+          echo "기술 지표 계산 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Run Model Trainer
+        run: |
+          echo "모델 훈련 스크립트 실행 중..."  # 실행 시작 메시지
+          python model_trainer.py  # 모델 훈련 스크립트 실행
+          echo "모델 훈련 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Run Discord Webhook Script
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}  # Discord 웹훅 URL 시크릿 사용
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}  # OpenAI API 키 시크릿 사용
+        run: |
+          echo "Discord 웹훅 스크립트 실행 중..."  # 실행 시작 메시지
+          python discord_webhook.py  # Discord 웹훅 스크립트 실행
+          echo "Discord 웹훅 스크립트 실행 완료."  # 실행 완료 메시지
+
+      - name: Upload log file
+        uses: actions/upload-artifact@v3  # 로그 파일 업로드
+        with:
+          name: discord-webhook-log  # 업로드할 아티팩트의 이름
+          path: logs/discord_webhook.log  # 로그 파일 경로 (필요시 수정)
+
+      - name: Get Korean Time
+        run: |
+          echo "한국 시간: $(python -c 'from datetime import datetime, timedelta; print((datetime.utcnow() + timedelta(hours=9)).strftime("%Y년 %m월 %d일 %H시")))')"
