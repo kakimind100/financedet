@@ -12,17 +12,17 @@ discord.py>=2.0.1       # 디스코드 API와 상호작용하기 위한 라이�
 mysql-connector-python>=8.0.30  # MySQL Connector/Python
 matplotlib               # 데이터 시각화 라이브러리
 pyyaml                  # YAML 파일 처리 라이브러리
-scikit-learn            # 머신러닝 라이브러리
-joblib>=1.1.0          # 모델 저장 및 로드를 위한 라이브러리
-seaborn>=0.11.2        # 데이터 시각화 라이브러리
-pytest>=7.1.3          # 테스트 프레임워크
-jupyter>=1.0.0         # Jupyter Notebook
-tensorflow>=2.10.0     # TensorFlow 라이브러리 (GPU 지원)
+scikit-learn==1.0.2     # 안정적인 이전 버전으로 설정
+joblib>=1.1.0           # 모델 저장 및 로드를 위한 라이브러리
+seaborn>=0.11.2         # 데이터 시각화 라이브러리
+pytest>=7.1.3           # 테스트 프레임워크
+jupyter>=1.0.0          # Jupyter Notebook
+tensorflow>=2.10.0      # TensorFlow 라이브러리 (GPU 지원)
 # 또는
-# torch>=1.12.0        # PyTorch 라이브러리 (GPU 지원)
-xgboost>=1.6.2         # XGBoost 알고리즘
-lightgbm>=3.3.2        # LightGBM 알고리즘
-sqlalchemy>=1.4.37     # SQLAlchemy ORM
+# torch>=1.12.0         # PyTorch 라이브러리 (GPU 지원)
+xgboost>=1.6.2          # XGBoost 알고리즘
+lightgbm>=3.3.2         # LightGBM 알고리즘
+sqlalchemy>=1.4.37      # SQLAlchemy ORM
 imbalanced-learn        # 클래스 불균형 문제 해결 라이브러리
 scikit-optimize         # Bayesian Optimization을 위한 라이브러리
 
