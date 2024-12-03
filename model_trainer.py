@@ -238,7 +238,7 @@ def predict_next_day(model, stock_codes_test):
     predictions_df = pd.DataFrame(predictions)
 
     # 29% 상승할 것으로 예측된 종목 필터링
-    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
+    top_predictions = predictions_df[(predictions_df['Prediction'] == 1) & (predictions_df['Anomaly'] == 1)]
 
     # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
     top_predictions = top_predictions.sort_values(
@@ -249,6 +249,7 @@ def predict_next_day(model, stock_codes_test):
                    True, True, True, False, 
                    True, True, True, True, True]
     ).head(20)
+
 
     # 예측 결과 출력
     logging.info("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
