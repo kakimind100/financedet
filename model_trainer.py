@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
+from sklearn.ensemble import IsolationForest  # Isolation Forest 임포트 추가
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -59,8 +60,6 @@ def fetch_stock_data():
             'ROC': 'float',
             'CMF': 'float',
             'OBV': 'float',
-            'Anomaly': 'int',  # 이상치 탐지 결과
-            # 'Adjustment': 'object'  # 조정 상태 열 제거
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
@@ -77,12 +76,12 @@ def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
     logging.debug("데이터 준비 및 분할 시작...")
     
-    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트 (Adjustment 제거)
+    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트에 'Anomaly' 포함
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
         'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly'
+        'ROC', 'CMF', 'OBV', 'Anomaly'  # 'Anomaly'가 포함됨
     ]
 
     X = []
