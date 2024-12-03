@@ -65,6 +65,7 @@ def fetch_stock_data():
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        logging.debug(f"읽어온 데이터의 개수: {len(df)}개")
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -97,6 +98,8 @@ def prepare_data(df):
             y.append(target_today)
             stock_codes.append(stock_code)
 
+            logging.debug(f"{stock_code} - Open: {open_price}, Low: {low_price}, High: {high_price}, Target: {target_today}")
+
     X = np.array(X)
     y = np.array(y)
 
@@ -124,6 +127,8 @@ def prepare_data(df):
         X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
     )
 
+    logging.info(f"훈련 세트 크기: {len(X_train)}, 검증 세트 크기: {len(X_valid)}, 테스트 세트 크기: {len(X_test)}")
+    
     return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
 
 def train_model_with_hyperparameter_tuning():
@@ -160,6 +165,7 @@ def train_model_with_hyperparameter_tuning():
     grid_search = GridSearchCV(estimator=voting_model, param_grid=param_grid,
                                scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
     
+    logging.info("하이퍼파라미터 튜닝 시작...")
     grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
     
     logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
@@ -188,7 +194,8 @@ def predict_next_day(model, stock_codes_test):
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 
-        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 
+        'Momentum', 'ADX', 'Williams %R',
+        'Volume_MA20', 
         'ROC', 'CMF', 'OBV'
     ]
 
@@ -204,7 +211,7 @@ def predict_next_day(model, stock_codes_test):
         recent_data = df[df['Code'] == stock_code].tail(10)
         if not recent_data.empty and len(recent_data) == 10:
             X_next = recent_data[features].values[-1].reshape(1, -1)
-            logging.debug(f"예측할 데이터 X_next: {X_next}")
+            logging.debug(f"{stock_code} - 예측할 데이터 X_next: {X_next}")
 
             # 예측
             pred = model.predict(X_next)
@@ -215,6 +222,7 @@ def predict_next_day(model, stock_codes_test):
                 'Prediction': pred[0],
                 **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
             })
+            logging.info(f"{stock_code} - 예측 결과: {pred[0]}")
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
@@ -233,16 +241,16 @@ def predict_next_day(model, stock_codes_test):
     ).head(20)
 
     # 예측 결과 출력
-    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+    logging.info("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
-        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
-              f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
-              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
-              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
-              f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
-              f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
-              f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
-              f"CMF: {row['CMF']}, OBV: {row['OBV']})")
+        logging.info(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+                     f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+                     f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+                     f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+                     f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+                     f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+                     f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
+                     f"CMF: {row['CMF']}, OBV: {row['OBV']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
@@ -263,4 +271,3 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
-
