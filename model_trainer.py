@@ -60,7 +60,7 @@ def fetch_stock_data():
             'CMF': 'float',
             'OBV': 'float',
             'Anomaly': 'int',  # 이상치 탐지 결과
-            'Adjustment': 'object'  # 조정 상태
+            # 'Adjustment': 'object'  # 조정 상태 열 제거
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
@@ -77,12 +77,12 @@ def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
     logging.debug("데이터 준비 및 분할 시작...")
     
-    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
+    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트 (Adjustment 제거)
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
         'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly', 'Adjustment'
+        'ROC', 'CMF', 'OBV', 'Anomaly'
     ]
 
     X = []
@@ -203,7 +203,7 @@ def predict_next_day(model, stock_codes_test):
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
         'Momentum', 'ADX', 'Williams %R', 'Volume_MA20',
-        'ROC', 'CMF', 'OBV', 'Anomaly', 'Adjustment'
+        'ROC', 'CMF', 'OBV', 'Anomaly'
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -232,7 +232,6 @@ def predict_next_day(model, stock_codes_test):
                     'Code': stock_code,
                     'Prediction': pred[0],
                     'Anomaly': recent_data['Anomaly'].iloc[-1],  # 마지막 날의 이상치 탐지 결과 추가
-                    'Adjustment': recent_data['Adjustment'].iloc[-1],  # 마지막 날의 조정 상태 추가
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
@@ -263,7 +262,7 @@ def predict_next_day(model, stock_codes_test):
                      f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
                      f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
                      f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
-                     f"Anomaly: {row['Anomaly']}, Adjustment: {row['Adjustment']})")
+                     f"Anomaly: {row['Anomaly']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
