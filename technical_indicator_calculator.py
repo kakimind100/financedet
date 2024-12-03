@@ -170,8 +170,8 @@ def calculate_technical_indicators(target_code):
     else:
         logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
 
-    # 최종 예측 결과를 데이터프레임에 추가
-    df['Anomaly'] = np.where(final_predictions == -1, '조정', '정상')
+    # 최종 예측 결과를 데이터프레임에 추가 (1과 -1로 저장)
+    df['Anomaly'] = np.where(final_predictions == -1, -1, 1)  # '조정'을 -1로, '정상'을 1로 변경
 
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
