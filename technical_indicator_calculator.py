@@ -119,12 +119,16 @@ def calculate_technical_indicators(target_code):
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     # 조정 구간 조건 추가
-    df['Adjustment'] = np.where(
+    df['Anomaly'] = np.where(
         (df['RSI'] < 30) |  # RSI가 30 이하인 경우 과매도 상태
         (df['Close'] < df['Bollinger_Low']) |  # 가격이 Bollinger 밴드 하단에 있을 때
-        ((df['MACD'] < df['MACD_Signal']) & (df['Price_Change'] < -1)),  # MACD 신호가 부정적일 때
-        1, 0  # 조정 구간으로 간주
+        ((df['MACD'] < df['MACD_Signal']) & (df['Price_Change'] < -1)) |  # MACD 신호가 부정적일 때
+        (df['ATR'] > df['ATR'].rolling(window=14).mean()) |  # ATR이 평균 이상일 때 (변동성 증가)
+        (df['Volume'] > df['Volume'].rolling(window=20).mean() * 1.5),  # 거래량이 20일 평균보다 1.5배 이상일 때
+        -1,  # 조정 구간일 때 Anomaly로 -1
+        1  # 정상일 때 1
     )
+
 
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
