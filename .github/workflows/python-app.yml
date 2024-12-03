@@ -18,19 +18,21 @@ jobs:
         with:
           python-version: '3.8'  # 사용할 Python 버전 설정
 
-      - name: Install NVIDIA Driver and CUDA Toolkit
+      - name: Install NVIDIA Driver
         run: |
-          echo "NVIDIA 드라이버 및 CUDA Toolkit 설치 중..."
-          # NVIDIA 패키지 리포지토리 추가
+          echo "NVIDIA 드라이버 설치 중..."
           sudo apt-get update
           sudo apt-get install -y software-properties-common
           sudo add-apt-repository ppa:graphics-drivers/ppa
           sudo apt-get update
           sudo apt-get install -y nvidia-driver-470  # 적절한 드라이버 버전으로 설정
-          
-          # CUDA Toolkit 설치
-          wget https://developer.download.nvidia.com/compute/cuda/11.2.0/local_installers/cuda_11.2.0_460.32.03_linux.run
-          sudo sh cuda_11.2.0_460.32.03_linux.run --silent --toolkit
+
+      - name: Install CUDA Toolkit
+        run: |
+          echo "CUDA Toolkit 설치 중..."
+          # 최신 CUDA Toolkit 설치 스크립트 다운로드
+          wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_515.43.04_linux.run
+          sudo sh cuda_11.8.0_515.43.04_linux.run --silent --toolkit
 
       - name: Install dependencies
         run: |
