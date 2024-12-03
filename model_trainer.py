@@ -7,7 +7,7 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
-from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
+from imblearn.over_sampling import SMOTE
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -65,7 +65,6 @@ def fetch_stock_data():
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-        logging.debug(f"읽어온 데이터의 개수: {len(df)}개")
         return df
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
@@ -97,8 +96,6 @@ def prepare_data(df):
             X.append(stock_data[features].values[-1])
             y.append(target_today)
             stock_codes.append(stock_code)
-
-            logging.debug(f"{stock_code} - Open: {open_price}, Low: {low_price}, High: {high_price}, Target: {target_today}")
 
     X = np.array(X)
     y = np.array(y)
@@ -142,7 +139,7 @@ def train_model_with_hyperparameter_tuning():
 
     # 랜덤 포레스트와 XGBoost 모델 초기화
     rf_model = RandomForestClassifier(random_state=42)
-    xgb_model = XGBClassifier(random_state=42, tree_method='gpu_hist')  # GPU 사용 설정
+    xgb_model = XGBClassifier(random_state=42, tree_method='hist', device='cuda')  # GPU 사용 설정
 
     # Voting Classifier 생성 (소프트 투표)
     voting_model = VotingClassifier(estimators=[
@@ -194,8 +191,7 @@ def predict_next_day(model, stock_codes_test):
     features = [
         'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR', 
-        'Momentum', 'ADX', 'Williams %R',
-        'Volume_MA20', 
+        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 
         'ROC', 'CMF', 'OBV'
     ]
 
@@ -271,3 +267,4 @@ if __name__ == "__main__":
         logging.info("다음 거래일 예측 스크립트 실행 완료.")
     else:
         logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+
