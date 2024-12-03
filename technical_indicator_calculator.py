@@ -143,7 +143,7 @@ def calculate_technical_indicators(target_code):
 
     # Isolation Forest 모델을 사용하여 조정 상태 탐지
     try:
-        isolation_forest = IsolationForest(contamination=0.1, random_state=42)
+        isolation_forest = IsolationForest(contamination=0.2, random_state=42)
         df['Anomaly'] = isolation_forest.fit_predict(X)
         df['Adjustment'] = np.where(df['Anomaly'] == -1, '조정', '정상')  # 조정 상태 해석
         logging.info("Isolation Forest를 사용한 조정 상태 탐지 완료.")
