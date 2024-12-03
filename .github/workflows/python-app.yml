@@ -30,9 +30,11 @@ jobs:
       - name: Install CUDA Toolkit
         run: |
           echo "CUDA Toolkit 설치 중..."
-          # 다운로드 링크를 아래에 추가하세요.
-          wget https://developer.download.nvidia.com/compute/cuda/12.2.0/local_installers/cuda_12.2.0_525.60.13_linux.run || { echo "CUDA Toolkit 다운로드 실패"; exit 1; }
-          sudo sh cuda_12.2.0_525.60.13_linux.run --silent --toolkit
+          # CUDA Toolkit 설치를 위한 NVIDIA 리포지토리 추가
+          sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/keys/NVIDIA-GPG-KEY
+          echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu$(lsb_release -rs)/x86_64/ /" | sudo tee /etc/apt/sources.list.d/cuda.list
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-6  # CUDA Toolkit 설치
 
       - name: Install dependencies
         run: |
