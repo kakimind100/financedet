@@ -44,12 +44,16 @@ def calculate_technical_indicators(target_code):
         logging.info(f"데이터프레임의 첫 5행:\n{df.head()}")
 
         # 날짜 열을 datetime 형식으로 변환
-        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', errors='coerce')
         df.set_index(['Code', 'Date'], inplace=True)
 
         # 중복된 데이터 처리
         df = df.groupby(['Code', df.index.get_level_values('Date')]).mean()
         logging.info("중복 데이터 처리 완료.")
+        
+        # 중복 처리 후 NaN 값 확인 및 제거
+        df.dropna(inplace=True)
+        logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     except FileNotFoundError:
         logging.error(f"파일 '{os.path.join(data_dir, 'stock_data.csv')}'을(를) 찾을 수 없습니다.")
