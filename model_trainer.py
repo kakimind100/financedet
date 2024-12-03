@@ -8,7 +8,6 @@ from xgboost import XGBClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
-from concurrent.futures import ThreadPoolExecutor  # 멀티스레딩을 위한 모듈
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -138,7 +137,7 @@ def train_model_with_hyperparameter_tuning():
 
     # 랜덤 포레스트와 XGBoost 모델 초기화
     rf_model = RandomForestClassifier(random_state=42)
-    xgb_model = XGBClassifier(random_state=42)
+    xgb_model = XGBClassifier(random_state=42, tree_method='gpu_hist')  # GPU 사용 설정
 
     # Voting Classifier 생성 (소프트 투표)
     voting_model = VotingClassifier(estimators=[
@@ -201,7 +200,7 @@ def predict_next_day(model, stock_codes_test):
     if common_stocks:
         logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    def make_prediction(stock_code):
+    for stock_code in today_rise_stocks['Code'].unique():
         recent_data = df[df['Code'] == stock_code].tail(10)
         if not recent_data.empty and len(recent_data) == 10:
             X_next = recent_data[features].values[-1].reshape(1, -1)
@@ -211,19 +210,11 @@ def predict_next_day(model, stock_codes_test):
             pred = model.predict(X_next)
 
             # 예측 결과와 함께 정보를 저장
-            return {
+            predictions.append({
                 'Code': stock_code,
                 'Prediction': pred[0],
                 **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
-            }
-        return None
-
-    # 멀티스레딩을 사용하여 예측 수행
-    with ThreadPoolExecutor() as executor:
-        prediction_results = list(executor.map(make_prediction, today_rise_stocks['Code'].unique()))
-
-    # None 값을 필터링하여 유효한 예측 결과만 남김
-    predictions = [result for result in prediction_results if result is not None]
+            })
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
