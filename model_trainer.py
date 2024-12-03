@@ -6,7 +6,7 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
-from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import SMOTE  # SMOTE 임포트 추가
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -29,7 +29,7 @@ def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
     logging.debug("주식 데이터를 가져오는 중...")
     try:
-        file_path = os.path.join('data', 'stock_data.csv')
+        file_path = os.path.join('data', 'stock_data_with_indicators.csv')
         
         dtype = {
             'Code': 'object',
@@ -59,8 +59,8 @@ def fetch_stock_data():
             'ROC': 'float',
             'CMF': 'float',
             'OBV': 'float',
-            'Anomaly': 'int',  # Anomaly 컬럼 추가
-            'Adjustment': 'object'  # 조정 상태 컬럼 추가
+            'Anomaly': 'int',  # 이상치 탐지 결과
+            'Adjustment': 'object'  # 조정 상태
         }
 
         df = pd.read_csv(file_path, dtype=dtype)
@@ -74,10 +74,28 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
+    # 매수 중심으로 우선순위를 조정한 기술적 지표 리스트
     features = [
-        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
-        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
-        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 'ROC', 'CMF', 'OBV', 'Anomaly'
+        'RSI',                  # 과매도 상태를 나타내는 지표
+        'MACD',                 # 추세 반전을 나타내는 지표
+        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
+        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
+        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
+        'MA5',                  # 단기 이동 평균
+        'MA20',                 # 중기 이동 평균
+        'EMA20',                # 지수 이동 평균
+        'EMA50',                # 지수 이동 평균
+        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
+        'ATR',                  # 변동성 지표
+        'Momentum',             # 가격 변화의 속도를 나타내는 지표
+        'ADX',                  # 추세의 강도를 나타내는 지표
+        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
+        'Volume_MA20',          # 거래량의 이동 평균
+        'ROC',                  # 가격 변화율
+        'CMF',                  # 자금 흐름 지표
+        'OBV',                  # 거래량 기반의 지표
+        'Anomaly',
+        'Adjustment'
     ]
 
     X = []
@@ -92,24 +110,29 @@ def prepare_data(df):
             low_price = stock_data['Low'].min()
             high_price = stock_data['High'].max()
 
-            # 조정 상태를 1(조정) 또는 0(정상)으로 설정
+            # 타겟 설정: 오늘 최저가에서 최고가가 29% 이상 상승했는지 여부
             target_today = 1 if high_price > low_price * 1.29 else 0
 
-            X.append(stock_data[features].values[-1])
-            y.append(target_today)
-            stock_codes.append(stock_code)
+            # 마지막 날의 피처와 타겟을 함께 추가
+            X.append(stock_data[features].values[-1])  # 마지막 날의 피처 사용
+            y.append(target_today)  # 오늘의 타겟 값 사용
+            stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
     y = np.array(y)
 
+    # 클래스 분포 확인
     logging.info(f"타겟 클래스 분포: {np.bincount(y)}")
 
-    if len(np.unique(y)) > 1:
+    # SMOTE 적용
+    if len(np.unique(y)) > 1:  # 클래스가 2개 이상인 경우에만 SMOTE 적용
         smote = SMOTE(random_state=42)
-        X_resampled, y_resampled = smote.fit_resample(X, y)  # SMOTE를 적용하여 균형 잡힌 데이터 세트를 생성
+        X_resampled, y_resampled = smote.fit_resample(X, y)
+
+        # stock_codes에 대한 재조정
         stock_codes_resampled = []
         for i in range(len(y_resampled)):
-            stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 원본 stock_codes에서 순환
+            stock_codes_resampled.append(stock_codes[i % len(stock_codes)])  # 다시 원본 stock_codes에서 순환
 
     else:
         logging.warning("타겟 클래스가 1개만 존재합니다. SMOTE를 적용하지 않습니다.")
@@ -183,9 +206,26 @@ def predict_next_day(model, stock_codes_test):
 
     # 예측할 데이터 준비 (모든 기술적 지표 포함)
     features = [
-        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
-        'MA5', 'MA20', 'EMA20', 'EMA50', 'CCI', 'ATR',
-        'Momentum', 'ADX', 'Williams %R', 'Volume_MA20', 'ROC', 'CMF', 'OBV', 'Anomaly'
+        'RSI',                  # 과매도 상태를 나타내는 지표
+        'MACD',                 # 추세 반전을 나타내는 지표
+        'Stoch',                # 과매수/과매도 신호를 나타내는 지표
+        'Bollinger_High',       # 가격의 상한선을 나타내는 지표
+        'Bollinger_Low',        # 가격의 하한선을 나타내는 지표
+        'MA5',                  # 단기 이동 평균
+        'MA20',                 # 중기 이동 평균
+        'EMA20',                # 지수 이동 평균
+        'EMA50',                # 지수 이동 평균
+        'CCI',                  # 가격의 과매수/과매도 상태를 나타내는 지표
+        'ATR',                  # 변동성 지표
+        'Momentum',             # 가격 변화의 속도를 나타내는 지표
+        'ADX',                  # 추세의 강도를 나타내는 지표
+        'Williams %R',          # 과매수/과매도 신호를 나타내는 지표
+        'Volume_MA20',          # 거래량의 이동 평균
+        'ROC',                  # 가격 변화율
+        'CMF',                  # 자금 흐름 지표
+        'OBV',                  # 거래량 기반의 지표
+        'Anomaly',
+        'Adjustment'
     ]
 
     predictions = []  # 예측 결과를 저장할 리스트
@@ -213,17 +253,19 @@ def predict_next_day(model, stock_codes_test):
                 predictions.append({
                     'Code': stock_code,
                     'Prediction': pred[0],
+                    'Anomaly': recent_data['Anomaly'].iloc[-1],  # 마지막 날의 이상치 탐지 결과 추가
+                    'Adjustment': recent_data['Adjustment'].iloc[-1],  # 마지막 날의 조정 상태 추가
                     **recent_data[features].iloc[-1].to_dict()  # 마지막 날의 피처 값 추가
                 })
 
     # 예측 결과를 데이터프레임으로 변환
     predictions_df = pd.DataFrame(predictions)
 
-    # 조정 상태로 예측된 종목 필터링
-    adjustment_predictions = predictions_df[predictions_df['Prediction'] == 1]  # 조정 상태로 예측한 종목
+    # 29% 상승할 것으로 예측된 종목 필터링
+    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
     # 상위 20개 종목 정렬 (기본 피처와 추가 피처 기준으로 정렬)
-    top_predictions = adjustment_predictions.sort_values(
+    top_predictions = top_predictions.sort_values(
         by=['RSI', 'MACD', 'Stoch', 'Momentum', 'Volume_MA20', 
             'Bollinger_Low', 'ATR', 'CMF', 'OBV', 
             'CCI', 'ADX', 'ROC', 'MA5', 'MA20'], 
@@ -233,7 +275,7 @@ def predict_next_day(model, stock_codes_test):
     ).head(20)
 
     # 예측 결과 출력
-    print("다음 거래일에 조정 상태로 예측되는 상위 20개 종목:")
+    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
     for index, row in top_predictions.iterrows():
         print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
               f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
@@ -242,7 +284,8 @@ def predict_next_day(model, stock_codes_test):
               f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
               f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
               f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
-              f"CMF: {row['CMF']}, OBV: {row['OBV']})")
+              f"CMF: {row['CMF']}, OBV: {row['OBV']}, "
+              f"Anomaly: {row['Anomaly']}, Adjustment: {row['Adjustment']})")
 
     # 상위 20개 종목의 전체 날짜 데이터 추출
     all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
