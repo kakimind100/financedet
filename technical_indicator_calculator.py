@@ -128,7 +128,14 @@ def calculate_technical_indicators(target_code):
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
     # 조정 상태 레이블 생성
-    df['Adjustment'] = np.where(df['Close'] < df['Close'].shift(1), 1, 0)  # 하락 시 1, 아닐 경우 0
+    # 기본적으로 가격이 하락하는 경우를 조정으로 설정하되,
+    # RSI가 70 이상일 때 하락하는 경우를 추가하여 조정으로 판단
+    df['Adjustment'] = np.where(
+        (df['Close'] < df['Close'].shift(1)) | 
+        ((df['RSI'] > 70) & (df['Close'] < df['Close'].shift(1))),
+        1,  # 조정
+        0   # 정상
+    )
 
     # 특징 및 레이블 설정
     features = ['Close', 'MA5', 'MA20', 'MACD', 'RSI', 'Bollinger_High', 'Bollinger_Low', 'Stoch']
