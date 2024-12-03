@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np  # NumPy 임포트 추가
 import logging
 import os
 import pandas_ta as ta  # pandas_ta 라이브러리 임포트
@@ -17,7 +18,7 @@ logging.basicConfig(
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # DEBUG로 변경하여 모든 로그를 출력하도록 설정
+console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
@@ -126,12 +127,12 @@ def calculate_technical_indicators(target_code):
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
-    # Isolation Forest를 사용하여 이상치 탐지
+    # 이상치 탐지
     try:
         isolation_forest = IsolationForest(contamination=0.05, random_state=42)
         df['Anomaly'] = isolation_forest.fit_predict(df[['Close', 'Open', 'High', 'Low', 'Volume', 'MA5', 'MA20', 'RSI', 'MACD', 'Stoch', 'ATR']])
         df['Adjustment'] = np.where(df['Anomaly'] == -1, '조정', '정상')  # 조정 상태 해석
-        logging.info("Isolation Forest를 사용하여 이상치 탐지 완료.")
+        logging.info("이상치 탐지 완료.")
     except Exception as e:
         logging.error(f"이상치 탐지 중 오류 발생: {e}")
         return
