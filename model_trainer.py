@@ -195,6 +195,12 @@ def predict_next_day(model, stock_codes_test):
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
         return None, None  # None 반환
         
+    # features 리스트 정의
+    features = [
+        'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low',  # RSI, MACD, Bollinger Bands
+        'EMA20', 'EMA50', 'ATR', 'Volume', 'Anomaly'  # EMA, ATR, Volume, Anomaly
+    ]
+    
     # 오늘 종가가 29% 이상 상승한 종목 필터링
     today_data = df[df['Code'].isin(stock_codes_test)].tail(1)
     if today_data.empty:
