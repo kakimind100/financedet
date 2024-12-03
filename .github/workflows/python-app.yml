@@ -30,7 +30,7 @@ jobs:
       - name: Install CUDA Toolkit
         run: |
           echo "CUDA Toolkit 설치 중..."
-          # 최신 CUDA Toolkit 설치 스크립트 다운로드
+          # 다운로드 링크를 아래에 추가하세요.
           wget https://developer.download.nvidia.com/compute/cuda/12.2.0/local_installers/cuda_12.2.0_525.60.13_linux.run || { echo "CUDA Toolkit 다운로드 실패"; exit 1; }
           sudo sh cuda_12.2.0_525.60.13_linux.run --silent --toolkit
 
