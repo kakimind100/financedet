@@ -118,44 +118,13 @@ def calculate_technical_indicators(target_code):
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
-    # 가격 조정 및 기간 조정 조건 설정
-    df['Price_Adjustment'] = np.where(df['Close'] < df['Close'].shift(1), 1, 0)
-    df['Volume_Change'] = df['Volume'].pct_change()
-    df['Period_Adjustment'] = np.where(
-        (df['Price_Change'].abs() < 0.01) & (df['Volume_Change'].abs() < 0.05), 1, 0
-    )
-
-    # 조정 상태 레이블 생성
+    # 조정 구간 조건 추가
     df['Adjustment'] = np.where(
-        (df['Price_Adjustment'] == 1) | (df['Period_Adjustment'] == 1), 1, 0
+        (df['RSI'] < 30) |  # RSI가 30 이하인 경우 과매도 상태
+        (df['Close'] < df['Bollinger_Low']) |  # 가격이 Bollinger 밴드 하단에 있을 때
+        ((df['MACD'] < df['MACD_Signal']) & (df['Price_Change'] < -1)),  # MACD 신호가 부정적일 때
+        1, 0  # 조정 구간으로 간주
     )
-
-    # 특징 및 레이블 설정
-    features = ['Price_Change', 'RSI']
-    X = df[features]
-    y = df['Adjustment']
-
-    # KFold 교차 검증 설정
-    kf = KFold(n_splits=5, shuffle=True, random_state=42)
-    results = []
-
-    # Isolation Forest 모델을 사용하여 조정 상태 탐지
-    for train_index, test_index in kf.split(X):
-        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
-        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
-
-        try:
-            isolation_forest = IsolationForest(n_estimators=100, contamination=0.5, random_state=42)
-            isolation_forest.fit(X_train)
-            y_pred = isolation_forest.predict(X_test)
-            results.append(y_pred)
-            logging.info("Isolation Forest를 사용한 조정 상태 탐지 완료.")
-        except Exception as e:
-            logging.error(f"Isolation Forest 모델 학습 중 오류 발생: {e}")
-            return
-
-    # 예측 결과를 통합하여 최종 결과 생성
-    final_predictions = np.concatenate(results)
 
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
@@ -163,9 +132,6 @@ def calculate_technical_indicators(target_code):
         logging.info(f"{target_code} 종목 코드의 계산된 데이터:\n{target_data}")
     else:
         logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
-
-    # 최종 예측 결과를 데이터프레임에 추가 (1과 -1로 저장)
-    df['Anomaly'] = np.where(final_predictions == -1, -1, 1)
 
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
