@@ -1,4 +1,4 @@
-name: Run Stock Analysis and Discord Webhook
+name: Run Stock Analysis with GPU Support
 
 on:
   schedule:
@@ -18,6 +18,17 @@ jobs:
         with:
           python-version: '3.8'  # 사용할 Python 버전 설정
 
+      - name: Install NVIDIA Driver
+        run: |
+          echo "NVIDIA 드라이버 설치 중..."
+          sudo apt-get update
+          sudo apt-get install -y nvidia-driver-470  # 적절한 드라이버 버전으로 설정
+
+      - name: Install CUDA Toolkit
+        run: |
+          echo "CUDA Toolkit 설치 중..."
+          sudo apt-get install -y cuda-toolkit-11-2  # 적절한 CUDA 버전으로 설정
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip  # pip 업그레이드
@@ -29,7 +40,6 @@ jobs:
         run: |
           echo "거래일 확인 중..."
           python check_trading_day.py  # 거래일 확인 스크립트 실행
-        if: github.event_name != 'workflow_dispatch'  # 수동 실행이 아닐 때만 실행
 
       - name: Create directories
         run: |
@@ -77,4 +87,4 @@ jobs:
 
       - name: Get Korean Time
         run: |
-          echo "한국 시간: $(node -e 'const getKoreaTime = () => { const now = new Date(); const diffConfig = now.getTimezoneOffset() * 60 * 1000; const diffKorea = 9 * 60 * 60 * 1000; const koreaTime = new Date(now.getTime() + diffConfig + diffKorea); return koreaTime.getFullYear() + \"년 \" + (koreaTime.getMonth() + 1) + \"월 \" + koreaTime.getDate() + \"일 \" + koreaTime.getHours() + \"시 \"; }; console.log(getKoreaTime());')"
+          echo "한국 시간: $(python -c 'from datetime import datetime, timedelta; print((datetime.utcnow() + timedelta(hours=9)).strftime("%Y년 %m월 %d일 %H시")))')"
