@@ -29,4 +29,4 @@ scikit-optimize         # Bayesian Optimization을 위한 라이브러리
 # GPU 관련 추가
 tensorflow-gpu>=2.10.0  # TensorFlow GPU 지원
 # 또는
-torch>=1.12.0           # PyTorch GPU 지원
+# torch>=1.12.0           # PyTorch GPU 지원
