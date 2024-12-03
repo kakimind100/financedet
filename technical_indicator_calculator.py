@@ -141,7 +141,7 @@ def calculate_technical_indicators(target_code):
         y_train, y_test = y.iloc[train_index], y.iloc[test_index]
 
         try:
-            isolation_forest = IsolationForest(n_estimators=100, contamination=0.2, random_state=42)
+            isolation_forest = IsolationForest(n_estimators=100, contamination=0.5, random_state=42)
             isolation_forest.fit(X_train)
             y_pred = isolation_forest.predict(X_test)
             results.append(y_pred)
