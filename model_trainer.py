@@ -6,7 +6,6 @@ from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE  # SMOTE 임포트
-import joblib
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -72,7 +71,11 @@ def fetch_stock_data():
 
 def detect_corrections(df):
     """조정 상태를 탐지하는 함수."""
-    features = ['RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low', 'MA5', 'MA20']
+    features = [
+        'RSI', 'MACD', 'Stoch', 
+        'Bollinger_High', 'Bollinger_Low', 
+        'MA5', 'MA20'
+    ]
     
     # Isolation Forest 모델을 사용하여 조정 상태 탐지
     isolation_forest = IsolationForest(contamination=0.05, random_state=42)
@@ -86,7 +89,8 @@ def detect_corrections(df):
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
     features = [
-        'RSI', 'MACD', 'Stoch', 'Bollinger_High', 'Bollinger_Low',
+        'RSI', 'MACD', 'Stoch', 
+        'Bollinger_High', 'Bollinger_Low',
         'MA5', 'MA20', 'Correction'  # Correction 추가
     ]
 
@@ -266,3 +270,16 @@ def predict_next_day(model, stock_codes_test):
     output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
     all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
     logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
+
+if __name__ == "__main__":
+    logging.info("모델 훈련 스크립트 실행 중...")
+    model, stock_codes_test = train_model_with_hyperparameter_tuning()  # 하이퍼파라미터 튜닝 모델 훈련
+    logging.info("모델 훈련 스크립트 실행 완료.")
+
+    if model is not None and stock_codes_test is not None:  # 모델과 테스트 데이터가 있는 경우에만 예측 실행
+        logging.info("다음 거래일 예측 스크립트 실행 중...")
+        predict_next_day(model, stock_codes_test)  # 다음 거래일 예측
+        logging.info("다음 거래일 예측 스크립트 실행 완료.")
+    else:
+        logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
+
