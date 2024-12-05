@@ -198,11 +198,14 @@ def predict_future_trading_days(model):
 
     future_predictions = []
     
-    # 오늘 날짜를 기준으로 향후 26 거래일 계산
+    # 오늘 날짜를 기준으로 향후 거래일 예측
     today_date = today_data['Date'].values[0]
-    future_dates = pd.bdate_range(start=today_date, periods=26)  # 26 거래일 생성
 
-    for future_date in future_dates:
+    for i in range(1, 27):  # +1 거래일부터 +26 거래일까지
+        future_date = today_date + pd.DateOffset(days=i)  # 미래 날짜 계산
+        while future_date not in df['Date'].values:  # 미래 날짜가 거래일인지 확인
+            future_date += pd.DateOffset(days=1)  # 다음 날로 이동
+
         # future_date에 대한 피처 데이터 준비
         future_data = today_data.copy()
         future_data['Date'] = future_date  # 날짜를 미래 날짜로 설정
@@ -234,25 +237,30 @@ def calculate_returns(future_predictions, df):
     future_dates = [date for date, _ in future_predictions]
     future_prices = []  # 예측된 가격 저장
 
+    # 각 미래 날짜에 대한 Close 가격을 가져옵니다.
     for date in future_dates:
-        future_prices.append(df.loc[df['Date'] == date, 'Close'].values[0])
+        if date in df['Date'].values:
+            future_prices.append(df.loc[df['Date'] == date, 'Close'].values[0])
+        else:
+            logging.warning(f"{date}에 대한 데이터가 존재하지 않습니다.")
 
     # 매수 시점과 매도 시점 정의
-    min_price_index = np.argmin(future_prices)  # 가장 낮은 가격의 인덱스
-    max_price_index = np.argmax(future_prices)  # 가장 높은 가격의 인덱스
+    if len(future_prices) > 0:
+        min_price_index = np.argmin(future_prices)  # 가장 낮은 가격의 인덱스
+        max_price_index = np.argmax(future_prices)  # 가장 높은 가격의 인덱스
 
-    # 매수 및 매도 시점 설정
-    buy_date = future_dates[min_price_index]
-    sell_date = future_dates[max_price_index]
+        # 매수 및 매도 시점 설정
+        buy_date = future_dates[min_price_index]
+        sell_date = future_dates[max_price_index]
 
-    # 매수 및 매도 가격
-    buy_price = future_prices[min_price_index]
-    sell_price = future_prices[max_price_index]
+        # 매수 및 매도 가격
+        buy_price = future_prices[min_price_index]
+        sell_price = future_prices[max_price_index]
 
-    if sell_date > buy_date:  # 매도 시점이 매수 시점 이후인지 확인
-        # 상승률 계산
-        return_rate = (sell_price - buy_price) / buy_price * 100  # 상승률(%)
-        returns.append((buy_date, sell_date, return_rate))
+        if sell_date > buy_date:  # 매도 시점이 매수 시점 이후인지 확인
+            # 상승률 계산
+            return_rate = (sell_price - buy_price) / buy_price * 100  # 상승률(%)
+            returns.append((buy_date, sell_date, return_rate))
 
     # 상승률 기준으로 정렬
     returns.sort(key=lambda x: x[2], reverse=True)  # 높은 순으로 정렬
