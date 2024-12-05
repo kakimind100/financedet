@@ -203,8 +203,10 @@ def predict_future_trading_days(model):
 
     for i in range(1, 27):  # +1 거래일부터 +26 거래일까지
         future_date = today_date + pd.DateOffset(days=i)  # 미래 날짜 계산
-        while future_date not in df['Date'].values:  # 미래 날짜가 거래일인지 확인
-            future_date += pd.DateOffset(days=1)  # 다음 날로 이동
+        
+        # 실제 거래일이 아닐 경우 다음 날로 이동
+        while future_date not in df['Date'].values:
+            future_date += pd.DateOffset(days=1)
 
         # future_date에 대한 피처 데이터 준비
         future_data = today_data.copy()
