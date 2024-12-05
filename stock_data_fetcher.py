@@ -52,8 +52,8 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             recent_volume = df['Volume'].tail(26)
 
             if recent_volume.sum() > 0:  # 최근 26일 간 거래량이 0이 아닌 경우
-                # 최근 26일 종가가 3000 이상 30만원 이하인지 확인
-                if all(recent_data['Close'] >= 3000) and all(recent_data['Close'] <= 300000):
+                # 최근 26일 종가가 7000 이상 30만원 이하인지 확인
+                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 300000):
                     # 전일 대비 거래량 변화 계산
                     volume_increase = recent_volume.pct_change() * 100  # %로 변환
 
