@@ -98,11 +98,12 @@ def prepare_data(df):
 
         # 마지막 날의 피처와 타겟을 함께 추가
         for i in range(len(recent_data) - 26):  # 26 거래일 예측
-            target_today = 1 if recent_data['Close'].iloc[i + 26] > recent_data['Close'].iloc[i] * 1.29 else 0  # 29% 상승 여부
+            # 향후 26 거래일 동안의 평균 종가가 오늘 종가보다 높은지 확인
+            target_future = 1 if recent_data['Close'].iloc[i + 26:i + 52].mean() > recent_data['Close'].iloc[i] else 0
             
             # 피처 추가
             X.append(recent_data[features].iloc[i].values)  # 현재 피처
-            y.append(target_today)  # 오늘의 타겟 값
+            y.append(target_future)  # 향후 26 거래일의 평균 상승 여부
             stock_codes.append(stock_code)  # 종목 코드 추가
 
     X = np.array(X)
@@ -225,6 +226,26 @@ def identify_buy_signals(future_predictions):
 
     return buy_signals
 
+def calculate_returns(future_predictions, buy_signals, df):
+    """매수 및 매도 시점에서의 상승률을 계산하는 함수."""
+    returns = []
+
+    for signal in buy_signals:
+        # 매수 시점의 종가
+        buy_price = df.loc[df['Date'] == signal, 'Close'].values[0]
+
+        # 매도 시점은 매수 시점에서 26일 후
+        sell_date = signal + pd.DateOffset(days=26)
+        if sell_date in df['Date'].values:
+            sell_price = df.loc[df['Date'] == sell_date, 'Close'].values[0]
+            # 상승률 계산
+            return_rate = (sell_price - buy_price) / buy_price * 100  # 상승률(%)
+            returns.append((signal, return_rate))
+
+    # 상승률 기준으로 정렬
+    returns.sort(key=lambda x: x[1], reverse=True)  # 높은 순으로 정렬
+    return returns[:20]  # 상위 20개 종목 반환
+
 def plot_predictions_and_signals(future_predictions, buy_signals):
     """예측 결과와 매수 신호를 그래프로 시각화하는 함수."""
     dates, predictions = zip(*future_predictions)  # 날짜와 예측 결과 분리
@@ -248,18 +269,31 @@ def plot_predictions_and_signals(future_predictions, buy_signals):
     plt.tight_layout()
     plt.show()
 
-# 모델 훈련 및 예측 실행
-best_model = train_model_with_hyperparameter_tuning()
-if best_model:
-    future_predictions = predict_future_trading_days(best_model)
-    if future_predictions is not None:
-        for date, prediction in future_predictions:
-            logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
-        
-        # 매수 신호 식별
-        buy_signals = identify_buy_signals(future_predictions)
-        logging.info(f"매수 신호: {buy_signals}")
+def main():
+    # 모델 훈련 및 예측 실행
+    best_model = train_model_with_hyperparameter_tuning()
+    if best_model:
+        future_predictions = predict_future_trading_days(best_model)
+        if future_predictions is not None:
+            for date, prediction in future_predictions:
+                logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
+            
+            # 매수 신호 식별
+            buy_signals = identify_buy_signals(future_predictions)
+            logging.info(f"매수 신호: {buy_signals}")
 
-        # 예측 결과 및 매수 신호 시각화
-        plot_predictions_and_signals(future_predictions, buy_signals)
+            # 상승률 계산
+            df = fetch_stock_data()  # 주식 데이터 가져오기
+            if df is not None:
+                top_stocks = calculate_returns(future_predictions, buy_signals, df)
+                print("상승률이 가장 높은 종목 20개:")
+                for stock in top_stocks:
+                    logging.info(f"매수 시점: {stock[0].date()}, 상승률: {stock[1]:.2f}%")
+                    print(f"날짜: {stock[0].date()}, 상승률: {stock[1]:.2f}%")
+
+            # 예측 결과 및 매수 신호 시각화
+            plot_predictions_and_signals(future_predictions, buy_signals)
+
+# 메인 함수 실행
+main()
 
