@@ -200,13 +200,18 @@ def predict_future_trading_days(model):
     
     # 오늘 날짜를 기준으로 향후 거래일 예측
     today_date = today_data['Date'].values[0]
+    logging.info(f"오늘 날짜: {today_date}")
 
     for i in range(1, 27):  # +1 거래일부터 +26 거래일까지
         future_date = today_date + pd.DateOffset(days=i)  # 미래 날짜 계산
+        logging.debug(f"예측할 미래 날짜: {future_date}")
         
         # 실제 거래일이 아닐 경우 다음 날로 이동
         while future_date not in df['Date'].values:
+            logging.debug(f"{future_date}는 거래일이 아닙니다. 다음 날로 이동합니다.")
             future_date += pd.DateOffset(days=1)
+
+        logging.info(f"유효한 거래일: {future_date}")
 
         # future_date에 대한 피처 데이터 준비
         future_data = today_data.copy()
@@ -214,10 +219,12 @@ def predict_future_trading_days(model):
 
         # 예측을 위한 피처 데이터 준비
         future_features = future_data[features].values
-        
+        logging.debug(f"예측에 사용될 피처 데이터: {future_features}")
+
         # 예측 수행
         prediction = model.predict(future_features)
         future_predictions.append((future_date, prediction[0]))  # 날짜와 예측값 저장
+        logging.info(f"{future_date}에 대한 예측 결과: {'상승' if prediction[0] == 1 else '하락'}")
 
     logging.info("향후 26 거래일 예측 완료.")
     return future_predictions  # 날짜와 예측값 리스트 반환
