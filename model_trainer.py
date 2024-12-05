@@ -226,24 +226,36 @@ def identify_buy_signals(future_predictions):
 
     return buy_signals
 
-def calculate_returns(future_predictions, buy_signals, df):
+def calculate_returns(future_predictions, df):
     """매수 및 매도 시점에서의 상승률을 계산하는 함수."""
     returns = []
 
-    for signal in buy_signals:
-        # 매수 시점의 종가
-        buy_price = df.loc[df['Date'] == signal, 'Close'].values[0]
+    # 예측된 미래 종가를 가져오기 위한 데이터프레임 생성
+    future_dates = [date for date, _ in future_predictions]
+    future_prices = []  # 예측된 가격 저장
 
-        # 매도 시점은 매수 시점에서 26일 후
-        sell_date = signal + pd.DateOffset(days=26)
-        if sell_date in df['Date'].values:
-            sell_price = df.loc[df['Date'] == sell_date, 'Close'].values[0]
-            # 상승률 계산
-            return_rate = (sell_price - buy_price) / buy_price * 100  # 상승률(%)
-            returns.append((signal, return_rate))
+    for date in future_dates:
+        future_prices.append(df.loc[df['Date'] == date, 'Close'].values[0])
+
+    # 매수 시점과 매도 시점 정의
+    min_price_index = np.argmin(future_prices)  # 가장 낮은 가격의 인덱스
+    max_price_index = np.argmax(future_prices)  # 가장 높은 가격의 인덱스
+
+    # 매수 및 매도 시점 설정
+    buy_date = future_dates[min_price_index]
+    sell_date = future_dates[max_price_index]
+
+    # 매수 및 매도 가격
+    buy_price = future_prices[min_price_index]
+    sell_price = future_prices[max_price_index]
+
+    if sell_date > buy_date:  # 매도 시점이 매수 시점 이후인지 확인
+        # 상승률 계산
+        return_rate = (sell_price - buy_price) / buy_price * 100  # 상승률(%)
+        returns.append((buy_date, sell_date, return_rate))
 
     # 상승률 기준으로 정렬
-    returns.sort(key=lambda x: x[1], reverse=True)  # 높은 순으로 정렬
+    returns.sort(key=lambda x: x[2], reverse=True)  # 높은 순으로 정렬
     return returns[:20]  # 상위 20개 종목 반환
 
 def plot_predictions_and_signals(future_predictions, buy_signals):
@@ -285,11 +297,11 @@ def main():
             # 상승률 계산
             df = fetch_stock_data()  # 주식 데이터 가져오기
             if df is not None:
-                top_stocks = calculate_returns(future_predictions, buy_signals, df)
+                top_stocks = calculate_returns(future_predictions, df)
                 print("상승률이 가장 높은 종목 20개:")
                 for stock in top_stocks:
-                    logging.info(f"매수 시점: {stock[0].date()}, 상승률: {stock[1]:.2f}%")
-                    print(f"날짜: {stock[0].date()}, 상승률: {stock[1]:.2f}%")
+                    logging.info(f"매수 시점: {stock[0].date()}, 매도 시점: {stock[1].date()}, 상승률: {stock[2]:.2f}%")
+                    print(f"매수 시점: {stock[0].date()}, 매도 시점: {stock[1].date()}, 상승률: {stock[2]:.2f}%")
 
             # 예측 결과 및 매수 신호 시각화
             plot_predictions_and_signals(future_predictions, buy_signals)
