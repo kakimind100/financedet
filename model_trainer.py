@@ -225,6 +225,11 @@ def predict_future_trading_days(model):
         future_features = future_data[features].values
         logging.debug(f"예측에 사용될 피처 데이터: {future_features}")
 
+        # 데이터가 없는 경우 예측 건너뛰기
+        if future_date not in df['Date'].values:
+            logging.warning(f"{future_date}에 대한 데이터가 존재하지 않습니다.")
+            continue
+
         # 예측 수행
         prediction = model.predict(future_features)
         future_predictions.append((future_date, prediction[0]))  # 날짜와 예측값 저장
