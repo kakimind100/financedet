@@ -66,6 +66,7 @@ def fetch_stock_data():
         df = pd.read_csv(file_path, dtype=dtype)
         logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
         logging.debug(f"데이터프레임 정보:\n{df.info()}")
+        logging.debug(f"가져온 데이터 길이: {len(df)}")  # 데이터 길이 로그 추가
 
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
         logging.debug(f"가져온 데이터의 첫 5행:\n{df.head()}")
