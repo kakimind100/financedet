@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
+import holidays  # 한국 공휴일 정보 가져오기
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -74,6 +75,11 @@ def fetch_stock_data():
     except Exception as e:
         logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
         return None
+
+def is_business_day(date):
+    """주어진 날짜가 거래일인지 확인하는 함수."""
+    kr_holidays = holidays.KR()  # 한국의 공휴일 정보 가져오기
+    return date.weekday() < 5 and date not in kr_holidays  # 주말(토요일: 5, 일요일: 6) 및 공휴일 확인
 
 def prepare_data(df):
     """데이터를 준비하고 분할하는 함수."""
@@ -202,16 +208,10 @@ def predict_future_trading_days(model):
     today_date = today_data['Date'].values[0]
     logging.info(f"오늘 날짜: {today_date}")
 
-    # 거래일 목록 생성
-    trading_days = pd.Series(df['Date'].values).dt.date
-    logging.debug(f"거래일 목록: {trading_days.tolist()}")
-
-    for i in range(1, 27):  # +1 거래일부터 +26 거래일까지
-        future_date = today_date + pd.DateOffset(days=i)  # 미래 날짜 계산
-        logging.debug(f"예측할 미래 날짜: {future_date}")
-        
-        # 실제 거래일이 아닐 경우 다음 날로 이동
-        while future_date.date() not in trading_days.values:
+    future_date = today_date
+    for _ in range(26):  # +1 거래일부터 +26 거래일까지
+        future_date += pd.DateOffset(days=1)  # 하루씩 더하기
+        while not is_business_day(future_date):  # 거래일이 아닐 경우 다음 날로 이동
             logging.debug(f"{future_date}는 거래일이 아닙니다. 다음 날로 이동합니다.")
             future_date += pd.DateOffset(days=1)
 
