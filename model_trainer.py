@@ -96,7 +96,7 @@ def prepare_data(df):
         recent_data = stock_data[stock_data['Date'] >= (pd.Timestamp.now() - pd.DateOffset(months=6))]
 
         # 마지막 날의 피처와 타겟을 함께 추가
-        for i in range(len(recent_data) - 26):  # 26일 예측
+        for i in range(len(recent_data) - 26):  # 26 거래일 예측
             target_today = 1 if recent_data['Close'].iloc[i + 26] > recent_data['Close'].iloc[i] * 1.29 else 0  # 29% 상승 여부
             
             # 피처 추가
@@ -174,9 +174,9 @@ def train_model_with_hyperparameter_tuning():
     logging.info("모델 훈련 완료.")
     return best_model  # 최적 모델 반환
 
-def predict_future_days(model):
-    """향후 26일의 상승 여부를 예측하는 함수."""
-    logging.info("향후 26일 예측 시작...")
+def predict_future_trading_days(model):
+    """향후 26 거래일의 상승 여부를 예측하는 함수."""
+    logging.info("향후 26 거래일 예측 시작...")
     df = fetch_stock_data()  # 주식 데이터 가져오기
     if df is None:
         logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
@@ -196,18 +196,23 @@ def predict_future_days(model):
 
     future_predictions = []
     
-    # 향후 26일 동안 예측
-    for i in range(1, 27):  # 1일부터 26일까지 예측
+    # 오늘 날짜를 기준으로 향후 26 거래일 계산
+    today_date = today_data['Date'].values[0]
+    future_dates = pd.bdate_range(start=today_date, periods=26)  # 26 거래일 생성
+
+    for future_date in future_dates:
+        # future_date에 대한 피처 데이터 준비
         future_data = today_data.copy()
-        future_data['Date'] += pd.DateOffset(days=i)  # 날짜를 1일씩 더함
-        
+        future_data['Date'] = future_date  # 날짜를 미래 날짜로 설정
+
         # 예측을 위한 피처 데이터 준비
         future_features = future_data[features].values
         
+        # 예측 수행
         prediction = model.predict(future_features)
-        future_predictions.append((future_data['Date'].values[0], prediction[0]))  # 날짜와 예측값 저장
+        future_predictions.append((future_date, prediction[0]))  # 날짜와 예측값 저장
 
-    logging.info("향후 26일 예측 완료.")
+    logging.info("향후 26 거래일 예측 완료.")
     return future_predictions  # 날짜와 예측값 리스트 반환
 
 def identify_buy_signals(future_predictions):
@@ -232,7 +237,7 @@ def plot_predictions_and_signals(future_predictions, buy_signals):
     for signal in buy_signals:
         plt.axvline(x=signal, color='g', linestyle='--', label='매수 신호')
 
-    plt.title('향후 26일 주가 상승 예측 및 매수 신호')
+    plt.title('향후 26 거래일 주가 상승 예측 및 매수 신호')
     plt.xlabel('날짜')
     plt.ylabel('예측 결과 (1: 상승, 0: 하락)')
     plt.xticks(rotation=45)
@@ -245,7 +250,7 @@ def plot_predictions_and_signals(future_predictions, buy_signals):
 # 모델 훈련 및 예측 실행
 best_model = train_model_with_hyperparameter_tuning()
 if best_model:
-    future_predictions = predict_future_days(best_model)
+    future_predictions = predict_future_trading_days(best_model)
     if future_predictions is not None:
         for date, prediction in future_predictions:
             logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
