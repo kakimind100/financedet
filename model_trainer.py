@@ -7,6 +7,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import classification_report
 from imblearn.over_sampling import SMOTE
+import matplotlib.pyplot as plt
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -209,6 +210,38 @@ def predict_future_days(model):
     logging.info("향후 26일 예측 완료.")
     return future_predictions  # 날짜와 예측값 리스트 반환
 
+def identify_buy_signals(future_predictions):
+    """매수 신호를 식별하는 함수."""
+    buy_signals = []
+    for date, prediction in future_predictions:
+        if prediction == 1:  # 상승 예측인 경우
+            buy_signals.append(date)
+
+    return buy_signals
+
+def plot_predictions_and_signals(future_predictions, buy_signals):
+    """예측 결과와 매수 신호를 그래프로 시각화하는 함수."""
+    dates, predictions = zip(*future_predictions)  # 날짜와 예측 결과 분리
+    dates = pd.to_datetime(dates)  # 날짜 형식 변환
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(dates, predictions, marker='o', linestyle='-', color='b', label='예측된 상승 여부')
+    plt.axhline(y=0.5, color='r', linestyle='--', label='매수 기준선')
+    
+    # 매수 신호 표시
+    for signal in buy_signals:
+        plt.axvline(x=signal, color='g', linestyle='--', label='매수 신호')
+
+    plt.title('향후 26일 주가 상승 예측 및 매수 신호')
+    plt.xlabel('날짜')
+    plt.ylabel('예측 결과 (1: 상승, 0: 하락)')
+    plt.xticks(rotation=45)
+    plt.yticks([0, 1], ['하락', '상승'])
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+
 # 모델 훈련 및 예측 실행
 best_model = train_model_with_hyperparameter_tuning()
 if best_model:
@@ -216,4 +249,11 @@ if best_model:
     if future_predictions is not None:
         for date, prediction in future_predictions:
             logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
+        
+        # 매수 신호 식별
+        buy_signals = identify_buy_signals(future_predictions)
+        logging.info(f"매수 신호: {buy_signals}")
+
+        # 예측 결과 및 매수 신호 시각화
+        plot_predictions_and_signals(future_predictions, buy_signals)
 
