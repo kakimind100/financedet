@@ -59,11 +59,16 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
 
                     # 최근 26일 이내에 거래량이 300% 이상 증가한 날이 있는지 확인
                     if (volume_increase >= 300).any():  # 300% 이상 증가한 날이 있는지 확인
-                        df.reset_index(inplace=True)  # 인덱스 초기화
-                        df['Code'] = code  # 주식 코드 추가
-                        df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
-                        all_stocks_data[code] = df  # 가져온 데이터 저장
-                        logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
+                        # 양봉 확인: 전일 종가 대비 오늘 종가가 10% 이상 상승한 날이 있는지 확인
+                        price_increase = recent_data['Close'].pct_change() * 100  # 가격 변화율 계산
+                        if (price_increase >= 10).any():  # 10% 이상 상승한 날이 있는지 확인
+                            df.reset_index(inplace=True)  # 인덱스 초기화
+                            df['Code'] = code  # 주식 코드 추가
+                            df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
+                            all_stocks_data[code] = df  # 가져온 데이터 저장
+                            logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
+                        else:
+                            logging.warning(f"{code}의 최근 26일 동안 전일 대비 10% 이상 상승한 양봉이 없습니다.")  # 경고 로그
                     else:
                         logging.warning(f"{code}의 최근 26일 동안 전일 대비 거래량 증가율이 300% 이상인 날이 없습니다.")  # 경고 로그
                 else:
