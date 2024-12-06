@@ -46,10 +46,10 @@ def prepare_data(df, cutoff_date):
     """데이터를 준비하고 훈련/검증 세트로 분할하는 함수."""
     # 컷오프 날짜 이전 데이터만 사용
     df_train = df[df['Date'] < cutoff_date]
-    
+
     # 원-핫 인코딩 처리
     df_train = pd.get_dummies(df_train, columns=['Code'], drop_first=True)
-    
+
     # 요일, 월 정보 추가
     df_train['Weekday'] = df_train['Date'].dt.weekday
     df_train['Month'] = df_train['Date'].dt.month
@@ -60,10 +60,18 @@ def prepare_data(df, cutoff_date):
     # 컷오프 날짜 이후 데이터 준비
     future_dates = get_future_trading_days(cutoff_date, 26)  # 다음 26 거래일
     future_data = df[df['Date'].isin(future_dates)].copy()
+
+    # future_data에도 훈련 데이터와 동일한 피처 추가
+    future_data = pd.get_dummies(future_data, columns=['Code'], drop_first=True)
     future_data['Weekday'] = future_data['Date'].dt.weekday  # 요일 추가
     future_data['Month'] = future_data['Date'].dt.month      # 월 추가
 
-    return X, y, future_data  # 예측할 데이터 반환
+    # 피처 일치 확인
+    missing_cols = set(X.columns) - set(future_data.columns)
+    for col in missing_cols:
+        future_data[col] = 0  # 누락된 열에 대해 0으로 채움
+
+    return X, y, future_data[X.columns]  # 예측할 데이터 반환
 
 def train_model(X, y):
     """모델을 훈련시키는 함수."""
@@ -74,8 +82,8 @@ def train_model(X, y):
 
 def predict_future_trading_days(model, future_data):
     """향후 거래일의 상승 여부를 예측하는 함수."""
-    features = ['RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'EMA20', 'EMA50', 'ATR', 'Volume', 'Weekday', 'Month']
-    future_predictions = future_data[features].copy()
+    features = future_data.columns  # 훈련 시 사용한 모든 피처를 가져옴
+    future_predictions = future_data.copy()
     future_predictions['Predicted'] = model.predict(future_predictions[features])
     future_predictions['Close'] = future_data['Close'].values  # 원래 종가 추가
     return future_predictions
