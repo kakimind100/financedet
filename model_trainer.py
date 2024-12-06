@@ -52,18 +52,16 @@ def predict_future_prices(model, last_60_days):
 def generate_signals(predictions, stock_data, start_date):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
     buy_index = np.argmin(predictions)  # 최저점 인덱스
+    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
 
-    # 매수 후 최고점 인덱스 계산
-    if buy_index + 1 < len(predictions):  # 예측값이 남아있는 경우
-        sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
-    else:
-        sell_index = buy_index  # 예측값이 없으면 매도 인덱스를 매수 인덱스로 설정
+    # 매도 인덱스가 범위를 초과하지 않는지 확인
+    if sell_index >= len(predictions):
+        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
 
     # 예측된 날짜 범위 계산
     buy_date = start_date + pd.Timedelta(days=buy_index)
     sell_date = start_date + pd.Timedelta(days=sell_index)
 
-    print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
     return buy_index, sell_index, buy_date, sell_date
 
 def main():
@@ -105,19 +103,39 @@ def main():
         start_date = stock_data.index[-1]  # 마지막 날짜 기준
         buy_index, sell_index, buy_date, sell_date = generate_signals(future_predictions, stock_data, start_date)
 
-        buy_price = future_predictions[buy_index]
+        # 오늘 날짜와 매수 날짜가 같으면 현재 종가로 매수 가격 설정
+        if buy_date.date() == pd.Timestamp.now().date():
+            buy_price = current_price
+        else:
+            buy_price = future_predictions[buy_index]
+        
         sell_price = future_predictions[sell_index]
-        gap = sell_index - buy_index
+        price_ratio = sell_price / buy_price  # 매도 가격 대비 매수 가격의 비율 계산
 
-        results.append((code, gap, buy_date, sell_date, buy_price, sell_price, current_price))
+        results.append((code, price_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
 
-    # 격차가 큰 순서로 정렬
+    # 매도/매수 비율이 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
 
+    # 상위 20개 종목 추출
+    top_20_results = results[:20]
+
     # 결과 출력
-    print("\n매수와 매도 시점의 격차가 큰 종목 순서:")
-    for code, gap, buy_date, sell_date, buy_price, sell_price, current_price in results:
-        print(f"종목 코드: {code}, 현재 가격: {current_price}, 매수 날짜: {buy_date}, 매도 날짜: {sell_date}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
+    print("\n매도/매수 비율이 큰 상위 20개 종목:")
+    for code, price_ratio, buy_date, sell_date, buy_price, sell_price, current_price in top_20_results:
+        print(f"종목 코드: {code}, 현재 가격: {current_price}, 매수 날짜: {buy_date}, "
+              f"매도 날짜: {sell_date}, 매수 가격: {buy_price:.2f}, "
+              f"매도 가격: {sell_price:.2f}, 비율: {price_ratio:.2f}")
+
+    # 데이터프레임으로 저장
+    df_top_20 = pd.DataFrame(top_20_results, columns=[
+        'Code', 'Price Ratio', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
+    ])
+
+    # CSV로 저장
+    output_path = 'data/top_20_stocks_all_dates.csv'
+    df_top_20.to_csv(output_path, index=False, encoding='utf-8-sig')
+    print(f"\n상위 20개 종목 데이터가 {output_path}에 저장되었습니다.")
 
 # 실행
 main()
