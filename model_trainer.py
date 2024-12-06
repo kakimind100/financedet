@@ -305,14 +305,15 @@ def main():
     # 모델 훈련 및 예측 실행
     best_model = train_model_with_hyperparameter_tuning()
     if best_model:
-        future_predictions = predict_future_trading_days(best_model)
+        stock_code = '000490'  # 예시 종목 코드, 필요에 따라 변경 가능
+        future_predictions = predict_future_trading_days(best_model, stock_code)  # 종목 코드 전달
         if future_predictions:
             for date, prediction in future_predictions:
-                logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
+                logging.info(f"{stock_code} {date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
             
             # 매수 신호 식별
             buy_signals = identify_buy_signals(future_predictions)
-            logging.info(f"매수 신호: {buy_signals}")
+            logging.info(f"{stock_code} 매수 신호: {buy_signals}")
 
             # 상승률 계산
             df = fetch_stock_data()  # 주식 데이터 가져오기
@@ -326,9 +327,6 @@ def main():
             # 주식 차트 그리기
             plot_stock_chart(df)
 
-        else:
-            logging.warning("예측 결과가 없습니다.")
-
 # 메인 함수 실행
-main()
-
+if __name__ == "__main__":
+    main()
