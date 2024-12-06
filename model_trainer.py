@@ -49,18 +49,15 @@ def predict_future_prices(model, last_60_days):
 
 def generate_signals(predictions):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
-    buy_signals = []
-    sell_signals = []
+    buy_index = np.argmin(predictions)  # 최저점 인덱스
+    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
 
-    # 예측 값의 최저점과 최고점 인덱스 찾기
-    min_index = np.argmin(predictions)
-    max_index = np.argmax(predictions)
+    # 매도 인덱스가 범위를 초과하지 않는지 확인
+    if sell_index >= len(predictions):
+        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
 
-    buy_signals.append(min_index)  # 최저점에서 매수
-    sell_signals.append(max_index)  # 최고점에서 매도
-
-    print(f"매수 신호 인덱스: {buy_signals}, 매도 신호 인덱스: {sell_signals}")
-    return buy_signals, sell_signals
+    print(f"매수 신호 인덱스: {buy_index}, 매도 신호 인덱스: {sell_index}")
+    return buy_index, sell_index
 
 def main():
     # 데이터 로드
@@ -109,24 +106,20 @@ def main():
                                                               np.zeros((future_predictions.shape[0], 11)))))
 
         # 매수 및 매도 신호 생성
-        buy_signals, sell_signals = generate_signals(future_prices.flatten())
+        buy_index, sell_index = generate_signals(future_prices.flatten())
 
         # 매수 및 매도 신호가 생성되었는지 확인
-        if len(buy_signals) > 0 and len(sell_signals) > 0:
+        if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):
             try:
-                # 인덱스가 future_prices의 크기를 초과하지 않도록 확인
-                if buy_signals[0] < future_prices.shape[0] and sell_signals[0] < future_prices.shape[0]:
-                    buy_price = future_prices[0][buy_signals[0]]  # 매수 가격
-                    sell_price = future_prices[0][sell_signals[0]]  # 매도 가격
-                    gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
-                    results.append((code, gap, buy_price, sell_price))
-                    print(f"종목 코드 {code} - 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
-                else:
-                    print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: 인덱스가 범위를 초과합니다.")
+                buy_price = future_prices[0][buy_index]  # 매수 가격
+                sell_price = future_prices[0][sell_index]  # 매도 가격
+                gap = sell_index - buy_index  # 매수와 매도 시점의 격차
+                results.append((code, gap, buy_price, sell_price))
+                print(f"종목 코드 {code} - 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
             except IndexError as e:
                 print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
         else:
-            print(f"종목 코드 {code}에서 매수 및 매도 신호가 생성되지 않았습니다.")
+            print(f"종목 코드 {code}에서 매수 또는 매도 신호가 유효하지 않습니다.")
 
     # 격차가 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
