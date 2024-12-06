@@ -52,11 +52,14 @@ def predict_future_prices(model, last_60_days):
 def generate_signals(predictions, stock_data, start_date):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
     buy_index = np.argmin(predictions)  # 최저점 인덱스
-    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
 
-    # 매도 인덱스가 범위를 초과하지 않는지 확인
-    if sell_index >= len(predictions):
-        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
+    # 매수 이후 예측 값이 있는지 확인
+    if buy_index + 1 >= len(predictions):
+        print("매수 이후 예측 데이터가 부족합니다. 매수와 매도를 동일 지점으로 설정.")
+        return buy_index, buy_index, start_date, start_date
+
+    # 매수 이후 최고점을 찾음
+    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1
 
     # 예측된 날짜 범위 계산
     buy_date = start_date + pd.Timedelta(days=buy_index)
