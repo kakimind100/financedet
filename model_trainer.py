@@ -7,7 +7,7 @@ from sklearn.preprocessing import MinMaxScaler
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
     file_path = 'data/stock_data_with_indicators.csv'
-    df = pd.read_csv(file_path)
+    df = pd.read_csv(file_path, dtype={'Code': str})  # 'Code' 열을 문자열로 읽어오기
     df['Date'] = pd.to_datetime(df['Date'])
     print("데이터 로드 완료. 열 목록:")
     print(df.columns.tolist())  # 로드된 데이터의 열 목록 출력
@@ -109,7 +109,7 @@ def main():
         buy_signals, sell_signals = generate_signals(future_prices.flatten())
 
         # 매수 및 매도 신호가 생성되었는지 확인
-        if buy_signals and sell_signals:
+        if len(buy_signals) > 0 and len(sell_signals) > 0:
             buy_price = future_prices[buy_signals[0]]  # 매수 가격
             sell_price = future_prices[sell_signals[0]]  # 매도 가격
             gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
