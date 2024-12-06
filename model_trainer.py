@@ -13,7 +13,7 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하는 함수."""
-    df = df[['Date', 'Close', 'MA5', 'MA20', 'MACD', 'RSI', 'Bollinger_High', 'Bollinger_Low']].dropna().set_index('Date')
+    df = df[['Date', 'Close', 'Change']].dropna().set_index('Date')
     df = df.sort_index()
 
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -60,11 +60,11 @@ def main():
     # 종목별 매수 및 매도 시점 저장
     results = []
 
-    # 종목 리스트 (예: 'AAPL', 'GOOGL', ...)
-    stock_symbols = df['Symbol'].unique()  # 'Symbol' 열이 있는 경우
+    # 종목 리스트
+    stock_codes = df['Code'].unique()  # 'Code' 열을 사용하여 종목 코드 가져오기
 
-    for symbol in stock_symbols:
-        stock_data = df[df['Symbol'] == symbol]  # 각 종목의 데이터만 필터링
+    for code in stock_codes:
+        stock_data = df[df['Code'] == code]  # 각 종목의 데이터만 필터링
 
         # 데이터 준비
         x_data, y_data, scaler = prepare_data(stock_data)
@@ -81,22 +81,22 @@ def main():
 
         # 예측 결과를 원래 스케일로 복원
         future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1), 
-                                                              np.zeros((future_predictions.shape[0], 6)))))
+                                                              np.zeros((future_predictions.shape[0], 1)))))
 
         # 매수 및 매도 신호 생성
         buy_signals, sell_signals = generate_signals(future_prices.flatten())
 
         if buy_signals and sell_signals:
             gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
-            results.append((symbol, gap))
+            results.append((code, gap))
 
     # 격차가 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
 
     # 결과 출력
     print("매수와 매도 시점의 격차가 큰 종목 순서:")
-    for symbol, gap in results:
-        print(f"종목: {symbol}, 격차: {gap}")
+    for code, gap in results:
+        print(f"종목 코드: {code}, 격차: {gap}")
 
 if __name__ == "__main__":
     main()
