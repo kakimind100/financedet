@@ -16,6 +16,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# 콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
+
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
     logging.debug("주식 데이터를 가져오는 중...")
@@ -61,7 +67,7 @@ def prepare_data(df, cutoff_date):
     future_data = df[df['Date'].isin(future_dates)].copy()
 
     if future_data.empty:
-        logging.warning("예측할 데이터가 없습니다.")
+        logging.warning("예측할 데이터가 없습니다. 컷오프 날짜: %s, 전체 데이터 크기: %s", cutoff_date, df.shape)
         return X, y, future_data  # 비어 있는 future_data 반환
 
     future_data = pd.get_dummies(future_data, columns=['Code'], drop_first=True)
