@@ -52,19 +52,17 @@ def predict_future_prices(model, last_60_days):
 def generate_signals(predictions, stock_data, start_date):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
     buy_index = np.argmin(predictions)  # 최저점 인덱스
+    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
 
-    # 매수 이후 예측 값이 있는지 확인
-    if buy_index + 1 >= len(predictions):
-        print("매수 이후 예측 데이터가 부족합니다. 매수와 매도를 동일 지점으로 설정.")
-        return buy_index, buy_index, start_date, start_date
-
-    # 매수 이후 최고점을 찾음
-    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1
+    # 매도 인덱스가 범위를 초과하지 않는지 확인
+    if sell_index >= len(predictions):
+        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
 
     # 예측된 날짜 범위 계산
     buy_date = start_date + pd.Timedelta(days=buy_index)
     sell_date = start_date + pd.Timedelta(days=sell_index)
 
+    print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
     return buy_index, sell_index, buy_date, sell_date
 
 def main():
@@ -106,31 +104,36 @@ def main():
         start_date = stock_data.index[-1]  # 마지막 날짜 기준
         buy_index, sell_index, buy_date, sell_date = generate_signals(future_predictions, stock_data, start_date)
 
-        # 오늘 날짜와 매수 날짜가 같으면 현재 종가로 매수 가격 설정
-        if buy_date.date() == pd.Timestamp.now().date():
-            buy_price = current_price
-        else:
-            buy_price = future_predictions[buy_index]
-        
+        buy_price = future_predictions[buy_index]
         sell_price = future_predictions[sell_index]
-        price_ratio = sell_price / buy_price  # 매도 가격 대비 매수 가격의 비율 계산
+        price_increase_ratio = (sell_price - buy_price) / buy_price  # 가격 상승률 계산
 
-        results.append((code, price_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
+        results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
 
-    # 매도/매수 비율이 큰 순서로 정렬
+    # 가격 상승률이 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
 
-    # 상위 20개 종목 추출
+    # 상위 20개 종목만 선택
     top_20_results = results[:20]
 
-    # 상위 20개 종목 데이터만 필터링
-    top_20_codes = [result[0] for result in top_20_results]
-    top_20_data = df[df['Code'].isin(top_20_codes)]
+    # 기존 데이터에서 상위 20개 종목의 데이터만 필터링
+    top_20_codes = [item[0] for item in top_20_results]  # 상위 20개 종목 코드 추출
+    top_20_df = df[df['Code'].isin(top_20_codes)]  # 기존 데이터에서 해당 종목만 선택
 
-    # CSV로 저장
+    # CSV 파일로 저장
     output_path = 'data/top_20_stocks_all_dates.csv'
-    top_20_data.to_csv(output_path, index=True, encoding='utf-8-sig')
-    print(f"\n상위 20개 종목의 원본 데이터가 {output_path}에 저장되었습니다.")
+    top_20_df.to_csv(output_path, index=False)
+    print(f"\n상위 20개의 데이터가 {output_path}에 저장되었습니다.")
+
+    # 결과 출력
+    print("\n매수와 매도 시점의 가격 상승률이 높은 상위 20 종목:")
+    for _, row in pd.DataFrame(top_20_results, columns=[
+        'Code', 'Price Increase Ratio', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
+    ]).iterrows():
+        print(f"종목 코드: {row['Code']}, 현재 가격: {row['Current Price']}, "
+              f"매수 날짜: {row['Buy Date']}, 매도 날짜: {row['Sell Date']}, "
+              f"가격 상승률: {row['Price Increase Ratio']:.2%}, "
+              f"매수 가격: {row['Buy Price']}, 매도 가격: {row['Sell Price']}")
 
 # 실행
 main()
