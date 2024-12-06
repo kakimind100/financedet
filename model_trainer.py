@@ -80,7 +80,9 @@ def main():
     future_predictions = predict_future_prices(model, last_60_days)
 
     # 예측 결과를 원래 스케일로 복원
-    future_prices = scaler.inverse_transform(future_predictions.reshape(-1, 1))
+    # future_predictions은 1D 배열로 되어 있으므로, 원래 데이터와 동일한 특성 수를 가진 2D 배열로 변환
+    future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1), 
+                                                          np.zeros((future_predictions.shape[0], 6)))))
 
     # 매수 및 매도 신호 생성
     buy_signals, sell_signals = generate_signals(future_prices.flatten())
