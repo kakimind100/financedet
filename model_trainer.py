@@ -27,8 +27,15 @@ def fetch_stock_data():
     logging.debug("주식 데이터를 가져오는 중...")
     file_path = 'data/stock_data_with_indicators.csv'
     df = pd.read_csv(file_path)
-    df['Date'] = pd.to_datetime(df['Date'])
+    df['Date'] = pd.to_datetime(df['Date'])  # 날짜 형식 변환
     logging.info("주식 데이터를 성공적으로 가져왔습니다. 데이터 크기: %s", df.shape)
+
+    # 첫 번째 종목의 데이터 로그에 출력
+    first_stock_code = df['Code'].iloc[0]  # 첫 번째 종목 코드
+    first_stock_data = df[df['Code'] == first_stock_code]  # 첫 번째 종목 데이터 선택
+    if not first_stock_data.empty:
+        logging.info("첫 번째 종목 데이터 (%s):\n%s", first_stock_code, first_stock_data.head())
+
     return df
 
 def is_business_day(date):
