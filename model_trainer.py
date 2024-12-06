@@ -15,11 +15,15 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하는 함수."""
-    # 필요한 열 선택
     df = df[['Date', 'Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD', 
               'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 
               'Momentum', 'ADX']].dropna().set_index('Date')
+    
     df = df.sort_index()
+    
+    # 종가가 음수인지 확인
+    if (df['Close'] < 0).any():
+        print("종가에 음수 값이 포함되어 있습니다.")
 
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(df)
@@ -35,10 +39,12 @@ def prepare_data(df):
 
 def create_and_train_model(X_train, y_train):
     """모델을 생성하고 훈련하는 함수."""
+    print("모델 훈련 시작...")
     model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100,
                               colsample_bytree=0.3, learning_rate=0.1,
                               max_depth=5, alpha=10, n_jobs=-1)
     model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
+    print("모델 훈련 완료.")
     return model
 
 def predict_future_prices(model, last_60_days):
@@ -74,6 +80,7 @@ def main():
 
         # 현재 가격 가져오기
         current_price = stock_data['Close'].iloc[-1]  # 마지막 날의 종가
+        print(f"\n종목 코드: {code}, 현재 가격: {current_price}")
 
         # 데이터 준비
         try:
@@ -85,12 +92,7 @@ def main():
         # 샘플 수 확인
         print(f"종목 코드 {code}의 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
 
-        if len(x_data) < 1:  # 데이터가 충분하지 않으면 건너뜀
-            print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 건너뜁니다.")
-            continue
-
-        # 훈련 및 테스트 데이터 분할
-        if len(x_data) < 2:  # 데이터가 충분하지 않으면 건너뜀
+        if len(x_data) < 60:  # 예를 들어, 60일치 데이터가 필요하다면
             print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 샘플 수: {len(x_data)}. 건너뜁니다.")
             continue
 
@@ -136,7 +138,7 @@ def main():
     results.sort(key=lambda x: x[1], reverse=True)
 
     # 결과 출력
-    print("매수와 매도 시점의 격차가 큰 종목 순서:")
+    print("\n매수와 매도 시점의 격차가 큰 종목 순서:")
     if results:
         for code, gap, buy_price, sell_price, current_price in results:
             print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
