@@ -25,20 +25,20 @@ def prepare_data(df):
     x_data, y_data = [], []
     for i in range(60, len(scaled_data) - 26):
         x_data.append(scaled_data[i-60:i])  # 지난 60일 데이터
-        y_data.append(scaled_data[i:i + 26, 1])  # 향후 26일 종가
+        y_data.append(scaled_data[i + 25, 1])  # 향후 26일 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
-    return x_data, y_data, scaler
+    return x_data, y_data.reshape(-1, 1), scaler  # y_data를 2D 배열로 변환
 
 def create_and_train_model(X_train, y_train):
     """XGBoost 모델을 생성하고 훈련하는 함수."""
     model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100)
-    model.fit(X_train, y_train)
+    model.fit(X_train.reshape(X_train.shape[0], -1), y_train)  # X_train을 2D 배열로 변환
     return model
 
 def predict_future_prices(model, last_60_days):
     """향후 26일 가격을 예측하는 함수."""
-    predictions = model.predict(last_60_days)
+    predictions = model.predict(last_60_days.reshape(1, -1))  # last_60_days를 2D 배열로 변환
     return predictions
 
 def generate_signals(predictions):
@@ -76,7 +76,7 @@ def main():
     model = create_and_train_model(X_train, y_train)
 
     # 가장 최근 60일 데이터를 사용하여 향후 26일 가격 예측
-    last_60_days = x_data[-1].reshape(1, -1)
+    last_60_days = x_data[-1].reshape(1, -1)  # 마지막 60일 데이터
     future_predictions = predict_future_prices(model, last_60_days)
 
     # 예측 결과를 원래 스케일로 복원
