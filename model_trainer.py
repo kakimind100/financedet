@@ -72,6 +72,9 @@ def main():
     for code in stock_codes:
         stock_data = df[df['Code'] == code]  # 각 종목의 데이터만 필터링
 
+        # 현재 가격 가져오기
+        current_price = stock_data['Close'].iloc[-1]  # 마지막 날의 종가
+
         # 데이터 준비
         try:
             x_data, y_data, scaler = prepare_data(stock_data)
@@ -113,9 +116,15 @@ def main():
             try:
                 buy_price = future_prices[0][buy_index]  # 매수 가격
                 sell_price = future_prices[0][sell_index]  # 매도 가격
+                
+                # 매수 가격 확인
+                if buy_price < 0:
+                    print(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}. 무시합니다.")
+                    continue
+                
                 gap = sell_index - buy_index  # 매수와 매도 시점의 격차
-                results.append((code, gap, buy_price, sell_price))
-                print(f"종목 코드 {code} - 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
+                results.append((code, gap, buy_price, sell_price, current_price))
+                print(f"종목 코드 {code} - 현재 가격: {current_price}, 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
             except IndexError as e:
                 print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
         else:
@@ -127,8 +136,8 @@ def main():
     # 결과 출력
     print("매수와 매도 시점의 격차가 큰 종목 순서:")
     if results:
-        for code, gap, buy_price, sell_price in results:
-            print(f"종목 코드: {code}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
+        for code, gap, buy_price, sell_price, current_price in results:
+            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
     else:
         print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
 
