@@ -70,7 +70,7 @@ def main():
         x_data, y_data, scaler = prepare_data(stock_data)
 
         # 샘플 수 확인
-        if len(x_data) < 1:  # 데이터가 충분하지 않으면 건너뜀
+        if len(x_data) < 2:  # 데이터가 충분하지 않으면 건너뜀
             print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 건너뜁니다.")
             continue
 
