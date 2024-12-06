@@ -50,16 +50,12 @@ def generate_signals(predictions):
     buy_signals = []
     sell_signals = []
 
-    min_price = np.min(predictions)
-    max_price = np.max(predictions)
+    # 예측 값의 최저점과 최고점 인덱스 찾기
+    min_index = np.argmin(predictions)
+    max_index = np.argmax(predictions)
 
-    min_index = np.where(predictions == min_price)[0][0]
-    buy_signals.append(min_index)
-
-    for i in range(min_index + 1, len(predictions)):
-        if predictions[i] >= max_price:
-            sell_signals.append(i)
-            break
+    buy_signals.append(min_index)  # 최저점에서 매수
+    sell_signals.append(max_index)  # 최고점에서 매도
 
     return buy_signals, sell_signals
 
