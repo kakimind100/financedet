@@ -106,8 +106,9 @@ def main():
         future_predictions = predict_future_prices(model, last_60_days)
 
         # 예측 결과를 원래 스케일로 복원
+        # 12개의 특성을 가지는 배열을 만들어야 하므로, 11개의 0을 추가
         future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
-                                                              np.zeros((future_predictions.shape[0], 1)))))
+                                                              np.zeros((future_predictions.shape[0], 11)))))
 
         # 매수 및 매도 신호 생성
         buy_signals, sell_signals = generate_signals(future_prices.flatten())
