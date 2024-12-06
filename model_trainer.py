@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -19,24 +18,21 @@ def prepare_data(df):
               'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 
               'Momentum', 'ADX']].dropna().set_index('Date')
     
-    df = df.sort_index()
-    
+    df = df.sort_index(ascending=False)  # 내림차순으로 정렬하여 최신 데이터가 첫 번째로 오게 설정
+
     # 종가가 음수인지 확인
     if (df['Close'] < 0).any():
         print("종가에 음수 값이 포함되어 있습니다.")
-
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(df)
-
+    
     x_data, y_data = [], []
     # 최근 60일 데이터를 사용하여 향후 26일 예측
-    for i in range(60, len(scaled_data) - 26):
-        x_data.append(scaled_data[i-60:i])  # 이전 60일 데이터
-        y_data.append(scaled_data[i + 25, 0])  # 26일 후의 종가 (Close)
+    for i in range(60, len(df) - 26):
+        x_data.append(df.iloc[i-60:i].values)  # 이전 60일 데이터
+        y_data.append(df.iloc[i + 25]['Close'])  # 26일 후의 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
     print(f"준비된 데이터 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
-    return x_data, y_data.reshape(-1, 1), scaler
+    return x_data, y_data.reshape(-1, 1)
 
 def create_and_train_model(X_train, y_train):
     """모델을 생성하고 훈련하는 함수."""
@@ -80,12 +76,12 @@ def main():
         stock_data = df[df['Code'] == code]  # 각 종목의 데이터만 필터링
 
         # 현재 가격 가져오기
-        current_price = stock_data['Close'].iloc[-1]  # 마지막 날의 종가
+        current_price = stock_data['Close'].iloc[0]  # 첫 번째 날짜의 종가 (최신 가격)
         print(f"\n종목 코드: {code}, 현재 가격: {current_price}")
 
         # 데이터 준비
         try:
-            x_data, y_data, scaler = prepare_data(stock_data)
+            x_data, y_data = prepare_data(stock_data)
         except KeyError as e:
             print(f"종목 코드 {code}의 데이터 준비 중 오류 발생: {e}")
             continue  # 오류 발생 시 다음 종목으로 넘어감
@@ -104,25 +100,21 @@ def main():
         model = create_and_train_model(X_train, y_train)
 
         # 가장 최근 60일 데이터를 사용하여 향후 26일 가격 예측
-        last_60_days = x_data[-1].reshape(1, -1)
+        last_60_days = x_data[0].reshape(1, -1)  # 가장 최신 데이터 사용
         future_predictions = predict_future_prices(model, last_60_days)
 
-        # 예측 결과를 원래 스케일로 복원
-        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
-                                                              np.zeros((future_predictions.shape[0], 11)))))
-
         # 매수 및 매도 신호 생성
-        buy_index, sell_index = generate_signals(future_prices.flatten())
+        buy_index, sell_index = generate_signals(future_predictions.flatten())
 
         # 매수 및 매도 신호가 생성되었는지 확인
-        if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):
+        if buy_index < len(future_predictions.flatten()) and sell_index < len(future_predictions.flatten()):
             try:
                 # 매수 및 매도 인덱스에 해당하는 모든 데이터 출력
-                print(f"종목 코드 {code}의 예측된 가격 배열: {future_prices.flatten()}")
+                print(f"종목 코드 {code}의 예측된 가격 배열: {future_predictions.flatten()}")
                 
                 # 매수 및 매도 인덱스에 해당하는 모든 특성 가져오기
-                buy_data_index = buy_index + 60  # 60일 전 데이터
-                sell_data_index = sell_index + 60  # 60일 전 데이터
+                buy_data_index = buy_index  # 최신 60일 전 데이터
+                sell_data_index = sell_index  # 최신 60일 전 데이터
 
                 if buy_data_index < len(stock_data) and sell_data_index < len(stock_data):
                     all_data_at_buy_index = stock_data.iloc[buy_data_index]
@@ -131,8 +123,8 @@ def main():
                     print(f"매수 인덱스 {buy_index}의 모든 데이터: {all_data_at_buy_index.to_dict()}")
                     print(f"매도 인덱스 {sell_index}의 모든 데이터: {all_data_at_sell_index.to_dict()}")
 
-                buy_price = future_prices[0][buy_index]  # 매수 가격
-                sell_price = future_prices[0][sell_index]  # 매도 가격
+                buy_price = future_predictions.flatten()[buy_index]  # 매수 가격
+                sell_price = future_predictions.flatten()[sell_index]  # 매도 가격
                 
                 # 매수 가격 확인
                 if buy_price < 0:
@@ -155,9 +147,4 @@ def main():
     print("\n매수와 매도 시점의 격차가 큰 종목 순서:")
     if results:
         for code, gap, buy_price, sell_price, current_price in results:
-            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
-    else:
-        print("매수와 매도 시점의 격차가 큰 종목이 없습니다.")
-
-# 실행
-main()
+            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격
