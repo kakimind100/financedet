@@ -52,25 +52,13 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
             recent_volume = df['Volume'].tail(26)
 
             if recent_volume.sum() > 0:  # 최근 26일 간 거래량이 0이 아닌 경우
-                # 최근 26일 종가가 7000 이상 30만원 이하인지 확인
-                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 300000):
-                    # 전일 대비 거래량 변화 계산
-                    volume_increase = recent_volume.pct_change() * 100  # %로 변환
-
-                    # 최근 26일 이내에 거래량이 300% 이상 증가한 날이 있는지 확인
-                    if (volume_increase >= 300).any():  # 300% 이상 증가한 날이 있는지 확인
-                        # 양봉 확인: 전일 종가 대비 오늘 종가가 10% 이상 상승한 날이 있는지 확인
-                        price_increase = recent_data['Close'].pct_change() * 100  # 가격 변화율 계산
-                        if (price_increase >= 10).any():  # 10% 이상 상승한 날이 있는지 확인
-                            df.reset_index(inplace=True)  # 인덱스 초기화
-                            df['Code'] = code  # 주식 코드 추가
-                            df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
-                            all_stocks_data[code] = df  # 가져온 데이터 저장
-                            logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
-                        else:
-                            logging.warning(f"{code}의 최근 26일 동안 전일 대비 10% 이상 상승한 양봉이 없습니다.")  # 경고 로그
-                    else:
-                        logging.warning(f"{code}의 최근 26일 동안 전일 대비 거래량 증가율이 300% 이상인 날이 없습니다.")  # 경고 로그
+                # 최근 26일 종가가 3000 이상 30만원 이하인지 확인
+                if all(recent_data['Close'] >= 3000) and all(recent_data['Close'] <= 300000):
+                    df.reset_index(inplace=True)  # 인덱스 초기화
+                    df['Code'] = code  # 주식 코드 추가
+                    df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
+                    all_stocks_data[code] = df  # 가져온 데이터 저장
+                    logging.info(f"{code} 데이터 가져오기 완료, 데이터 길이: {len(df)}")  # 성공 로그
                 else:
                     logging.warning(f"{code}의 최근 26일 종가가 3000 미만이거나 30만원 초과입니다. 데이터 제외.")  # 경고 로그
             else:
