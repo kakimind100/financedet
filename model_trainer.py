@@ -116,6 +116,20 @@ def main():
         # 매수 및 매도 신호가 생성되었는지 확인
         if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):
             try:
+                # 매수 및 매도 인덱스에 해당하는 모든 데이터 출력
+                print(f"종목 코드 {code}의 예측된 가격 배열: {future_prices.flatten()}")
+                
+                # 매수 및 매도 인덱스에 해당하는 모든 특성 가져오기
+                buy_data_index = buy_index + 60  # 60일 전 데이터
+                sell_data_index = sell_index + 60  # 60일 전 데이터
+
+                if buy_data_index < len(stock_data) and sell_data_index < len(stock_data):
+                    all_data_at_buy_index = stock_data.iloc[buy_data_index]
+                    all_data_at_sell_index = stock_data.iloc[sell_data_index]
+                    
+                    print(f"매수 인덱스 {buy_index}의 모든 데이터: {all_data_at_buy_index.to_dict()}")
+                    print(f"매도 인덱스 {sell_index}의 모든 데이터: {all_data_at_sell_index.to_dict()}")
+
                 buy_price = future_prices[0][buy_index]  # 매수 가격
                 sell_price = future_prices[0][sell_index]  # 매도 가격
                 
@@ -123,7 +137,6 @@ def main():
                 if buy_price < 0:
                     print(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}.")
                     print(f"매수 인덱스: {buy_index}, 매도 인덱스: {sell_index}")
-                    print(f"예측된 가격 배열: {future_prices.flatten()}")
                     continue  # 무시할지 여부 결정
                 
                 gap = sell_index - buy_index  # 매수와 매도 시점의 격차
@@ -146,6 +159,4 @@ def main():
         print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
 
 if __name__ == "__main__":
-    print("모델 훈련 스크립트 실행 중...")  # 실행 시작 메시지
-    main()
-    print("모델 훈련 스크립트 실행 완료.")  # 실행 완료 메시지
+    print("모델 훈련 스크립트 실행 중...")  #
