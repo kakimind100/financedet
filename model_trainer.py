@@ -3,6 +3,7 @@ import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -64,6 +65,66 @@ def generate_signals(predictions):
 
     print(f"매수 신호 인덱스: {buy_index}, 매도 신호 인덱스: {sell_index}")
     return buy_index, sell_index
+
+def plot_stock_data(stock_data, code):
+    """특정 종목의 데이터를 시각화하는 함수."""
+    plt.figure(figsize=(14, 12))
+
+    # 종가 및 이동 평균 차트
+    plt.subplot(4, 2, 1)
+    plt.plot(stock_data['Close'], label='Close Price', color='blue')
+    plt.plot(stock_data['EMA20'], label='EMA20', color='orange')
+    plt.plot(stock_data['EMA50'], label='EMA50', color='green')
+    plt.title(f'{code} - Close Price and Moving Averages')
+    plt.legend()
+
+    # RSI 차트
+    plt.subplot(4, 2, 2)
+    plt.plot(stock_data['RSI'], label='RSI', color='purple')
+    plt.axhline(70, linestyle='--', color='red', label='Overbought (70)')
+    plt.axhline(30, linestyle='--', color='green', label='Oversold (30)')
+    plt.title(f'{code} - Relative Strength Index (RSI)')
+    plt.legend()
+
+    # MACD 차트
+    plt.subplot(4, 2, 3)
+    plt.plot(stock_data['MACD'], label='MACD', color='orange')
+    plt.plot(stock_data['MACD_Signal'], label='MACD Signal', color='blue')
+    plt.title(f'{code} - MACD')
+    plt.legend()
+
+    # 볼린저 밴드 차트
+    plt.subplot(4, 2, 4)
+    plt.plot(stock_data['Close'], label='Close Price', color='blue')
+    plt.plot(stock_data['Bollinger_High'], label='Bollinger High', color='green')
+    plt.plot(stock_data['Bollinger_Low'], label='Bollinger Low', color='red')
+    plt.title(f'{code} - Bollinger Bands')
+    plt.legend()
+
+    # Stochastic 차트
+    plt.subplot(4, 2, 5)
+    plt.plot(stock_data['Stoch'], label='Stochastic', color='purple')
+    plt.axhline(80, linestyle='--', color='red', label='Overbought (80)')
+    plt.axhline(20, linestyle='--', color='green', label='Oversold (20)')
+    plt.title(f'{code} - Stochastic')
+    plt.legend()
+
+    # 모멘텀 차트
+    plt.subplot(4, 2, 6)
+    plt.plot(stock_data['Momentum'], label='Momentum', color='brown')
+    plt.title(f'{code} - Momentum')
+    plt.legend()
+
+    # ADX 차트
+    plt.subplot(4, 2, 7)
+    plt.plot(stock_data['ADX'], label='ADX', color='orange')
+    plt.axhline(20, linestyle='--', color='red', label='Weak Trend (20)')
+    plt.axhline(25, linestyle='--', color='green', label='Strong Trend (25)')
+    plt.title(f'{code} - Average Directional Index (ADX)')
+    plt.legend()
+
+    plt.tight_layout()
+    plt.show()
 
 def main():
     # 데이터 로드
@@ -142,6 +203,10 @@ def main():
                 gap = sell_index - buy_index  # 매수와 매도 시점의 격차
                 results.append((code, gap, buy_price, sell_price, current_price))
                 print(f"종목 코드 {code} - 현재 가격: {current_price}, 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
+
+                # 차트 시각화
+                plot_stock_data(stock_data, code)  # 해당 종목의 데이터 시각화
+
             except IndexError as e:
                 print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
         else:
@@ -159,4 +224,6 @@ def main():
         print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
 
 if __name__ == "__main__":
-    print("모델 훈련 스크립트 실행 중...")  #
+    print("모델 훈련 스크립트 실행 중...")
+    main()
+
