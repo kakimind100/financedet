@@ -1,163 +1,121 @@
-import pandas as pd
-import numpy as np
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
+import pandas as pd  
+import numpy as np  
+from sklearn.preprocessing import MinMaxScaler  
+from xgboost import XGBRegressor  
+import logging  
 
-def fetch_stock_data():
-    """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
-    file_path = 'data/stock_data_with_indicators.csv'
-    df = pd.read_csv(file_path, dtype={'Code': str})  # 'Code' 열을 문자열로 읽어오기
-    df['Date'] = pd.to_datetime(df['Date'])
-    print("데이터 로드 완료. 열 목록:")
-    print(df.columns.tolist())  # 로드된 데이터의 열 목록 출력
-    return df
+# 로깅 설정  
+logging.basicConfig(level=logging.INFO)  
 
-def prepare_data(df):
-    """데이터를 준비하는 함수 (최근 60일 데이터를 학습, 향후 26일 예측)."""
-    df = df[['Date', 'Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD', 
-              'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 
-              'Momentum', 'ADX']].dropna().set_index('Date')
-    
-    df = df.sort_index()
-    
-    # 종가가 음수인지 확인
-    if (df['Close'] < 0).any():
-        print("종가에 음수 값이 포함되어 있습니다.")
+# 주식 데이터 로드 함수  
+def fetch_stock_data():  
+    """주식 데이터를 가져오는 함수 (CSV 파일에서)."""  
+    try:  
+        file_path = 'data/stock_data_with_indicators.csv'  
+        df = pd.read_csv(file_path, dtype={'Code': str})  
+        df['Date'] = pd.to_datetime(df['Date'])  
+        logging.info("데이터 로드 완료. 열 목록: %s", df.columns.tolist())  
+        return df  
+    except FileNotFoundError:  
+        logging.error("CSV 파일을 찾을 수 없습니다. 경로: %s", file_path)  
+        return None  
+    except Exception as e:  
+        logging.error("데이터 로드 중 오류 발생: %s", e)  
+        return None  
 
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(df)
+# 데이터 전처리 함수  
+def preprocess_data(df, code):  
+    """지정된 종목 코드에 대한 데이터를 전처리하는 함수."""  
+    stock_data = df[df['Code'] == code]  
+    stock_data = stock_data.sort_values('Date')  
 
-    x_data, y_data = [], []
-    # 최근 60일 데이터를 사용하여 향후 26일 예측
-    for i in range(60, len(scaled_data) - 26):
-        x_data.append(scaled_data[i-60:i])  # 이전 60일 데이터
-        y_data.append(scaled_data[i + 25, 0])  # 26일 후의 종가 (Close)
+    # 특징과 레이블 생성  
+    x_data = stock_data[['Open', 'High', 'Low', 'Close', 'Volume', 'MA5', 'MA20',   
+                          'MACD', 'Bollinger_High', 'Bollinger_Low',   
+                          'Stoch', 'RSI']]  
+    y_data = stock_data['Close'].shift(-1)  # 다음 날 종가를 레이블로 사용  
+    x_data = x_data[:-1]  # 레이블 이동으로 인해 마지막 행을 제거  
+    y_data = y_data.dropna()  # NaN 값 제거  
 
-    x_data, y_data = np.array(x_data), np.array(y_data)
-    print(f"준비된 데이터 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
-    return x_data, y_data.reshape(-1, 1), scaler
+    return x_data.values, y_data.values  
 
-def create_and_train_model(X_train, y_train):
-    """모델을 생성하고 훈련하는 함수."""
-    print("모델 훈련 시작...")
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100,
-                              colsample_bytree=0.3, learning_rate=0.1,
-                              max_depth=5, alpha=10, n_jobs=-1)
-    model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
-    print("모델 훈련 완료.")
-    return model
+# 모델 훈련 함수  
+def train_model(x_data, y_data):  
+    """XGBoost 모델을 훈련시키는 함수."""  
+    model = XGBRegressor()  
+    model.fit(x_data, y_data)  
+    logging.info("모델 훈련 완료.")  
+    return model  
 
-def predict_future_prices(model, last_60_days):
-    """모델을 사용하여 향후 26일 가격을 예측하는 함수."""
-    predictions = model.predict(last_60_days.reshape(1, -1))
-    print(f"예측된 미래 가격: {predictions}")
-    return predictions
+# 미래 가격 예측 함수  
+def predict_future_prices(model, last_60_days):  
+    """모델을 사용하여 향후 26일 가격을 예측하는 함수."""  
+    predictions = model.predict(last_60_days.reshape(1, -1))  
+    logging.info(f"예측된 미래 가격: {predictions}")  
+    return predictions  
 
-def generate_signals(predictions):
-    """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
-    buy_index = np.argmin(predictions)  # 최저점 인덱스
-    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스
+# 신호 생성 함수  
+def generate_signals(predictions):  
+    """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""  
+    predictions = predictions.flatten()  # 1차원 배열로 변환  
+    buy_index = np.argmin(predictions)  # 최저점 인덱스  
+    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1  # 매수 후 최고점 인덱스  
 
-    # 매도 인덱스가 범위를 초과하지 않는지 확인
-    if sell_index >= len(predictions):
-        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
+    # 매도 인덱스가 범위를 초과하지 않는지 확인  
+    if sell_index >= len(predictions):  
+        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정  
 
-    print(f"매수 신호 인덱스: {buy_index}, 매도 신호 인덱스: {sell_index}")
-    return buy_index, sell_index
+    logging.info(f"매수 신호 인덱스: {buy_index}, 매도 신호 인덱스: {sell_index}")  
+    return buy_index, sell_index  
 
-def main():
-    # 데이터 로드
-    df = fetch_stock_data()
+# 메인 함수  
+def main():  
+    # 주식 코드 및 현재 가격 설정  
+    code = '003570'  
+    current_price = 17420.0  
 
-    # 종목별 매수 및 매도 시점 저장
-    results = []
+    # 데이터 로드  
+    df = fetch_stock_data()  
+    if df is None:  
+        return  # 데이터 로드 실패 시 종료  
 
-    # 종목 리스트
-    stock_codes = df['Code'].unique()  # 'Code' 열을 사용하여 종목 코드 가져오기
+    # 데이터 전처리  
+    x_data, y_data = preprocess_data(df, code)  
+    logging.info(f"준비된 데이터 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")  
 
-    for code in stock_codes:
-        stock_data = df[df['Code'] == code]  # 각 종목의 데이터만 필터링
+    # 모델 훈련  
+    model = train_model(x_data, y_data)  
 
-        # 현재 가격 가져오기
-        current_price = stock_data['Close'].iloc[-1]  # 마지막 날의 종가
-        print(f"\n종목 코드: {code}, 현재 가격: {current_price}")
+    # 최근 60일 데이터 가져오기  
+    last_60_days = x_data[-1]  # 마지막 샘플  
 
-        # 데이터 준비
-        try:
-            x_data, y_data, scaler = prepare_data(stock_data)
-        except KeyError as e:
-            print(f"종목 코드 {code}의 데이터 준비 중 오류 발생: {e}")
-            continue  # 오류 발생 시 다음 종목으로 넘어감
+    # 미래 가격 예측  
+    future_predictions = predict_future_prices(model, last_60_days)  
 
-        # 샘플 수 확인
-        print(f"종목 코드 {code}의 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
+    # 예측 결과를 원래 스케일로 복원  
+    scaler = MinMaxScaler()  # 스케일러 초기화  
+    future_prices = scaler.inverse_transform(  
+        np.hstack((future_predictions.reshape(-1, 1), np.zeros((future_predictions.shape[0], 11))))  
+    )  
 
-        if len(x_data) < 60:  # 예를 들어, 60일치 데이터가 필요하다면
-            print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 샘플 수: {len(x_data)}. 건너뜁니다.")
-            continue
+    # 매수 및 매도 신호 생성  
+    buy_index, sell_index = generate_signals(future_prices)  
 
-        # 훈련 및 테스트 데이터 분할
-        X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
+    # 신호 유효성 확인 및 출력  
+    if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):  
+        buy_price = future_prices[0][buy_index]  # 매수 가격  
+        sell_price = future_prices[0][sell_index]  # 매도 가격  
 
-        # 모델 훈련
-        model = create_and_train_model(X_train, y_train)
+        # 매수 가격 유효성 체크  
+        if buy_price < 0:  
+            logging.warning(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}.")  
+            return  # 종료  
 
-        # 가장 최근 60일 데이터를 사용하여 향후 26일 가격 예측
-        last_60_days = x_data[-1].reshape(1, -1)
-        future_predictions = predict_future_prices(model, last_60_days)
+        gap = sell_index - buy_index  # 매수와 매도 시점의 격차  
+        logging.info(f"종목 코드 {code} - 현재 가격: {current_price}, 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")  
+    else:  
+        logging.warning(f"종목 코드 {code}에서 매수 또는 매도 신호가 유효하지 않습니다.")  
 
-        # 예측 결과를 원래 스케일로 복원
-        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
-                                                              np.zeros((future_predictions.shape[0], 11)))))
-
-        # 매수 및 매도 신호 생성
-        buy_index, sell_index = generate_signals(future_prices.flatten())
-
-        # 매수 및 매도 신호가 생성되었는지 확인
-        if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):
-            try:
-                # 매수 및 매도 인덱스에 해당하는 모든 데이터 출력
-                print(f"종목 코드 {code}의 예측된 가격 배열: {future_prices.flatten()}")
-                
-                # 매수 및 매도 인덱스에 해당하는 모든 특성 가져오기
-                buy_data_index = buy_index + 60  # 60일 전 데이터
-                sell_data_index = sell_index + 60  # 60일 전 데이터
-
-                if buy_data_index < len(stock_data) and sell_data_index < len(stock_data):
-                    all_data_at_buy_index = stock_data.iloc[buy_data_index]
-                    all_data_at_sell_index = stock_data.iloc[sell_data_index]
-                    
-                    print(f"매수 인덱스 {buy_index}의 모든 데이터: {all_data_at_buy_index.to_dict()}")
-                    print(f"매도 인덱스 {sell_index}의 모든 데이터: {all_data_at_sell_index.to_dict()}")
-
-                buy_price = future_prices[0][buy_index]  # 매수 가격
-                sell_price = future_prices[0][sell_index]  # 매도 가격
-                
-                # 매수 가격 확인
-                if buy_price < 0:
-                    print(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}.")
-                    print(f"매수 인덱스: {buy_index}, 매도 인덱스: {sell_index}")
-                    continue  # 무시할지 여부 결정
-                
-                gap = sell_index - buy_index  # 매수와 매도 시점의 격차
-                results.append((code, gap, buy_price, sell_price, current_price))
-                print(f"종목 코드 {code} - 현재 가격: {current_price}, 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
-            except IndexError as e:
-                print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
-        else:
-            print(f"종목 코드 {code}에서 매수 또는 매도 신호가 유효하지 않습니다.")
-
-    # 격차가 큰 순서로 정렬
-    results.sort(key=lambda x: x[1], reverse=True)
-
-    # 결과 출력
-    print("\n매수와 매도 시점의 격차가 큰 종목 순서:")
-    if results:
-        for code, gap, buy_price, sell_price, current_price in results:
-            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
-    else:
-        print("매수와 매도 시점의 격차가 큰 종목이 없습니다.")
-
-# 실행
-main()
+# 실행  
+if __name__ == "__main__":  
+    main()
