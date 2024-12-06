@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import MinMaxScaler
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -19,17 +18,14 @@ def prepare_data(df):
     df = df[['Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD', 
               'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 
               'Momentum', 'ADX']].dropna()
-    
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(df)
 
     x_data, y_data = [], []
-    for i in range(60, len(scaled_data) - 26):
-        x_data.append(scaled_data[i-60:i])  # 이전 60일 데이터
-        y_data.append(scaled_data[i + 25, 0])  # 26일 후의 종가 (Close)
+    for i in range(60, len(df) - 26):
+        x_data.append(df.iloc[i-60:i].values)  # 이전 60일 데이터
+        y_data.append(df.iloc[i + 25]['Close'])  # 26일 후의 종가
 
     x_data, y_data = np.array(x_data), np.array(y_data)
-    return x_data, y_data.reshape(-1, 1), scaler
+    return x_data, y_data
 
 def create_and_train_model(X_train, y_train):
     """모델을 생성하고 훈련하는 함수."""
@@ -41,7 +37,16 @@ def create_and_train_model(X_train, y_train):
 
 def predict_future_prices(model, last_60_days):
     """모델을 사용하여 향후 26일 가격을 예측하는 함수."""
-    predictions = model.predict(last_60_days.reshape(1, -1))
+    predictions = []
+    input_data = last_60_days.copy()
+
+    for _ in range(26):
+        pred = model.predict(input_data.reshape(1, -1))[0]
+        predictions.append(pred)
+        # 새로 예측된 값을 입력 데이터에 추가하고, 맨 앞의 데이터를 제거
+        input_data = np.roll(input_data, -1, axis=0)
+        input_data[-1, 0] = pred  # 'Close'에 해당하는 값 업데이트
+
     return predictions
 
 def generate_signals(predictions, stock_data, start_date):
@@ -76,7 +81,7 @@ def main():
 
         # 데이터 준비
         try:
-            x_data, y_data, scaler = prepare_data(stock_data)
+            x_data, y_data = prepare_data(stock_data)
         except KeyError as e:
             print(f"종목 코드 {code}의 데이터 준비 중 오류 발생: {e}")
             continue
@@ -92,19 +97,15 @@ def main():
         model = create_and_train_model(X_train, y_train)
 
         # 최근 60일 데이터 사용하여 향후 26일 가격 예측
-        last_60_days = x_data[-1].reshape(1, -1)
+        last_60_days = x_data[-1]
         future_predictions = predict_future_prices(model, last_60_days)
-
-        # 예측 결과를 원래 스케일로 복원
-        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
-                                                            np.zeros((future_predictions.shape[0], 11)))))
 
         # 매수 및 매도 신호 생성
         start_date = stock_data.index[-1]  # 마지막 날짜 기준
-        buy_index, sell_index, buy_date, sell_date = generate_signals(future_prices.flatten(), stock_data, start_date)
+        buy_index, sell_index, buy_date, sell_date = generate_signals(future_predictions, stock_data, start_date)
 
-        buy_price = future_prices[0][buy_index]
-        sell_price = future_prices[0][sell_index]
+        buy_price = future_predictions[buy_index]
+        sell_price = future_predictions[sell_index]
         gap = sell_index - buy_index
 
         results.append((code, gap, buy_date, sell_date, buy_price, sell_price, current_price))
