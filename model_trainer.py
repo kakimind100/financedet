@@ -119,8 +119,10 @@ def main():
                 
                 # 매수 가격 확인
                 if buy_price < 0:
-                    print(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}. 무시합니다.")
-                    continue
+                    print(f"종목 코드 {code}에서 매수 가격이 음수입니다: {buy_price}.")
+                    print(f"매수 인덱스: {buy_index}, 매도 인덱스: {sell_index}")
+                    print(f"예측된 가격 배열: {future_prices.flatten()}")
+                    continue  # 무시할지 여부 결정
                 
                 gap = sell_index - buy_index  # 매수와 매도 시점의 격차
                 results.append((code, gap, buy_price, sell_price, current_price))
