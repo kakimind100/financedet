@@ -102,6 +102,11 @@ def predict_future_trading_days(model, future_data):
     future_predictions = future_data.copy()
     future_predictions['Predicted'] = model.predict(future_predictions[features])
     future_predictions['Close'] = future_data['Close'].values
+    
+    # 예측 결과와 종가 로그에 기록
+    for index, row in future_predictions.iterrows():
+        logging.info("예측 날짜: %s, 종가: %.2f, 예측 결과: %s", row['Date'], row['Close'], row['Predicted'])
+
     logging.info("예측 완료. 예측 데이터 크기: %s", future_predictions.shape)
     return future_predictions
 
