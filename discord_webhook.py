@@ -108,8 +108,8 @@ def main():
             f"1. 대부분의 기술적 지표가 긍정적인 신호를 나타내는지 검토"
             f"2. 추천 종목에 대한 확신을 가지고 이유를 50자 내외로 설명"
             f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요. "
-            f"참고 사항: 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'는 XGBoost 모델에서 생성된 참고 데이터입니다. "
-            f"추천 종목에 대한 선택은 기술적 지표를 기반으로 이루어집니다. "
+            f"XGBoost 모델에서 생성된 참고 데이터'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'이것은 이유에 작성 하지 않습니다. "
+            f"추천 종목은 대한 선택은 기술적 지표를 기반으로 이루어집니다. "
             f"주의 깊게 지켜보아야 할 종목은 X입니다."
             )
 
