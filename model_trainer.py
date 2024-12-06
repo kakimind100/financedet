@@ -186,10 +186,10 @@ def predict_future_trading_days(model):
     """향후 26 거래일의 상승 여부를 예측하는 함수."""
     logging.info("향후 26 거래일 예측 시작...")
     df = fetch_stock_data()  # 주식 데이터 가져오기
-    if df is None:
-        logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
-        return None
-        
+    if df is None or df.empty:
+        logging.error("데이터프레임이 None이거나 비어 있습니다. 예측을 중단합니다.")
+        return []
+
     # features 리스트 정의
     features = [
         'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
@@ -200,7 +200,7 @@ def predict_future_trading_days(model):
     today_data = df.tail(1)
     if today_data.empty:
         logging.warning("오늘 데이터가 없습니다. 예측을 중단합니다.")
-        return
+        return []
 
     future_predictions = []
     
@@ -286,6 +286,10 @@ def calculate_returns(future_predictions, df):
 
 def plot_predictions_and_signals(future_predictions, buy_signals):
     """예측 결과와 매수 신호를 그래프로 시각화하는 함수."""
+    if not future_predictions:
+        logging.warning("예측 결과가 없습니다. 그래프를 그릴 수 없습니다.")
+        return
+    
     dates, predictions = zip(*future_predictions)  # 날짜와 예측 결과 분리
     dates = pd.to_datetime(dates)  # 날짜 형식 변환
 
