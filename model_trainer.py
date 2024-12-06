@@ -112,20 +112,26 @@ def main():
         # 매수 및 매도 신호 생성
         buy_signals, sell_signals = generate_signals(future_prices.flatten())
 
+        # 매수 및 매도 신호가 생성되었는지 확인
         if buy_signals and sell_signals:
             buy_price = future_prices[buy_signals[0]]  # 매수 가격
             sell_price = future_prices[sell_signals[0]]  # 매도 가격
             gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
             results.append((code, gap, buy_price[0], sell_price[0]))
             print(f"종목 코드 {code} - 매수 가격: {buy_price[0]}, 매도 가격: {sell_price[0]}, 격차: {gap}")
+        else:
+            print(f"종목 코드 {code}에서 매수 및 매도 신호가 생성되지 않았습니다.")
 
     # 격차가 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
 
     # 결과 출력
     print("매수와 매도 시점의 격차가 큰 종목 순서:")
-    for code, gap, buy_price, sell_price in results:
-        print(f"종목 코드: {code}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
+    if results:
+        for code, gap, buy_price, sell_price in results:
+            print(f"종목 코드: {code}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
+    else:
+        print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
 
 if __name__ == "__main__":
     print("모델 훈련 스크립트 실행 중...")  # 실행 시작 메시지
