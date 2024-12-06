@@ -113,15 +113,18 @@ def main():
 
         # 매수 및 매도 신호가 생성되었는지 확인
         if len(buy_signals) > 0 and len(sell_signals) > 0:
-            # 인덱스가 future_prices의 크기를 초과하지 않도록 확인
-            if buy_signals[0] < future_prices.shape[0] and sell_signals[0] < future_prices.shape[0]:
-                buy_price = future_prices[buy_signals[0]]  # 매수 가격
-                sell_price = future_prices[sell_signals[0]]  # 매도 가격
-                gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
-                results.append((code, gap, buy_price[0], sell_price[0]))
-                print(f"종목 코드 {code} - 매수 가격: {buy_price[0]}, 매도 가격: {sell_price[0]}, 격차: {gap}")
-            else:
-                print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: 인덱스가 범위를 초과합니다.")
+            try:
+                # 인덱스가 future_prices의 크기를 초과하지 않도록 확인
+                if buy_signals[0] < future_prices.shape[0] and sell_signals[0] < future_prices.shape[0]:
+                    buy_price = future_prices[0][buy_signals[0]]  # 매수 가격
+                    sell_price = future_prices[0][sell_signals[0]]  # 매도 가격
+                    gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
+                    results.append((code, gap, buy_price, sell_price))
+                    print(f"종목 코드 {code} - 매수 가격: {buy_price}, 매도 가격: {sell_price}, 격차: {gap}")
+                else:
+                    print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: 인덱스가 범위를 초과합니다.")
+            except IndexError as e:
+                print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
         else:
             print(f"종목 코드 {code}에서 매수 및 매도 신호가 생성되지 않았습니다.")
 
@@ -137,4 +140,6 @@ def main():
         print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
 
 if __name__ == "__main__":
-    print("모델 훈련 스크립트 실행 중...")  # 실행
+    print("모델 훈련 스크립트 실행 중...")  # 실행 시작 메시지
+    main()
+    print("모델 훈련 스크립트 실행 완료.")  # 실행 완료 메시지
