@@ -13,48 +13,39 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하는 함수."""
-    # 필요한 열 선택 (종가와 기술적 지표)
     df = df[['Date', 'Close', 'MA5', 'MA20', 'MACD', 'RSI', 'Bollinger_High', 'Bollinger_Low']].dropna().set_index('Date')
     df = df.sort_index()
 
-    # Min-Max 스케일링
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(df)
 
-    # 입력(X)과 출력(y) 데이터 생성
     x_data, y_data = [], []
     for i in range(60, len(scaled_data) - 26):
-        x_data.append(scaled_data[i-60:i])  # 지난 60일 데이터
+        x_data.append(scaled_data[i-60:i])
         y_data.append(scaled_data[i + 25, 1])  # 향후 26일 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
-    return x_data, y_data.reshape(-1, 1), scaler  # y_data를 2D 배열로 변환
+    return x_data, y_data.reshape(-1, 1), scaler
 
 def create_and_train_model(X_train, y_train):
-    """XGBoost 모델을 생성하고 훈련하는 함수."""
     model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100)
-    model.fit(X_train.reshape(X_train.shape[0], -1), y_train)  # X_train을 2D 배열로 변환
+    model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
     return model
 
 def predict_future_prices(model, last_60_days):
-    """향후 26일 가격을 예측하는 함수."""
-    predictions = model.predict(last_60_days.reshape(1, -1))  # last_60_days를 2D 배열로 변환
+    predictions = model.predict(last_60_days.reshape(1, -1))
     return predictions
 
 def generate_signals(predictions):
-    """매수 및 매도 신호를 생성하는 함수."""
     buy_signals = []
     sell_signals = []
 
-    # 최저점과 최고점 찾기
     min_price = np.min(predictions)
     max_price = np.max(predictions)
 
-    # 최저점에서 매수 신호 생성
     min_index = np.where(predictions == min_price)[0][0]
     buy_signals.append(min_index)
 
-    # 매수 신호 이후 최고점에서 매도 신호 생성
     for i in range(min_index + 1, len(predictions)):
         if predictions[i] >= max_price:
             sell_signals.append(i)
@@ -66,30 +57,46 @@ def main():
     # 데이터 로드
     df = fetch_stock_data()
 
-    # 데이터 준비
-    x_data, y_data, scaler = prepare_data(df)
+    # 종목별 매수 및 매도 시점 저장
+    results = []
 
-    # 훈련 및 테스트 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
+    # 종목 리스트 (예: 'AAPL', 'GOOGL', ...)
+    stock_symbols = df['Symbol'].unique()  # 'Symbol' 열이 있는 경우
 
-    # 모델 훈련
-    model = create_and_train_model(X_train, y_train)
+    for symbol in stock_symbols:
+        stock_data = df[df['Symbol'] == symbol]  # 각 종목의 데이터만 필터링
 
-    # 가장 최근 60일 데이터를 사용하여 향후 26일 가격 예측
-    last_60_days = x_data[-1].reshape(1, -1)  # 마지막 60일 데이터
-    future_predictions = predict_future_prices(model, last_60_days)
+        # 데이터 준비
+        x_data, y_data, scaler = prepare_data(stock_data)
 
-    # 예측 결과를 원래 스케일로 복원
-    # future_predictions은 1D 배열로 되어 있으므로, 원래 데이터와 동일한 특성 수를 가진 2D 배열로 변환
-    future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1), 
-                                                          np.zeros((future_predictions.shape[0], 6)))))
+        # 훈련 및 테스트 데이터 분할
+        X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
 
-    # 매수 및 매도 신호 생성
-    buy_signals, sell_signals = generate_signals(future_prices.flatten())
+        # 모델 훈련
+        model = create_and_train_model(X_train, y_train)
 
-    print("향후 26일 가격 예측:", future_prices.flatten())
-    print("매수 신호 발생일 (인덱스):", buy_signals)
-    print("매도 신호 발생일 (인덱스):", sell_signals)
+        # 가장 최근 60일 데이터를 사용하여 향후 26일 가격 예측
+        last_60_days = x_data[-1].reshape(1, -1)
+        future_predictions = predict_future_prices(model, last_60_days)
+
+        # 예측 결과를 원래 스케일로 복원
+        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1), 
+                                                              np.zeros((future_predictions.shape[0], 6)))))
+
+        # 매수 및 매도 신호 생성
+        buy_signals, sell_signals = generate_signals(future_prices.flatten())
+
+        if buy_signals and sell_signals:
+            gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
+            results.append((symbol, gap))
+
+    # 격차가 큰 순서로 정렬
+    results.sort(key=lambda x: x[1], reverse=True)
+
+    # 결과 출력
+    print("매수와 매도 시점의 격차가 큰 종목 순서:")
+    for symbol, gap in results:
+        print(f"종목: {symbol}, 격차: {gap}")
 
 if __name__ == "__main__":
     main()
