@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import holidays
 
@@ -32,6 +32,16 @@ def is_business_day(date):
     is_holiday = date in kr_holidays  # 공휴일 확인
     return is_weekday and not is_holiday  # 거래일은 평일이면서 공휴일이 아님
 
+def get_future_trading_days(start_date, num_days):
+    """시작 날짜로부터 num_days 만큼의 거래일을 찾는 함수."""
+    future_days = []
+    current_date = start_date
+    while len(future_days) < num_days:
+        current_date += timedelta(days=1)
+        if is_business_day(current_date):
+            future_days.append(current_date)
+    return future_days
+
 def prepare_data(df, cutoff_date):
     """데이터를 준비하고 훈련/검증 세트로 분할하는 함수."""
     # 컷오프 날짜 이전 데이터만 사용
@@ -48,7 +58,8 @@ def prepare_data(df, cutoff_date):
     y = (df_train['Close'].shift(-1) > df_train['Close']).astype(int)
 
     # 컷오프 날짜 이후 데이터 준비
-    future_data = df[df['Date'] >= cutoff_date].copy()
+    future_dates = get_future_trading_days(cutoff_date, 26)  # 다음 26 거래일
+    future_data = df[df['Date'].isin(future_dates)].copy()
     future_data['Weekday'] = future_data['Date'].dt.weekday  # 요일 추가
     future_data['Month'] = future_data['Date'].dt.month      # 월 추가
 
