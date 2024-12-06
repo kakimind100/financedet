@@ -61,6 +61,10 @@ def prepare_data(df, cutoff_date):
     future_dates = get_future_trading_days(cutoff_date, 26)  # 다음 26 거래일
     future_data = df[df['Date'].isin(future_dates)].copy()
 
+    if future_data.empty:
+        logging.warning("예측할 데이터가 없습니다.")
+        return X, y, future_data  # 비어 있는 future_data 반환
+
     # future_data에도 훈련 데이터와 동일한 피처 추가
     future_data = pd.get_dummies(future_data, columns=['Code'], drop_first=True)
     future_data['Weekday'] = future_data['Date'].dt.weekday  # 요일 추가
@@ -68,8 +72,12 @@ def prepare_data(df, cutoff_date):
 
     # 피처 일치 확인
     missing_cols = set(X.columns) - set(future_data.columns)
-    for col in missing_cols:
-        future_data[col] = 0  # 누락된 열에 대해 0으로 채움
+    if missing_cols:
+        for col in missing_cols:
+            future_data[col] = 0  # 누락된 열에 대해 0으로 채움
+
+    # DataFrame을 복사하여 조각화 문제 해결
+    future_data = future_data.copy()
 
     return X, y, future_data[X.columns]  # 예측할 데이터 반환
 
@@ -82,6 +90,10 @@ def train_model(X, y):
 
 def predict_future_trading_days(model, future_data):
     """향후 거래일의 상승 여부를 예측하는 함수."""
+    if future_data.empty:
+        logging.warning("예측할 데이터가 없습니다.")
+        return pd.DataFrame()  # 빈 DataFrame 반환
+
     features = future_data.columns  # 훈련 시 사용한 모든 피처를 가져옴
     future_predictions = future_data.copy()
     future_predictions['Predicted'] = model.predict(future_predictions[features])
@@ -113,6 +125,11 @@ def main():
 
     # 예측
     future_predictions = predict_future_trading_days(model, future_data)
+
+    # 예측할 데이터가 없는 경우 처리
+    if future_predictions.empty:
+        print("예측할 데이터가 없으므로 종료합니다.")
+        return
 
     # 매수 및 매도 신호 계산
     future_predictions = calculate_buy_sell_signals(future_predictions)
