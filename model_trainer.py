@@ -1,6 +1,5 @@
 import pandas as pd  
 import numpy as np  
-from sklearn.preprocessing import MinMaxScaler  
 from xgboost import XGBRegressor  
 import logging  
 
@@ -92,19 +91,13 @@ def main():
     # 미래 가격 예측  
     future_predictions = predict_future_prices(model, last_60_days)  
 
-    # 예측 결과를 원래 스케일로 복원  
-    scaler = MinMaxScaler()  # 스케일러 초기화  
-    future_prices = scaler.inverse_transform(  
-        np.hstack((future_predictions.reshape(-1, 1), np.zeros((future_predictions.shape[0], 11))))  
-    )  
-
     # 매수 및 매도 신호 생성  
-    buy_index, sell_index = generate_signals(future_prices)  
+    buy_index, sell_index = generate_signals(future_predictions)  
 
     # 신호 유효성 확인 및 출력  
-    if buy_index < len(future_prices[0]) and sell_index < len(future_prices[0]):  
-        buy_price = future_prices[0][buy_index]  # 매수 가격  
-        sell_price = future_prices[0][sell_index]  # 매도 가격  
+    if buy_index < len(future_predictions[0]) and sell_index < len(future_predictions[0]):  
+        buy_price = future_predictions[0][buy_index]  # 매수 가격  
+        sell_price = future_predictions[0][sell_index]  # 매도 가격  
 
         # 매수 가격 유효성 체크  
         if buy_price < 0:  
