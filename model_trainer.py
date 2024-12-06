@@ -30,6 +30,7 @@ def prepare_data(df):
         y_data.append(scaled_data[i + 25, 1])  # 26일 후의 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
+    print(f"준비된 데이터 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
     return x_data, y_data.reshape(-1, 1), scaler
 
 def create_and_train_model(X_train, y_train):
@@ -43,6 +44,7 @@ def create_and_train_model(X_train, y_train):
 def predict_future_prices(model, last_60_days):
     """모델을 사용하여 향후 가격을 예측하는 함수."""
     predictions = model.predict(last_60_days.reshape(1, -1))
+    print(f"예측된 미래 가격: {predictions}")
     return predictions
 
 def generate_signals(predictions):
@@ -57,6 +59,7 @@ def generate_signals(predictions):
     buy_signals.append(min_index)  # 최저점에서 매수
     sell_signals.append(max_index)  # 최고점에서 매도
 
+    print(f"매수 신호 인덱스: {buy_signals}, 매도 신호 인덱스: {sell_signals}")
     return buy_signals, sell_signals
 
 def main():
@@ -110,11 +113,14 @@ def main():
 
         # 매수 및 매도 신호가 생성되었는지 확인
         if len(buy_signals) > 0 and len(sell_signals) > 0:
-            buy_price = future_prices[buy_signals[0]]  # 매수 가격
-            sell_price = future_prices[sell_signals[0]]  # 매도 가격
-            gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
-            results.append((code, gap, buy_price[0], sell_price[0]))
-            print(f"종목 코드 {code} - 매수 가격: {buy_price[0]}, 매도 가격: {sell_price[0]}, 격차: {gap}")
+            try:
+                buy_price = future_prices[buy_signals[0]]  # 매수 가격
+                sell_price = future_prices[sell_signals[0]]  # 매도 가격
+                gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
+                results.append((code, gap, buy_price[0], sell_price[0]))
+                print(f"종목 코드 {code} - 매수 가격: {buy_price[0]}, 매도 가격: {sell_price[0]}, 격차: {gap}")
+            except IndexError as e:
+                print(f"종목 코드 {code}에서 매수 또는 매도 가격 접근 오류: {e}")
         else:
             print(f"종목 코드 {code}에서 매수 및 매도 신호가 생성되지 않았습니다.")
 
