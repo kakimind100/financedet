@@ -3,6 +3,7 @@ from sklearn.ensemble import RandomForestClassifier
 import logging
 from datetime import datetime
 import os
+import holidays
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -24,17 +25,34 @@ def fetch_stock_data():
     logging.info("주식 데이터를 성공적으로 가져왔습니다.")
     return df
 
+def is_business_day(date):
+    """주어진 날짜가 거래일인지 확인하는 함수."""
+    kr_holidays = holidays.KR()  # 한국 공휴일 객체 생성
+    is_weekday = date.weekday() < 5  # 월~금: 0~4
+    is_holiday = date in kr_holidays  # 공휴일 확인
+    return is_weekday and not is_holiday  # 거래일은 평일이면서 공휴일이 아님
+
 def prepare_data(df, cutoff_date):
     """데이터를 준비하고 훈련/검증 세트로 분할하는 함수."""
+    # 컷오프 날짜 이전 데이터만 사용
     df_train = df[df['Date'] < cutoff_date]
+    
+    # 원-핫 인코딩 처리
     df_train = pd.get_dummies(df_train, columns=['Code'], drop_first=True)
+    
+    # 요일, 월 정보 추가
     df_train['Weekday'] = df_train['Date'].dt.weekday
     df_train['Month'] = df_train['Date'].dt.month
 
     X = df_train.drop(columns=['Date', 'Close'])
     y = (df_train['Close'].shift(-1) > df_train['Close']).astype(int)
 
-    return X, y, df[df['Date'] >= cutoff_date]
+    # 컷오프 날짜 이후 데이터 준비
+    future_data = df[df['Date'] >= cutoff_date].copy()
+    future_data['Weekday'] = future_data['Date'].dt.weekday  # 요일 추가
+    future_data['Month'] = future_data['Date'].dt.month      # 월 추가
+
+    return X, y, future_data  # 예측할 데이터 반환
 
 def train_model(X, y):
     """모델을 훈련시키는 함수."""
@@ -48,7 +66,7 @@ def predict_future_trading_days(model, future_data):
     features = ['RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 'EMA20', 'EMA50', 'ATR', 'Volume', 'Weekday', 'Month']
     future_predictions = future_data[features].copy()
     future_predictions['Predicted'] = model.predict(future_predictions[features])
-    future_predictions['Close'] = future_data['Close'].values
+    future_predictions['Close'] = future_data['Close'].values  # 원래 종가 추가
     return future_predictions
 
 def calculate_buy_sell_signals(predictions):
