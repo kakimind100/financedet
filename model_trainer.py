@@ -147,4 +147,9 @@ def main():
     print("\n매수와 매도 시점의 격차가 큰 종목 순서:")
     if results:
         for code, gap, buy_price, sell_price, current_price in results:
-            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격
+            print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
+    else:
+        print("매수와 매도 시점의 격차가 큰 종목이 없습니다.")
+
+# 실행
+main()
