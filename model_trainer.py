@@ -125,23 +125,22 @@ def main():
     # 상위 20개 종목만 선택
     top_20_results = results[:20]
 
-    # 기존 데이터에서 상위 20개 종목의 데이터만 필터링
-    top_20_codes = [item[0] for item in top_20_results]  # 상위 20개 종목 코드 추출
-    top_20_df = df[df['Code'].isin(top_20_codes)]  # 기존 데이터에서 해당 종목만 선택
+    # DataFrame 생성
+    df_top_20 = pd.DataFrame(top_20_results, columns=[
+        'Code', 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
+    ])
 
     # CSV 파일로 저장
     output_path = 'data/top_20_stocks_all_dates.csv'
-    top_20_df.to_csv(output_path, index=False)
+    df_top_20.to_csv(output_path, index=False)
     print(f"\n상위 20개의 데이터가 {output_path}에 저장되었습니다.")
 
     # 결과 출력
     print("\n매수와 매도 시점의 가격 상승률이 높은 상위 20 종목:")
-    for _, row in pd.DataFrame(top_20_results, columns=[
-        'Code', 'Price Increase Ratio', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
-    ]).iterrows():
+    for _, row in df_top_20.iterrows():
         print(f"종목 코드: {row['Code']}, 현재 가격: {row['Current Price']}, "
               f"매수 날짜: {row['Buy Date']}, 매도 날짜: {row['Sell Date']}, "
-              f"가격 상승률: {row['Price Increase Ratio']:.2%}, "
+              f"가격 상승률: {row['Gap']:.2%}, "
               f"매수 가격: {row['Buy Price']}, 매도 가격: {row['Sell Price']}")
 
 # 실행
