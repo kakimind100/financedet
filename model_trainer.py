@@ -14,7 +14,7 @@ def fetch_stock_data():
     return df
 
 def prepare_data(df):
-    """데이터를 준비하는 함수."""
+    """데이터를 준비하는 함수 (최근 60일 데이터를 학습, 향후 26일 예측)."""
     df = df[['Date', 'Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD', 
               'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch', 
               'Momentum', 'ADX']].dropna().set_index('Date')
@@ -29,9 +29,10 @@ def prepare_data(df):
     scaled_data = scaler.fit_transform(df)
 
     x_data, y_data = [], []
+    # 최근 60일 데이터를 사용하여 향후 26일 예측
     for i in range(60, len(scaled_data) - 26):
         x_data.append(scaled_data[i-60:i])  # 이전 60일 데이터
-        y_data.append(scaled_data[i + 25, 1])  # 26일 후의 종가 (Close)
+        y_data.append(scaled_data[i + 25, 0])  # 26일 후의 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
     print(f"준비된 데이터 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
@@ -48,7 +49,7 @@ def create_and_train_model(X_train, y_train):
     return model
 
 def predict_future_prices(model, last_60_days):
-    """모델을 사용하여 향후 가격을 예측하는 함수."""
+    """모델을 사용하여 향후 26일 가격을 예측하는 함수."""
     predictions = model.predict(last_60_days.reshape(1, -1))
     print(f"예측된 미래 가격: {predictions}")
     return predictions
@@ -156,7 +157,7 @@ def main():
         for code, gap, buy_price, sell_price, current_price in results:
             print(f"종목 코드: {code}, 현재 가격: {current_price}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
     else:
-        print("매수와 매도 시점의 격차가 있는 종목이 없습니다.")
+        print("매수와 매도 시점의 격차가 큰 종목이 없습니다.")
 
-if __name__ == "__main__":
-    print("모델 훈련 스크립트 실행 중...")  #
+# 실행
+main()
