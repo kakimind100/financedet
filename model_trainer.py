@@ -190,13 +190,11 @@ def predict_future_trading_days(model):
         logging.error("데이터프레임이 None이거나 비어 있습니다. 예측을 중단합니다.")
         return []
 
-    # features 리스트 정의
     features = [
         'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
         'EMA20', 'EMA50', 'ATR', 'Volume'
     ]
 
-    # 오늘 데이터 가져오기
     today_data = df.tail(1)
     if today_data.empty:
         logging.warning("오늘 데이터가 없습니다. 예측을 중단합니다.")
@@ -204,39 +202,36 @@ def predict_future_trading_days(model):
 
     future_predictions = []
     
-    # 오늘 날짜를 기준으로 향후 거래일 예측
     today_date = today_data['Date'].values[0]
     logging.info(f"오늘 날짜: {today_date}")
 
     future_date = today_date
-    for _ in range(26):  # +1 거래일부터 +26 거래일까지
-        future_date += pd.DateOffset(days=1)  # 하루씩 더하기
-        while not is_business_day(future_date):  # 거래일이 아닐 경우 다음 날로 이동
+    for _ in range(26):
+        future_date += pd.DateOffset(days=1)
+        while not is_business_day(future_date):
             logging.debug(f"{future_date}는 거래일이 아닙니다. 다음 날로 이동합니다.")
             future_date += pd.DateOffset(days=1)
 
         logging.info(f"유효한 거래일: {future_date}")
 
         # future_date에 대한 피처 데이터 준비
-        future_data = today_data.copy()
-        future_data['Date'] = future_date  # 날짜를 미래 날짜로 설정
-
-        # 예측을 위한 피처 데이터 준비
-        future_features = future_data[features].values
-        logging.debug(f"예측에 사용될 피처 데이터: {future_features}")
-
-        # 데이터가 없는 경우 예측 건너뛰기
         if future_date not in df['Date'].values:
             logging.warning(f"{future_date}에 대한 데이터가 존재하지 않습니다.")
             continue
 
+        future_data = today_data.copy()
+        future_data['Date'] = future_date
+
+        future_features = future_data[features].values
+        logging.debug(f"예측에 사용될 피처 데이터: {future_features}")
+
         # 예측 수행
         prediction = model.predict(future_features)
-        future_predictions.append((future_date, prediction[0]))  # 날짜와 예측값 저장
+        future_predictions.append((future_date, prediction[0]))
         logging.info(f"{future_date}에 대한 예측 결과: {'상승' if prediction[0] == 1 else '하락'}")
 
     logging.info("향후 26 거래일 예측 완료.")
-    return future_predictions  # 날짜와 예측값 리스트 반환
+    return future_predictions
 
 def identify_buy_signals(future_predictions):
     """매수 신호를 식별하는 함수."""
@@ -284,28 +279,14 @@ def calculate_returns(future_predictions, df):
     returns.sort(key=lambda x: x[2], reverse=True)  # 높은 순으로 정렬
     return returns[:20]  # 상위 20개 종목 반환
 
-def plot_predictions_and_signals(future_predictions, buy_signals):
-    """예측 결과와 매수 신호를 그래프로 시각화하는 함수."""
-    if not future_predictions:
-        logging.warning("예측 결과가 없습니다. 그래프를 그릴 수 없습니다.")
-        return
-    
-    dates, predictions = zip(*future_predictions)  # 날짜와 예측 결과 분리
-    dates = pd.to_datetime(dates)  # 날짜 형식 변환
-
+def plot_stock_chart(df):
+    """주식의 종가를 시각화하는 함수."""
     plt.figure(figsize=(12, 6))
-    plt.plot(dates, predictions, marker='o', linestyle='-', color='b', label='예측된 상승 여부')
-    plt.axhline(y=0.5, color='r', linestyle='--', label='매수 기준선')
-    
-    # 매수 신호 표시
-    for signal in buy_signals:
-        plt.axvline(x=signal, color='g', linestyle='--', label='매수 신호')
-
-    plt.title('향후 26 거래일 주가 상승 예측 및 매수 신호')
+    plt.plot(df['Date'], df['Close'], color='blue', label='종가')
+    plt.title('주식 종가 차트')
     plt.xlabel('날짜')
-    plt.ylabel('예측 결과 (1: 상승, 0: 하락)')
+    plt.ylabel('종가')
     plt.xticks(rotation=45)
-    plt.yticks([0, 1], ['하락', '상승'])
     plt.legend()
     plt.grid()
     plt.tight_layout()
@@ -316,7 +297,7 @@ def main():
     best_model = train_model_with_hyperparameter_tuning()
     if best_model:
         future_predictions = predict_future_trading_days(best_model)
-        if future_predictions is not None:
+        if future_predictions:
             for date, prediction in future_predictions:
                 logging.info(f"{date.date()}: 예측된 상승 여부: {'상승' if prediction == 1 else '하락'}")
             
@@ -333,8 +314,11 @@ def main():
                     logging.info(f"매수 시점: {stock[0].date()}, 매도 시점: {stock[1].date()}, 상승률: {stock[2]:.2f}%")
                     print(f"매수 시점: {stock[0].date()}, 매도 시점: {stock[1].date()}, 상승률: {stock[2]:.2f}%")
 
-            # 예측 결과 및 매수 신호 시각화
-            plot_predictions_and_signals(future_predictions, buy_signals)
+            # 주식 차트 그리기
+            plot_stock_chart(df)
+
+        else:
+            logging.warning("예측 결과가 없습니다.")
 
 # 메인 함수 실행
 main()
