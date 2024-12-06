@@ -120,22 +120,14 @@ def main():
     # 상위 20개 종목 추출
     top_20_results = results[:20]
 
-    # 결과 출력
-    print("\n매도/매수 비율이 큰 상위 20개 종목:")
-    for code, price_ratio, buy_date, sell_date, buy_price, sell_price, current_price in top_20_results:
-        print(f"종목 코드: {code}, 현재 가격: {current_price}, 매수 날짜: {buy_date}, "
-              f"매도 날짜: {sell_date}, 매수 가격: {buy_price:.2f}, "
-              f"매도 가격: {sell_price:.2f}, 비율: {price_ratio:.2f}")
-
-    # 데이터프레임으로 저장
-    df_top_20 = pd.DataFrame(top_20_results, columns=[
-        'Code', 'Price Ratio', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
-    ])
+    # 상위 20개 종목 데이터만 필터링
+    top_20_codes = [result[0] for result in top_20_results]
+    top_20_data = df[df['Code'].isin(top_20_codes)]
 
     # CSV로 저장
     output_path = 'data/top_20_stocks_all_dates.csv'
-    df_top_20.to_csv(output_path, index=False, encoding='utf-8-sig')
-    print(f"\n상위 20개 종목 데이터가 {output_path}에 저장되었습니다.")
+    top_20_data.to_csv(output_path, index=True, encoding='utf-8-sig')
+    print(f"\n상위 20개 종목의 원본 데이터가 {output_path}에 저장되었습니다.")
 
 # 실행
 main()
