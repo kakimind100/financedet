@@ -3,6 +3,7 @@ import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import mean_squared_error
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -13,7 +14,8 @@ def fetch_stock_data():
 
 def prepare_data(df):
     """데이터를 준비하는 함수."""
-    df = df[['Date', 'Close', 'Change']].dropna().set_index('Date')
+    # 필요한 열 선택: 종가와 여러 기술적 지표
+    df = df[['Date', 'Close', 'Change', 'SMA_20', 'RSI', 'MACD']].dropna().set_index('Date')
     df = df.sort_index()
 
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -21,14 +23,16 @@ def prepare_data(df):
 
     x_data, y_data = [], []
     for i in range(60, len(scaled_data) - 26):
-        x_data.append(scaled_data[i-60:i])
-        y_data.append(scaled_data[i + 25, 1])  # 향후 26일 종가 (Close)
+        x_data.append(scaled_data[i-60:i])  # 이전 60일 데이터
+        y_data.append(scaled_data[i + 25, 1])  # 26일 후의 종가 (Close)
 
     x_data, y_data = np.array(x_data), np.array(y_data)
     return x_data, y_data.reshape(-1, 1), scaler
 
 def create_and_train_model(X_train, y_train):
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100)
+    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100,
+                              colsample_bytree=0.3, learning_rate=0.1,
+                              max_depth=5, alpha=10, n_jobs=-1)
     model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
     return model
 
@@ -70,8 +74,15 @@ def main():
         x_data, y_data, scaler = prepare_data(stock_data)
 
         # 샘플 수 확인
-        if len(x_data) < 2:  # 데이터가 충분하지 않으면 건너뜀
+        print(f"종목 코드 {code}의 샘플 수: x_data={len(x_data)}, y_data={len(y_data)}")
+
+        if len(x_data) < 1:  # 데이터가 충분하지 않으면 건너뜀
             print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 건너뜁니다.")
+            continue
+
+        # 훈련 및 테스트 데이터 분할
+        if len(x_data) < 2:  # 데이터가 충분하지 않으면 건너뜀
+            print(f"종목 코드 {code}의 데이터가 충분하지 않습니다. 샘플 수: {len(x_data)}. 건너뜁니다.")
             continue
 
         # 훈련 및 테스트 데이터 분할
@@ -85,23 +96,25 @@ def main():
         future_predictions = predict_future_prices(model, last_60_days)
 
         # 예측 결과를 원래 스케일로 복원
-        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1), 
+        future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
                                                               np.zeros((future_predictions.shape[0], 1)))))
 
         # 매수 및 매도 신호 생성
         buy_signals, sell_signals = generate_signals(future_prices.flatten())
 
         if buy_signals and sell_signals:
+            buy_price = future_prices[buy_signals[0]]  # 매수 가격
+            sell_price = future_prices[sell_signals[0]]  # 매도 가격
             gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
-            results.append((code, gap))
+            results.append((code, gap, buy_price[0], sell_price[0]))
 
     # 격차가 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
 
     # 결과 출력
     print("매수와 매도 시점의 격차가 큰 종목 순서:")
-    for code, gap in results:
-        print(f"종목 코드: {code}, 격차: {gap}")
+    for code, gap, buy_price, sell_price in results:
+        print(f"종목 코드: {code}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
 
 if __name__ == "__main__":
     main()
