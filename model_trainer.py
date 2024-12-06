@@ -106,7 +106,6 @@ def main():
         future_predictions = predict_future_prices(model, last_60_days)
 
         # 예측 결과를 원래 스케일로 복원
-        # 12개의 특성을 가지는 배열을 만들어야 하므로, 11개의 0을 추가
         future_prices = scaler.inverse_transform(np.hstack((future_predictions.reshape(-1, 1),
                                                               np.zeros((future_predictions.shape[0], 11)))))
 
@@ -118,6 +117,7 @@ def main():
             sell_price = future_prices[sell_signals[0]]  # 매도 가격
             gap = sell_signals[0] - buy_signals[0]  # 매수와 매도 시점의 격차
             results.append((code, gap, buy_price[0], sell_price[0]))
+            print(f"종목 코드 {code} - 매수 가격: {buy_price[0]}, 매도 가격: {sell_price[0]}, 격차: {gap}")
 
     # 격차가 큰 순서로 정렬
     results.sort(key=lambda x: x[1], reverse=True)
@@ -128,4 +128,6 @@ def main():
         print(f"종목 코드: {code}, 격차: {gap}, 매수 가격: {buy_price}, 매도 가격: {sell_price}")
 
 if __name__ == "__main__":
+    print("모델 훈련 스크립트 실행 중...")  # 실행 시작 메시지
     main()
+    print("모델 훈련 스크립트 실행 완료.")  # 실행 완료 메시지
