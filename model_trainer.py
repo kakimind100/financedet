@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GridSearchCV
+from bayes_opt import BayesianOptimization
 
 
 def fetch_stock_data():
@@ -30,12 +32,87 @@ def prepare_data(df):
     return x_data, y_data
 
 
+def optimize_hyperparameters_bayes(X_train, y_train):
+    """Bayesian Optimization을 사용하여 XGBoost 하이퍼파라미터를 최적화."""
+    def xgb_evaluate(n_estimators, learning_rate, max_depth, subsample, colsample_bytree, alpha):
+        model = xgb.XGBRegressor(
+            objective='reg:squarederror',
+            n_estimators=int(n_estimators),
+            learning_rate=learning_rate,
+            max_depth=int(max_depth),
+            subsample=subsample,
+            colsample_bytree=colsample_bytree,
+            alpha=alpha,
+            n_jobs=-1
+        )
+        model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
+        mse = -model.score(X_train.reshape(X_train.shape[0], -1), y_train)  # 부호 반전
+        return mse
+
+    param_bounds = {
+        'n_estimators': (50, 200),
+        'learning_rate': (0.01, 0.3),
+        'max_depth': (3, 7),
+        'subsample': (0.5, 1),
+        'colsample_bytree': (0.3, 1),
+        'alpha': (0, 50),
+    }
+
+    optimizer = BayesianOptimization(f=xgb_evaluate, pbounds=param_bounds, random_state=42)
+    optimizer.maximize(init_points=5, n_iter=20)
+
+    best_params = optimizer.max['params']
+    best_params['n_estimators'] = int(best_params['n_estimators'])
+    best_params['max_depth'] = int(best_params['max_depth'])
+    print("Bayesian Optimization 최적의 하이퍼파라미터:", best_params)
+
+    best_model = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=-1, **best_params)
+    best_model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
+    return best_model
+
+
+def optimize_hyperparameters_grid(X_train, y_train):
+    """Grid Search를 사용하여 XGBoost 하이퍼파라미터를 최적화."""
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'learning_rate': [0.01, 0.1, 0.2],
+        'max_depth': [3, 5, 7],
+        'subsample': [0.7, 1],
+        'colsample_bytree': [0.3, 0.7, 1],
+        'alpha': [0, 10, 50],
+    }
+
+    xgb_model = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=-1)
+
+    grid_search = GridSearchCV(
+        estimator=xgb_model,
+        param_grid=param_grid,
+        scoring='neg_mean_squared_error',
+        cv=3,
+        verbose=1
+    )
+
+    grid_search.fit(X_train.reshape(X_train.shape[0], -1), y_train)
+    print("Grid Search 최적의 하이퍼파라미터:", grid_search.best_params_)
+    return grid_search.best_estimator_
+
+
+def auto_optimize_hyperparameters(X_train, y_train, method="auto"):
+    """자동으로 최적의 하이퍼파라미터를 찾는 함수."""
+    if method == "auto":
+        print("Bayesian Optimization으로 최적의 하이퍼파라미터를 찾습니다...")
+        best_model = optimize_hyperparameters_bayes(X_train, y_train)
+    else:
+        print("Grid Search로 최적의 하이퍼파라미터를 찾습니다...")
+        best_model = optimize_hyperparameters_grid(X_train, y_train)
+    return best_model
+
+
 def create_and_train_model(X_train, y_train):
-    """모델을 생성하고 훈련하는 함수."""
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100,
-                              colsample_bytree=0.3, learning_rate=0.1,
-                              max_depth=5, alpha=10, n_jobs=-1)
-    model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
+    """모델 생성 및 훈련."""
+    print("하이퍼파라미터 최적화 중...")
+    model = auto_optimize_hyperparameters(X_train, y_train, method="auto")
+    print("최적화된 모델 생성 완료.")
     return model
 
 
@@ -47,7 +124,6 @@ def predict_future_prices(model, last_60_days):
     for _ in range(26):
         pred = model.predict(input_data.reshape(1, -1))[0]
         predictions.append(pred)
-        # 새로 예측된 값을 입력 데이터에 추가하고, 맨 앞의 데이터를 제거
         input_data = np.roll(input_data, -1, axis=0)
         input_data[-1, 0] = pred  # 'Close'에 해당하는 값 업데이트
 
@@ -56,16 +132,9 @@ def predict_future_prices(model, last_60_days):
 
 def generate_signals(predictions, start_date):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
-    buy_index = np.argmin(predictions)  # 최저점 인덱스
+    buy_index = np.argmin(predictions)
     remaining_predictions = predictions[buy_index + 1:]
-    
-    if len(remaining_predictions) > 0:
-        sell_index = buy_index + np.argmax(remaining_predictions) + 1  # 매수 후 최고점 인덱스
-    else:
-        sell_index = buy_index  # 매수 인덱스를 그대로 매도 인덱스로 설정
-
-    if sell_index >= len(predictions):
-        sell_index = buy_index  # 매도 인덱스를 매수 인덱스로 설정
+    sell_index = buy_index + np.argmax(remaining_predictions) + 1 if remaining_predictions else buy_index
 
     buy_date = start_date + pd.Timedelta(days=buy_index)
     sell_date = start_date + pd.Timedelta(days=sell_index)
@@ -75,23 +144,11 @@ def generate_signals(predictions, start_date):
 
 
 def save_and_merge_top_20(df_top_20, original_data_path):
-    """
-    상위 20개 종목 데이터를 기존 데이터와 결합하여 저장.
-    """
+    """상위 20개 종목 데이터를 기존 데이터와 결합하여 저장."""
     try:
-        # 기존 데이터 로드
         original_data = pd.read_csv(original_data_path, dtype={'Code': str})
         original_data['Date'] = pd.to_datetime(original_data['Date'])
-
-        # 상위 20개 종목 데이터와 결합
-        merged_data = pd.merge(
-            df_top_20,
-            original_data,
-            on='Code',
-            how='left'
-        )
-
-        # 결합된 데이터 저장
+        merged_data = pd.merge(df_top_20, original_data, on='Code', how='left')
         output_path = 'data/top_20_stocks_all_dates.csv'
         merged_data.to_csv(output_path, index=False)
         print(f"결합된 데이터가 {output_path}에 저장되었습니다.")
@@ -101,18 +158,13 @@ def save_and_merge_top_20(df_top_20, original_data_path):
 
 
 def main():
-    # 데이터 로드
     df = fetch_stock_data()
-
-    # 결과 저장 리스트
     results = []
 
-    # 종목 코드별로 데이터 처리
     for code in df['Code'].unique():
         stock_data = df[df['Code'] == code]
         current_price = stock_data['Close'].iloc[-1]
 
-        # 데이터 준비
         try:
             x_data, y_data = prepare_data(stock_data)
         except Exception as e:
@@ -123,35 +175,26 @@ def main():
             print(f"종목 코드 {code}의 데이터가 충분하지 않습니다.")
             continue
 
-        # 훈련 및 테스트 데이터 분할
         X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
-
-        # 모델 생성 및 훈련
         model = create_and_train_model(X_train, y_train)
-
-        # 향후 26일 가격 예측
         last_60_days = x_data[-1]
         future_predictions = predict_future_prices(model, last_60_days)
 
-        # 매수 및 매도 신호 생성
         start_date = stock_data.index[-1]
         buy_index, sell_index, buy_date, sell_date = generate_signals(future_predictions, start_date)
 
         buy_price = future_predictions[buy_index]
         sell_price = future_predictions[sell_index]
-        price_increase_ratio = (sell_price - buy_price) / buy_price  # 상승률 계산
+        price_increase_ratio = (sell_price - buy_price) / buy_price
 
         results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
 
-    # 상위 20 종목 추출
     results.sort(key=lambda x: x[1], reverse=True)
     df_top_20 = pd.DataFrame(results[:20], columns=[
         'Code', 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
     ])
 
-    # 상위 20 종목 저장 및 병합
-    original_data_path = 'data/stock_data_with_indicators.csv'
-    save_and_merge_top_20(df_top_20, original_data_path)
+    save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
 
 
 # 실행
