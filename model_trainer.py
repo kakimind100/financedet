@@ -149,10 +149,19 @@ def main():
 
         results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
 
+    # 상위 20 종목 정렬
     results.sort(key=lambda x: x[1], reverse=True)
     df_top_20 = pd.DataFrame(results[:20], columns=[
         'Code', 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
     ])
+
+    # 상위 20 종목 로그 출력
+    print("\n===== 상위 20 종목 =====")
+    for idx, row in df_top_20.iterrows():
+        print(f"종목코드: {row['Code']}, 상승률: {row['Gap']:.2%}")
+        print(f"매수 시점: {row['Buy Date']}, 매도 시점: {row['Sell Date']}")
+        print(f"매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}")
+        print("------------------------")
 
     save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
 
