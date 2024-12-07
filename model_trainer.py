@@ -1,131 +1,77 @@
-import pandas as pd
 import numpy as np
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from bayes_opt import BayesianOptimization
+import pandas as pd
 from joblib import Parallel, delayed
-import os
 
-
-def fetch_stock_data():
-    """주식 데이터를 가져오는 함수."""
-    file_path = 'data/stock_data_with_indicators.csv'
-    df = pd.read_csv(file_path, dtype={'Code': str})
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.set_index('Date', inplace=True)
-    print("데이터 로드 완료. 열 목록:", df.columns.tolist())
-    return df
-
-
-def prepare_data(df):
-    """데이터를 준비하는 함수."""
-    df = df[['Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD',
-             'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch',
-             'Momentum', 'ADX']].dropna()
-
-    x_data, y_data = [], []
-    for i in range(60, len(df) - 26):
-        x_data.append(df.iloc[i - 60:i].values)
-        y_data.append(df.iloc[i + 25]['Close'])
-
-    x_data, y_data = np.array(x_data), np.array(y_data)
-    return x_data, y_data
-
-
-def optimize_hyperparameters_bayes(X_train, y_train):
-    """Bayesian Optimization을 사용하여 하이퍼파라미터 최적화."""
-    def xgb_evaluate(n_estimators, learning_rate, max_depth, subsample, colsample_bytree, alpha):
-        model = xgb.XGBRegressor(
-            objective='reg:squarederror',
-            n_estimators=int(n_estimators),
-            learning_rate=learning_rate,
-            max_depth=int(max_depth),
-            subsample=subsample,
-            colsample_bytree=colsample_bytree,
-            alpha=alpha,
-            n_jobs=-1
-        )
-        model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
-        mse = -model.score(X_train.reshape(X_train.shape[0], -1), y_train)  # 부호 반전
-        return mse
-
-    param_bounds = {
-        'n_estimators': (50, 200),
-        'learning_rate': (0.01, 0.3),
-        'max_depth': (3, 7),
-        'subsample': (0.5, 1),
-        'colsample_bytree': (0.3, 1),
-        'alpha': (0, 50),
-    }
-
-    optimizer = BayesianOptimization(f=xgb_evaluate, pbounds=param_bounds, random_state=42)
-    optimizer.maximize(init_points=5, n_iter=10)
-
-    best_params = optimizer.max['params']
-    best_params['n_estimators'] = int(best_params['n_estimators'])
-    best_params['max_depth'] = int(best_params['max_depth'])
-
-    best_model = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=-1, **best_params)
-    best_model.fit(X_train.reshape(X_train.shape[0], -1), y_train)
-    return best_model
-
-
-def process_stock_data(stock_data, code):
-    """개별 종목 데이터 처리."""
+def process_stock_data(predictions, start_date, code):
+    """종목별로 매수 및 매도 신호를 처리하는 함수."""
     try:
-        x_data, y_data = prepare_data(stock_data)
+        # 매수 및 매도 신호 생성
+        buy_index, sell_index, buy_date, sell_date = generate_signals(predictions, start_date)
+        
+        if buy_index is None or sell_index is None:
+            print(f"종목 코드 {code}: 신호를 생성하지 못했습니다. 건너뜁니다.")
+            return None
+        
+        # 결과 반환
+        return {
+            "code": code,
+            "buy_index": buy_index,
+            "sell_index": sell_index,
+            "buy_date": buy_date,
+            "sell_date": sell_date
+        }
+
     except Exception as e:
-        print(f"종목 코드 {code}: 데이터 준비 중 오류 - {e}")
+        print(f"종목 코드 {code} 처리 중 오류 발생: {e}")
         return None
 
-    if len(x_data) < 60:
-        print(f"종목 코드 {code}: 데이터가 충분하지 않음.")
-        return None
+def generate_signals(predictions, start_date):
+    """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
+    try:
+        # 매수 시점 찾기
+        buy_index = np.argmin(predictions)
+        
+        # 매수 이후의 예측 데이터를 확인
+        remaining_predictions = predictions[buy_index + 1:]
+        if len(remaining_predictions) == 0:
+            raise ValueError("매수 이후 예측 데이터가 비어 있습니다.")
 
-    X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
-    model = optimize_hyperparameters_bayes(X_train, y_train)
+        # 매도 시점 찾기
+        sell_index = np.argmax(remaining_predictions) + buy_index + 1
 
-    last_60_days = x_data[-1]
-    predictions = []
-    input_data = last_60_days.copy()
+        # 날짜 계산
+        buy_date = start_date + pd.Timedelta(days=buy_index)
+        sell_date = start_date + pd.Timedelta(days=sell_index)
 
-    for _ in range(26):
-        pred = model.predict(input_data.reshape(1, -1))[0]
-        predictions.append(pred)
-        input_data = np.roll(input_data, -1, axis=0)
-        input_data[-1, 0] = pred
+        print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
+        return buy_index, sell_index, buy_date, sell_date
 
-    buy_index = np.argmin(predictions)
-    sell_index = buy_index + np.argmax(predictions[buy_index + 1:]) + 1
-
-    start_date = stock_data.index[-1]
-    buy_date = start_date + pd.Timedelta(days=buy_index)
-    sell_date = start_date + pd.Timedelta(days=sell_index)
-
-    buy_price = predictions[buy_index]
-    sell_price = predictions[sell_index]
-    price_increase_ratio = (sell_price - buy_price) / buy_price
-    current_price = stock_data['Close'].iloc[-1]
-
-    return code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price
-
+    except Exception as e:
+        print(f"신호 생성 중 오류 발생: {e}")
+        return None, None, None, None
 
 def main():
-    df = fetch_stock_data()
-    results = Parallel(n_jobs=10, backend='loky')(
-        delayed(process_stock_data)(df[df['Code'] == code], code) for code in df['Code'].unique()
+    """메인 함수: 전체 종목 데이터를 처리."""
+    # 샘플 데이터 생성 (사용 시 실제 데이터를 연결해야 함)
+    num_stocks = 10  # 종목 수
+    prediction_length = 30  # 예측 길이
+    start_date = pd.Timestamp("2023-01-01")  # 데이터 시작 날짜
+    codes = [f"Stock_{i}" for i in range(num_stocks)]  # 종목 코드
+    
+    # 랜덤 예측 데이터 생성
+    predictions = {code: np.random.rand(prediction_length) for code in codes}
+
+    # 병렬 처리를 통해 종목별로 데이터 처리
+    results = Parallel(n_jobs=10, backend="loky")(
+        delayed(process_stock_data)(predictions[code], start_date, code) for code in codes
     )
 
-    results = [res for res in results if res is not None]
-    results.sort(key=lambda x: x[1], reverse=True)
+    # 유효한 결과만 필터링
+    valid_results = [result for result in results if result is not None]
 
-    df_top_20 = pd.DataFrame(results[:20], columns=[
-        'Code', 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
-    ])
-    output_path = 'data/top_20_stocks.csv'
-    df_top_20.to_csv(output_path, index=False)
-    print(f"상위 20개 종목 결과가 {output_path}에 저장되었습니다.")
+    # 결과 출력
+    for result in valid_results:
+        print(f"종목 코드: {result['code']}, 매수 날짜: {result['buy_date']}, 매도 날짜: {result['sell_date']}")
 
-
-# 실행
-main()
+if __name__ == "__main__":
+    main()
