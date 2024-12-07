@@ -49,7 +49,7 @@ def optimize_hyperparameters_bayes(X_train, y_train):
         return mse
 
     param_bounds = {
-        'n_estimators': (64, 70),  # 범위 축소
+        'n_estimators': (60, 70),  # 범위 축소
         'learning_rate': (0.05, 0.2),
         'max_depth': (3, 8),
         'subsample': (0.7, 1),
