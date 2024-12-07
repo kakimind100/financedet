@@ -24,3 +24,4 @@ sqlalchemy>=1.4.37      # SQLAlchemy ORM
 imbalanced-learn>=0.10.1 # 클래스 불균형 문제 해결 라이브러리
 scikit-optimize==0.8.1  # Bayesian Optimization을 위한 라이브러리
 holidays>=0.21.11       # 공휴일 정보를 제공하는 라이브러리
+bayesian-optimization>=1.4.3   # Bayesian Optimization 최신 버전
