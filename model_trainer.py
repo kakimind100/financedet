@@ -3,9 +3,7 @@ import numpy as np
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 from bayes_opt import BayesianOptimization
-import requests
-import os
-from datetime import datetime
+
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
@@ -16,6 +14,7 @@ def fetch_stock_data():
     print("데이터 로드 완료. 열 목록:")
     print(df.columns.tolist())
     return df
+
 
 def prepare_data(df):
     """데이터를 준비하는 함수 (최근 60일 데이터를 학습, 향후 26일 예측)."""
@@ -28,6 +27,7 @@ def prepare_data(df):
         y_data.append(df.iloc[i + 25]['Close'])  # 26일 후의 종가
     x_data, y_data = np.array(x_data), np.array(y_data)
     return x_data, y_data
+
 
 def optimize_hyperparameters_bayes(X_train, y_train):
     """Bayesian Optimization을 사용하여 XGBoost 하이퍼파라미터를 최적화."""
@@ -75,12 +75,14 @@ def optimize_hyperparameters_bayes(X_train, y_train):
     best_model.fit(X_train_reshaped, y_train)
     return best_model
 
+
 def create_and_train_model(X_train, y_train):
     """모델 생성 및 훈련."""
     print("하이퍼파라미터 최적화 중...")
     model = optimize_hyperparameters_bayes(X_train, y_train)
     print("최적화된 모델 생성 완료.")
     return model
+
 
 def predict_future_prices(model, last_60_days):
     """모델을 사용하여 향후 26일 가격을 예측하는 함수."""
@@ -96,6 +98,7 @@ def predict_future_prices(model, last_60_days):
 
     return predictions
 
+
 def generate_signals(predictions, start_date):
     """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
     buy_index = np.argmin(predictions)
@@ -108,17 +111,6 @@ def generate_signals(predictions, start_date):
     print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
     return buy_index, sell_index, buy_date, sell_date
 
-def send_discord_message(webhook_url, message):
-    """Discord 웹훅으로 메시지를 전송하는 함수."""
-    data = {
-        "content": message
-    }
-    try:
-        response = requests.post(webhook_url, json=data)
-        response.raise_for_status()  # HTTP 오류 확인
-        print("메시지를 성공적으로 Discord에 전송했습니다.")
-    except Exception as e:
-        print(f"메시지 전송 실패: {e}")
 
 def save_and_merge_top_20(df_top_20, original_data_path):
     """상위 20개 종목 데이터를 기존 데이터와 결합하여 저장."""
@@ -132,6 +124,7 @@ def save_and_merge_top_20(df_top_20, original_data_path):
     except Exception as e:
         print(f"데이터 병합 중 오류 발생: {e}")
         raise
+
 
 def main():
     df = fetch_stock_data()
@@ -180,6 +173,7 @@ def main():
         print("------------------------")
 
     save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
+
 
 # 실행
 main()
