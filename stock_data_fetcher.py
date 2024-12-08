@@ -90,7 +90,7 @@ def fetch_stock_data(markets, start_date, end_date):
 
         # 테스트용 5종목 이상 데이터가 가져와졌을 경우 완료 메시지 출력
         if stock_count >= 5:
-            logging.info("주식 데이터가 20종목 이상 가져와졌습니다. 프로세스를 종료합니다.")
+            logging.info("주식 데이터가 5종목 이상 가져와졌습니다. 프로세스를 종료합니다.")
             break
 
     # 데이터프레임으로 변환 후 CSV로 저장
