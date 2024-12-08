@@ -28,13 +28,13 @@ def get_ai_response(api_key, prompt):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300,  # 최대 토큰 수 설정
-            temperature=0.3   # 온도를 0.3으로 설정
+            max_tokens=300,
+            temperature=0.3
         )
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
         return response['choices'][0]['message']['content']
@@ -43,7 +43,7 @@ def get_ai_response(api_key, prompt):
         return None
 
 def main():
-    logging.info("Discord 웹훅 스크립트 실행 중...")  # 시작 로그 추가
+    logging.info("Discord 웹훅 스크립트 실행 중...")
     # 환경 변수에서 설정 로드
     discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
     openai_api_key = os.getenv('OPENAI_API_KEY')
@@ -53,49 +53,47 @@ def main():
         return
 
     # 파일 경로 확인
-    filename = 'data/top_20_stocks_all_dates.csv'  # 파일 경로를 직접 설정
+    filename = 'data/top_20_stocks_all_dates.csv'
     logging.debug(f"파일 경로: {filename}")
 
     try:
-        # CSV 파일 읽기 (종목 코드를 object 타입으로 읽기)
+        # CSV 파일 읽기
         logging.info("CSV 파일을 읽는 중...")
-        top_stocks = pd.read_csv(filename, dtype={'Code': 'object'})  # 종목 코드를 object로 지정
-        logging.debug(f"읽어온 데이터 개수: {len(top_stocks)}개")
+        top_stocks = pd.read_csv(filename, dtype={'Code': 'object'})
 
-        # 데이터 확인
         if top_stocks.empty:
             logging.error("읽어온 데이터가 비어 있습니다.")
             return
         
+        logging.debug(f"읽어온 데이터 개수: {len(top_stocks)}개")
+
         # 전체 데이터 프레임 로그
         logging.info("전체 데이터 프레임:")
-        logging.debug(top_stocks.to_string())  # 전체 데이터 프레임 출력
+        logging.debug(top_stocks.to_string())
 
         # 현재 날짜를 가져오는 부분
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
-        # 최근 10 거래일 데이터만 남기기
-        filtered_stocks = []
-        for code in top_stocks['Code'].unique():
-            stock_data = top_stocks[top_stocks['Code'] == code]
-            logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
+        # 상위 5종목 필터링
+        top_5_stocks = top_stocks.nlargest(5, 'Gap')
 
-            # 최근 10일치 데이터만 남기기
-            if len(stock_data) > 10:
-                recent_data = stock_data.tail(10)  # 마지막 10일 데이터
-            else:
-                recent_data = stock_data  # 데이터가 10일 미만이면 전체 데이터 사용
+        if top_5_stocks.empty:
+            logging.error("상위 5종목을 찾을 수 없습니다.")
+            return
+        
+        # 디스코드 메시지 구성
+        message = "\n\n".join([
+            f"종목코드: {row['Code']}, 상승률: {row['Gap']:.2%}\n매수 시점: {row['Buy Date']}\n매도 시점: {row['Sell Date']}\n매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}"
+            for idx, row in top_5_stocks.iterrows()
+        ])
+        
+        # Discord 웹훅으로 메시지 전송
+        send_discord_message(discord_webhook_url, message)
 
-            filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
-
-        # 필터링된 데이터로 DataFrame 생성
-        filtered_df = pd.DataFrame(filtered_stocks)
-        logging.info(f"필터링된 데이터 개수: {len(filtered_df)}개")
-
-        # AI에게 전달할 분석 프롬프트 (하나의 종목 추천으로 변경)
+        # 전체 종목 분석 프롬프트
         analysis_prompt = (
-            f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
+            f"주식 데이터는 다음과 같습니다:\n{top_stocks.to_json(orient='records', force_ascii=False)}\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
             f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 세개를 추천해 주세요. "
             f"추천 시 다음 조건을 고려해 주세요:\n"
@@ -122,7 +120,7 @@ def main():
     except Exception as e:
         logging.error(f"오류 발생: {str(e)}")
     finally:
-        logging.info("Discord 웹훅 스크립트 실행 완료.")  # 종료 로그
+        logging.info("Discord 웹훅 스크립트 실행 완료.")
 
 if __name__ == "__main__":
     main()
