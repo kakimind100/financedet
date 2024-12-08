@@ -179,16 +179,6 @@ def main():
         print(f"매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}")
         print("------------------------")
 
-    # 상위 5종목만 디스코드로 메시지 전송
-    top_5_stocks = df_top_20.head(5)
-    discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
-    if discord_webhook_url:
-        message = "\n\n".join([
-            f"종목코드: {row['Code']}, 상승률: {row['Gap']:.2%}\n매수 시점: {row['Buy Date']}\n매도 시점: {row['Sell Date']}\n매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}"
-            for idx, row in top_5_stocks.iterrows()
-        ])
-        send_discord_message(discord_webhook_url, message)
-
     save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
 
 # 실행
