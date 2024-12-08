@@ -29,7 +29,7 @@ def get_ai_response(api_key, prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "당신은 투자 전문가로, 주식 데이터를 분석해 최적의 종목을 추천하는 역할을 합니다."},
+                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=300,
@@ -43,8 +43,6 @@ def get_ai_response(api_key, prompt):
 
 def main():
     logging.info("Discord 웹훅 스크립트 실행 중...")
-    
-    # 환경 변수에서 설정 로드
     discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
     openai_api_key = os.getenv('OPENAI_API_KEY')
 
@@ -52,30 +50,25 @@ def main():
         logging.error("환경 변수가 설정되지 않았습니다.")
         return
 
-    # CSV 파일 경로
     filename = 'data/top_20_stocks_all_dates.csv'
-    logging.debug(f"파일 경로: {filename}")
-
     try:
-        # CSV 파일 읽기
         logging.info("CSV 파일을 읽는 중...")
         top_stocks = pd.read_csv(filename, dtype={'Code': 'object'})
         logging.debug(f"읽어온 데이터 개수: {len(top_stocks)}개")
 
-        # 데이터 확인
         if top_stocks.empty:
             logging.error("읽어온 데이터가 비어 있습니다.")
             return
-
-        # 현재 날짜
+        
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
-        # AI 분석 프롬프트
+        # AI에게 전달할 분석 프롬프트
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{top_stocks.to_json(orient='records', force_ascii=False)}\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
-            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를 추천하고 각각 상승 이유를 간단히 설명해 주세요."
+            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를 추천해 주세요. "
+            f"추천 시 간단한 이유를 함께 작성해 주세요."
         )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
@@ -83,50 +76,35 @@ def main():
 
         if ai_response:
             logging.info(f"AI 응답: {ai_response}")
-
-            try:
-                # AI 응답 파싱 (예: JSON 형태 또는 리스트)
-                recommended_stocks = eval(ai_response)  # AI 응답을 리스트로 변환
-                if not isinstance(recommended_stocks, list):
-                    raise ValueError("AI 응답 형식이 올바르지 않습니다.")
-
-                # 종목별 정보 구성
-                message = "AI가 추천한 상승 가능성 종목 분석:\n"
-                for stock in recommended_stocks:
-                    stock_code = stock.get('종목코드')
-                    reason = stock.get('이유')
-
-                    # 해당 종목 데이터를 필터링
-                    stock_data = top_stocks[top_stocks['Code'] == stock_code]
-
-                    if stock_data.empty:
-                        logging.warning(f"추천 종목 {stock_code}에 대한 데이터가 없습니다.")
-                        continue
-
-                    # 매수/매도 시점, 가격, 예상 상승률 추출
-                    buy_time = stock_data['BuyTime'].iloc[-1]
-                    sell_time = stock_data['SellTime'].iloc[-1]
-                    buy_price = stock_data['BuyPrice'].iloc[-1]
-                    sell_price = stock_data['SellPrice'].iloc[-1]
-                    estimated_return = ((sell_price - buy_price) / buy_price) * 100
+            recommendations = ai_response.split("\n")
+            
+            message = "AI가 추천한 상승 가능성 종목 분석:\n"
+            for recommendation in recommendations:
+                try:
+                    stock_code, reason = recommendation.split(":")
+                    stock_code, reason = stock_code.strip(), reason.strip()
+                    
+                    # CSV에서 해당 종목 코드 데이터 추출
+                    stock_data = top_stocks[top_stocks['Code'] == stock_code].iloc[0]
+                    
+                    # 데이터 파싱
+                    buy_date = stock_data['Buy Date']
+                    sell_date = stock_data['Sell Date']
+                    buy_price = stock_data['Buy Price']
+                    sell_price = stock_data['Sell Price']
+                    current_price = stock_data['Current Price']
+                    estimated_return = stock_data['Gap'] * 100
 
                     # 메시지 작성
                     message += (
-                        f"\n종목 코드: {stock_code}\n"
-                        f"추천 이유: {reason}\n"
-                        f"매수 시점: {buy_time}\n"
-                        f"매도 시점: {sell_time}\n"
-                        f"매수 가격: {buy_price}\n"
-                        f"매도 가격: {sell_price}\n"
-                        f"예상 상승률: {estimated_return:.2f}%\n"
+                        f"종목 코드: {stock_code}, 추천 이유: {reason}, "
+                        f"매수 날짜: {buy_date}, 매도 날짜: {sell_date}, "
+                        f"매수 가격: {buy_price:.2f}, 매도 가격: {sell_price:.2f}, "
+                        f"현재 가격: {current_price:.2f}, 예상 상승률: {estimated_return:.2f}%\n"
                     )
-                logging.info("Discord 메시지를 준비했습니다.")
-
-            except Exception as e:
-                logging.error(f"AI 응답 처리 중 오류 발생: {e}")
-                message = "AI 응답 처리에 실패했습니다."
-
-            # 메시지를 Discord로 전송
+                except Exception as e:
+                    logging.error(f"추천 항목 처리 중 오류 발생: {e}")
+            
             send_discord_message(discord_webhook_url, message)
 
     except FileNotFoundError:
