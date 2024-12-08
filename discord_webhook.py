@@ -63,17 +63,17 @@ def main():
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
-        # 최근 26거래일 데이터만 필터링
+        # 최근 10거래일 데이터만 필터링
         filtered_stocks = []
         for code in top_stocks['Code'].unique():
             stock_data = top_stocks[top_stocks['Code'] == code]
             logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
 
-            # 최근 26거래일만 필터링
-            if len(stock_data) > 26:
-                recent_data = stock_data.tail(26)  # 마지막 26거래일 데이터
+            # 최근 10거래일만 필터링
+            if len(stock_data) > 10:
+                recent_data = stock_data.tail(10)  # 마지막 10거래일 데이터
             else:
-                recent_data = stock_data  # 데이터가 26거래일 미만이면 전체 데이터 사용
+                recent_data = stock_data  # 데이터가 10거래일 미만이면 전체 데이터 사용
 
             filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
 
