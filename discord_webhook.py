@@ -75,20 +75,18 @@ def main():
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
-        # 상위 5종목 필터링
-        top_5_stocks = top_stocks.nlargest(5, 'Gap')
+        # 상위 5개 종목만 필터링하여 상위 5개 데이터 준비
+        top_5_stocks = top_stocks.nlargest(5, 'Gap')  # 'Gap' 컬럼 기준으로 상위 5개 종목 추출
+        logging.info(f"상위 5개 종목: {top_5_stocks}")
 
-        if top_5_stocks.empty:
-            logging.error("상위 5종목을 찾을 수 없습니다.")
-            return
-        
-        # 디스코드 메시지 구성
+        # 중복 제거
+        top_5_stocks = top_5_stocks.drop_duplicates(subset=['Code'], keep='first')
+
+        # 상위 5종목을 Discord 메시지로 전송
         message = "\n\n".join([
             f"종목코드: {row['Code']}, 상승률: {row['Gap']:.2%}\n매수 시점: {row['Buy Date']}\n매도 시점: {row['Sell Date']}\n매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}"
             for idx, row in top_5_stocks.iterrows()
         ])
-        
-        # Discord 웹훅으로 메시지 전송
         send_discord_message(discord_webhook_url, message)
 
         # 전체 종목 분석 프롬프트
