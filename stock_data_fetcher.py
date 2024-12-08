@@ -88,8 +88,8 @@ def fetch_stock_data(markets, start_date, end_date):
             
         stock_count += len(codes)  # 이번 사이클에서 가져온 주식 코드 수 누적
 
-        # 테스트용 20종목 이상 데이터가 가져와졌을 경우 완료 메시지 출력
-        if stock_count >= 20:
+        # 테스트용 5종목 이상 데이터가 가져와졌을 경우 완료 메시지 출력
+        if stock_count >= 5:
             logging.info("주식 데이터가 20종목 이상 가져와졌습니다. 프로세스를 종료합니다.")
             break
 
