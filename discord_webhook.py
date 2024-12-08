@@ -1,3 +1,48 @@
+import sys
+import logging
+import requests
+import openai
+import os
+import pandas as pd
+from datetime import datetime
+
+# 로깅 설정
+logging.basicConfig(
+    level=logging.DEBUG,  # DEBUG 레벨로 설정하여 모든 로그를 출력하도록 변경
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def send_discord_message(webhook_url, message):
+    """Discord 웹훅으로 메시지를 전송하는 함수."""
+    data = {
+        "content": message
+    }
+    try:
+        response = requests.post(webhook_url, json=data)
+        response.raise_for_status()  # HTTP 오류 확인
+        logging.info("메시지를 성공적으로 Discord에 전송했습니다.")
+    except Exception as e:
+        logging.error(f"메시지 전송 실패: {e}")
+
+def get_ai_response(api_key, prompt):
+    """AI에게 질문을 하고 응답을 받는 함수."""
+    openai.api_key = api_key
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
+            messages=[
+                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},  # 쉼표 추가
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,  # 최대 토큰 수 설정
+            temperature=0.3   # 온도를 0.3으로 설정
+        )
+        logging.info("AI로부터 응답을 성공적으로 받았습니다.")
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        logging.error(f"AI 응답 오류: {str(e)}")
+        return None
+
 def main():
     logging.info("Discord 웹훅 스크립트 실행 중...")  # 시작 로그 추가
     # 환경 변수에서 설정 로드
@@ -53,7 +98,7 @@ def main():
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
-            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를를 추천해 주세요. "
+            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 세개를 추천해 주세요. "
             f"추천 시 다음 조건을 고려해 주세요:\n"
             f"1. 모든 기술적 지표가 긍정적인 신호를 나타내는지 검토\n"
             f"2. 추천 종목에 대한 확신을 가지고 이유를 50자 내외로 설명\n"
