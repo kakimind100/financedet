@@ -1,4 +1,3 @@
-import sys
 import logging
 import requests
 import openai
@@ -27,7 +26,7 @@ def get_ai_response(api_key, prompt):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
@@ -59,7 +58,7 @@ def main():
         if top_stocks.empty:
             logging.error("읽어온 데이터가 비어 있습니다.")
             return
-        
+
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
@@ -67,17 +66,9 @@ def main():
         filtered_stocks = []
         for code in top_stocks['Code'].unique():
             stock_data = top_stocks[top_stocks['Code'] == code]
-            logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
+            recent_data = stock_data.tail(10) if len(stock_data) > 10 else stock_data
+            filtered_stocks.extend(recent_data.to_dict(orient='records'))
 
-            # 최근 10거래일만 필터링
-            if len(stock_data) > 10:
-                recent_data = stock_data.tail(10)  # 마지막 10거래일 데이터
-            else:
-                recent_data = stock_data  # 데이터가 10거래일 미만이면 전체 데이터 사용
-
-            filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
-
-        # 필터링된 데이터로 DataFrame 생성
         filtered_df = pd.DataFrame(filtered_stocks)
         logging.info(f"필터링된 데이터 개수: {len(filtered_df)}개")
 
@@ -85,45 +76,27 @@ def main():
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
-            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를 추천해 주세요. "
-            f"추천 시 간단한 이유를 함께 작성해 주세요."
+            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를 추천해 주세요. 간단한 이유도 포함해주세요."
         )
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
 
+        # 1. AI 추천 메시지 전송
         if ai_response:
             logging.info(f"AI 응답: {ai_response}")
-            recommendations = ai_response.split("\n")
-            
-            message = "AI가 추천한 상승 가능성 종목 분석:\n"
-            for recommendation in recommendations:
-                try:
-                    stock_code, reason = recommendation.split(":")
-                    stock_code, reason = stock_code.strip(), reason.strip()
-                    
-                    # CSV에서 해당 종목 코드 데이터 추출
-                    stock_data = filtered_df[filtered_df['Code'] == stock_code].iloc[0]
-                    
-                    # 데이터 파싱
-                    buy_date = stock_data['Buy Date']
-                    sell_date = stock_data['Sell Date']
-                    buy_price = stock_data['Buy Price']
-                    sell_price = stock_data['Sell Price']
-                    current_price = stock_data['Current Price']
-                    estimated_return = stock_data['Gap'] * 100
+            send_discord_message(discord_webhook_url, f"AI 추천 결과:\n{ai_response}")
 
-                    # 메시지 작성
-                    message += (
-                        f"종목 코드: {stock_code}, 추천 이유: {reason}, "
-                        f"매수 날짜: {buy_date}, 매도 날짜: {sell_date}, "
-                        f"매수 가격: {buy_price:.2f}, 매도 가격: {sell_price:.2f}, "
-                        f"현재 가격: {current_price:.2f}, 예상 상승률: {estimated_return:.2f}%\n"
-                    )
-                except Exception as e:
-                    logging.error(f"추천 항목 처리 중 오류 발생: {e}")
-            
-            send_discord_message(discord_webhook_url, message)
+        # 2. 상위 20개 종목 요약 메시지 전송
+        summary_message = "상위 20개 종목 매수/매도 요약:\n"
+        for _, row in top_stocks.iterrows():
+            summary_message += (
+                f"종목 코드: {row['Code']}, 매수 날짜: {row['Buy Date']}, "
+                f"매수 가격: {row['Buy Price']:.2f}, 매도 날짜: {row['Sell Date']}, "
+                f"매도 가격: {row['Sell Price']:.2f}, 상승률: {row['Gap'] * 100:.2f}%\n"
+            )
+
+        send_discord_message(discord_webhook_url, summary_message)
 
     except FileNotFoundError:
         logging.error("파일을 찾을 수 없습니다.")
