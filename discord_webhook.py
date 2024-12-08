@@ -63,9 +63,27 @@ def main():
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
 
+        # 최근 26거래일 데이터만 필터링
+        filtered_stocks = []
+        for code in top_stocks['Code'].unique():
+            stock_data = top_stocks[top_stocks['Code'] == code]
+            logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
+
+            # 최근 26거래일만 필터링
+            if len(stock_data) > 26:
+                recent_data = stock_data.tail(26)  # 마지막 26거래일 데이터
+            else:
+                recent_data = stock_data  # 데이터가 26거래일 미만이면 전체 데이터 사용
+
+            filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
+
+        # 필터링된 데이터로 DataFrame 생성
+        filtered_df = pd.DataFrame(filtered_stocks)
+        logging.info(f"필터링된 데이터 개수: {len(filtered_df)}개")
+
         # AI에게 전달할 분석 프롬프트
         analysis_prompt = (
-            f"주식 데이터는 다음과 같습니다:\n{top_stocks.to_json(orient='records', force_ascii=False)}\n"
+            f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
             f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 3개를 추천해 주세요. "
             f"추천 시 간단한 이유를 함께 작성해 주세요."
@@ -85,7 +103,7 @@ def main():
                     stock_code, reason = stock_code.strip(), reason.strip()
                     
                     # CSV에서 해당 종목 코드 데이터 추출
-                    stock_data = top_stocks[top_stocks['Code'] == stock_code].iloc[0]
+                    stock_data = filtered_df[filtered_df['Code'] == stock_code].iloc[0]
                     
                     # 데이터 파싱
                     buy_date = stock_data['Buy Date']
