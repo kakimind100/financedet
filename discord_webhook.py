@@ -1,4 +1,3 @@
-import sys
 import logging
 import requests
 import openai
@@ -31,7 +30,7 @@ def get_ai_response(api_key, prompt):
         response = openai.ChatCompletion.create(
             model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
             messages=[
-                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},  # 쉼표 추가
+                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=300,  # 최대 토큰 수 설정
