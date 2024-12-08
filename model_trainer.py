@@ -1,179 +1,257 @@
 import pandas as pd
+import joblib
+import logging
+import os
 import numpy as np
-import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from bayes_opt import BayesianOptimization
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import classification_report
 
+# 로그 디렉토리 설정
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)
+
+# 로깅 설정
+logging.basicConfig(
+    filename=os.path.join(log_dir, 'stock_data_fetcher.log'),
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# 콘솔 로그 출력 설정
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.DEBUG)
+console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logging.getLogger().addHandler(console_handler)
 
 def fetch_stock_data():
     """주식 데이터를 가져오는 함수 (CSV 파일에서)."""
-    file_path = 'data/stock_data_with_indicators.csv'
-    df = pd.read_csv(file_path, dtype={'Code': str})
-    df['Date'] = pd.to_datetime(df['Date'])
-    df.set_index('Date', inplace=True)
-    print("데이터 로드 완료. 열 목록:")
-    print(df.columns.tolist())
-    return df
+    logging.debug("주식 데이터를 가져오는 중...")
+    try:
+        file_path = os.path.join('data', 'stock_data_with_indicators.csv')
+        
+        dtype = {
+            'Code': 'object',
+            'Date': 'str',
+            'Open': 'float',
+            'High': 'float',
+            'Low': 'float',
+            'Close': 'float',
+            'Volume': 'float',
+            'Change': 'float',
+            'MA5': 'float',
+            'MA20': 'float',
+            'MACD': 'float',
+            'MACD_Signal': 'float',
+            'Bollinger_High': 'float',
+            'Bollinger_Low': 'float',
+            'Stoch': 'float',
+            'RSI': 'float',
+            'ATR': 'float',
+            'CCI': 'float',
+            'EMA20': 'float',
+            'EMA50': 'float',
+            'Momentum': 'float',
+            'Williams %R': 'float',
+            'ADX': 'float',
+            'Volume_MA20': 'float',
+            'ROC': 'float',
+            'CMF': 'float',
+            'OBV': 'float'
+        }
 
+        df = pd.read_csv(file_path, dtype=dtype)
+        logging.info(f"주식 데이터를 '{file_path}'에서 성공적으로 가져왔습니다.")
+
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
+        return df
+    except Exception as e:
+        logging.error(f"주식 데이터 가져오기 중 오류 발생: {e}")
+        return None
 
 def prepare_data(df):
-    """데이터를 준비하는 함수 (최근 60일 데이터를 학습, 향후 26일 예측)."""
-    df = df[['Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD',
-             'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch',
-             'Momentum', 'ADX']].dropna()
-    x_data, y_data = [], []
-    for i in range(60, len(df) - 26):
-        x_data.append(df.iloc[i - 60:i].values)  # 이전 60일 데이터
-        y_data.append(df.iloc[i + 25]['Close'])  # 26일 후의 종가
-    x_data, y_data = np.array(x_data), np.array(y_data)
-    return x_data, y_data
+    """데이터를 준비하고 분할하는 함수."""
+    # 오늘 종가 기준으로 29% 이상 상승 여부를 타겟으로 설정
+    df['Target'] = np.where(df['Close'].shift(-1) >= df['Close'] * 1.29, 1, 0)  # 다음 날 종가 기준
+    
+    # NaN 제거
+    df.dropna(subset=['Target'], inplace=True)
 
+    # 기술적 지표를 피쳐로 사용
+    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
 
-def optimize_hyperparameters_bayes(X_train, y_train):
-    """Bayesian Optimization을 사용하여 XGBoost 하이퍼파라미터를 최적화."""
-    def xgb_evaluate(n_estimators, learning_rate, max_depth, subsample, colsample_bytree, alpha):
-        model = xgb.XGBRegressor(
-            objective='reg:squarederror',
-            n_estimators=int(n_estimators),
-            learning_rate=learning_rate,
-            max_depth=int(max_depth),
-            subsample=subsample,
-            colsample_bytree=colsample_bytree,
-            alpha=alpha,
-            n_jobs=-1,
-            tree_method='hist'  # 빠른 학습을 위한 설정
-        )
-        X_train_reshaped = X_train.reshape(X_train.shape[0], -1)
-        model.fit(X_train_reshaped, y_train)
-        mse = -model.score(X_train_reshaped, y_train)  # 부호 반전
-        return mse
+    # NaN 제거
+    df.dropna(subset=features + ['Target'], inplace=True)
 
-    param_bounds = {
-        'n_estimators': (50, 100),  # 범위 축소
-        'learning_rate': (0.05, 0.2),
-        'max_depth': (3, 6),
-        'subsample': (0.7, 1),
-        'colsample_bytree': (0.5, 1),
-        'alpha': (0, 10),
+    # 훈련 데이터를 위한 리스트
+    X = []
+    y = []
+    stock_codes = []  # 종목 코드를 저장할 리스트 추가
+
+    # 종목 코드별로 최근 5일 데이터 확인
+    for stock_code in df['Code'].unique():
+        stock_data = df[df['Code'] == stock_code].tail(5)  # 최근 5일 데이터
+        
+        if len(stock_data) == 5:  # 최근 5일 데이터가 있는 경우
+            X.append(stock_data[features].values.flatten())  # 5일의 피쳐를 1D 배열로 변환
+            y.append(stock_data['Target'].values[-1])  # 마지막 날의 타겟 값
+            stock_codes.append(stock_code)  # 종목 코드 추가
+
+    X = np.array(X)
+    y = np.array(y)
+
+    # 데이터 분할
+    X_train, X_temp, y_train, y_temp, stock_codes_train, stock_codes_temp = train_test_split(
+        X, y, stock_codes, test_size=0.3, random_state=42
+    )
+
+    # 검증 및 테스트 세트 분할
+    X_valid, X_test, y_valid, y_test, stock_codes_valid, stock_codes_test = train_test_split(
+        X_temp, y_temp, stock_codes_temp, test_size=0.5, random_state=42
+    )
+
+    return X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test
+
+def train_model_with_hyperparameter_tuning():
+    """모델을 훈련시키고 하이퍼파라미터를 튜닝하는 함수."""
+    df = fetch_stock_data()  # 주식 데이터 가져오기
+    if df is None:
+        logging.error("데이터프레임이 None입니다. 모델 훈련을 중단합니다.")
+        return None, None  # None 반환
+
+    # 데이터 준비 및 분할
+    X_train, X_valid, X_test, y_train, y_valid, y_test, stock_codes_train, stock_codes_valid, stock_codes_test = prepare_data(df)
+
+    # 하이퍼파라미터 튜닝을 위한 GridSearchCV 설정
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [None, 10, 20, 30],
+        'min_samples_split': [2, 5, 10],
+        'min_samples_leaf': [1, 2, 4]
     }
 
-    optimizer = BayesianOptimization(
-        f=xgb_evaluate,
-        pbounds=param_bounds,
-        random_state=42,
-    )
-    optimizer.maximize(init_points=3, n_iter=10)
+    model = RandomForestClassifier(random_state=42)
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid,
+                               scoring='accuracy', cv=3, verbose=2, n_jobs=-1)
+    
+    grid_search.fit(X_train, y_train)  # 하이퍼파라미터 튜닝
+    
+    # 최적의 하이퍼파라미터 출력
+    logging.info(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
+    print(f"최적의 하이퍼파라미터: {grid_search.best_params_}")
 
-    best_params = optimizer.max['params']
-    best_params['n_estimators'] = int(best_params['n_estimators'])
-    best_params['max_depth'] = int(best_params['max_depth'])
+    # 최적의 모델로 재훈련
+    best_model = grid_search.best_estimator_
 
-    print("Bayesian Optimization 최적의 하이퍼파라미터:", best_params)
+    # 모델 평가
+    y_pred = best_model.predict(X_test)
+    report = classification_report(y_test, y_pred)
+    logging.info(f"모델 성능 보고서:\n{report}")
+    print(report)
 
-    best_model = xgb.XGBRegressor(objective='reg:squarederror', n_jobs=-1, **best_params)
-    X_train_reshaped = X_train.reshape(X_train.shape[0], -1)
-    best_model.fit(X_train_reshaped, y_train)
-    return best_model
+    # 테스트 세트 종목 코드 로깅
+    logging.info(f"테스트 세트 종목 코드: {stock_codes_test}")
 
+    return best_model, stock_codes_test  # 최적 모델과 테스트 종목 코드 반환
 
-def create_and_train_model(X_train, y_train):
-    """모델 생성 및 훈련."""
-    print("하이퍼파라미터 최적화 중...")
-    model = optimize_hyperparameters_bayes(X_train, y_train)
-    print("최적화된 모델 생성 완료.")
-    return model
+def predict_next_day(model, stock_codes_test):
+    """다음 거래일의 상승 여부를 예측하는 함수."""
+    df = fetch_stock_data()  # 주식 데이터 가져오기
+    if df is None:
+        logging.error("데이터프레임이 None입니다. 예측을 중단합니다.")
+        return
 
+    # 오늘 종가가 29% 이상 상승한 종목 필터링
+    today_rise_stocks = df[df['Close'] >= df['Open'] * 1.29]
 
-def predict_future_prices(model, last_60_days):
-    """모델을 사용하여 향후 26일 가격을 예측하는 함수."""
+    # 예측할 데이터 준비 (모든 기술적 지표 포함)
+    features = ['MA5', 'MA20', 'RSI', 'MACD', 'Bollinger_High', 'Bollinger_Low', 
+                'Stoch', 'ATR', 'CCI', 'EMA20', 'EMA50', 'Momentum', 
+                'Williams %R', 'ADX', 'Volume_MA20', 'ROC', 'CMF', 'OBV']
     predictions = []
-    input_data = last_60_days.copy()
 
-    for _ in range(26):
-        input_data_reshaped = input_data.reshape(1, -1)
-        pred = model.predict(input_data_reshaped)[0]
-        predictions.append(pred)
-        input_data = np.roll(input_data, -1, axis=0)
-        input_data[-1, 0] = pred  # 'Close' 값 업데이트
+    # 테스트 데이터와 예측 데이터의 중복 체크
+    overlapping_stocks = today_rise_stocks['Code'].unique()
+    common_stocks = set(stock_codes_test).intersection(set(overlapping_stocks))
+    
+    if common_stocks:
+        logging.warning(f"예측 데이터와 테스트 데이터가 겹치는 종목: {common_stocks}")
 
-    return predictions
+    # 최근 5거래일 데이터를 사용하여 예측하기
+    for stock_code in today_rise_stocks['Code'].unique():
+        if stock_code in stock_codes_test:  # 테스트 데이터에 포함된 종목만 예측
+            recent_data = df[df['Code'] == stock_code].tail(5)  # 마지막 5일 데이터 가져오기
+            if not recent_data.empty:  # 데이터가 비어있지 않은 경우
+                # 최근 5일 데이터를 사용하여 예측
+                X_next = recent_data[features].values.flatten().reshape(1, -1)  # 5일 데이터로 2D 배열로 변환
+                pred = model.predict(X_next)
 
+                # 예측 결과와 함께 정보를 저장
+                predictions.append({
+                    'Code': stock_code,
+                    'Prediction': pred[0],
+                    'MA5': recent_data['MA5'].values[-1],
+                    'MA20': recent_data['MA20'].values[-1],
+                    'RSI': recent_data['RSI'].values[-1],
+                    'MACD': recent_data['MACD'].values[-1],
+                    'Bollinger_High': recent_data['Bollinger_High'].values[-1],
+                    'Bollinger_Low': recent_data['Bollinger_Low'].values[-1],
+                    'Stoch': recent_data['Stoch'].values[-1],
+                    'ATR': recent_data['ATR'].values[-1],
+                    'CCI': recent_data['CCI'].values[-1],
+                    'EMA20': recent_data['EMA20'].values[-1],
+                    'EMA50': recent_data['EMA50'].values[-1],
+                    'Momentum': recent_data['Momentum'].values[-1],
+                    'Williams %R': recent_data['Williams %R'].values[-1],
+                    'ADX': recent_data['ADX'].values[-1],
+                    'Volume_MA20': recent_data['Volume_MA20'].values[-1],
+                    'ROC': recent_data['ROC'].values[-1],
+                    'CMF': recent_data['CMF'].values[-1],
+                    'OBV': recent_data['OBV'].values[-1]
+                })
 
-def generate_signals(predictions, start_date):
-    """예측 결과를 기반으로 매수 및 매도 신호를 생성하는 함수."""
-    buy_index = np.argmin(predictions)
-    remaining_predictions = predictions[buy_index + 1:]
-    sell_index = buy_index + np.argmax(remaining_predictions) + 1 if remaining_predictions else buy_index
+    # 예측 결과를 데이터프레임으로 변환
+    predictions_df = pd.DataFrame(predictions)
 
-    buy_date = start_date + pd.Timedelta(days=buy_index)
-    sell_date = start_date + pd.Timedelta(days=sell_index)
+    # 29% 상승할 것으로 예측된 종목 필터링
+    top_predictions = predictions_df[predictions_df['Prediction'] == 1]
 
-    print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
-    return buy_index, sell_index, buy_date, sell_date
+    # 상위 20개 종목 정렬 (MA5, MACD, RSI, Stoch 기준으로 정렬)
+    top_predictions = top_predictions.sort_values(
+        by=['MA5', 'MACD', 'RSI', 'Stoch'], 
+        ascending=[False, False, True, True]  # MA5와 MACD는 내림차순, RSI와 Stoch은 오름차순으로 정렬
+    ).head(20)
 
+    # 예측 결과 출력
+    print("다음 거래일에 29% 상승할 것으로 예측되는 상위 20개 종목:")
+    for index, row in top_predictions.iterrows():
+        print(f"{row['Code']} (MA5: {row['MA5']}, MA20: {row['MA20']}, RSI: {row['RSI']}, "
+              f"MACD: {row['MACD']}, Bollinger_High: {row['Bollinger_High']}, "
+              f"Bollinger_Low: {row['Bollinger_Low']}, Stoch: {row['Stoch']}, "
+              f"ATR: {row['ATR']}, CCI: {row['CCI']}, EMA20: {row['EMA20']}, "
+              f"EMA50: {row['EMA50']}, Momentum: {row['Momentum']}, "
+              f"Williams %R: {row['Williams %R']}, ADX: {row['ADX']}, "
+              f"Volume_MA20: {row['Volume_MA20']}, ROC: {row['ROC']}, "
+              f"CMF: {row['CMF']}, OBV: {row['OBV']})")
 
-def save_and_merge_top_20(df_top_20, original_data_path):
-    """상위 20개 종목 데이터를 기존 데이터와 결합하여 저장."""
-    try:
-        original_data = pd.read_csv(original_data_path, dtype={'Code': str})
-        original_data['Date'] = pd.to_datetime(original_data['Date'])
-        merged_data = pd.merge(df_top_20, original_data, on='Code', how='left')
-        output_path = 'data/top_20_stocks_all_dates.csv'
-        merged_data.to_csv(output_path, index=False)
-        print(f"결합된 데이터가 {output_path}에 저장되었습니다.")
-    except Exception as e:
-        print(f"데이터 병합 중 오류 발생: {e}")
-        raise
+    # 상위 20개 종목의 전체 날짜 데이터 추출
+    all_data_with_top_stocks = df[df['Code'].isin(top_predictions['Code'])]
 
+    # 예측 결과를 data/top_20_stocks_all_dates.csv 파일로 저장
+    output_file_path = os.path.join('data', 'top_20_stocks_all_dates.csv')
+    all_data_with_top_stocks.to_csv(output_file_path, index=False, encoding='utf-8-sig')  # CSV 파일로 저장
+    logging.info(f"상위 20개 종목의 전체 데이터가 '{output_file_path}'에 저장되었습니다.")
 
-def main():
-    df = fetch_stock_data()
-    results = []
+if __name__ == "__main__":
+    logging.info("모델 훈련 스크립트 실행 중...")
+    model, stock_codes_test = train_model_with_hyperparameter_tuning()  # 하이퍼파라미터 튜닝 모델 훈련
+    logging.info("모델 훈련 스크립트 실행 완료.")
 
-    for code in df['Code'].unique():
-        stock_data = df[df['Code'] == code]
-        current_price = stock_data['Close'].iloc[-1]
-
-        try:
-            x_data, y_data = prepare_data(stock_data)
-        except Exception as e:
-            print(f"종목 코드 {code}의 데이터 준비 중 오류: {e}")
-            continue
-
-        if len(x_data) < 60:
-            print(f"종목 코드 {code}의 데이터가 충분하지 않습니다.")
-            continue
-
-        X_train, X_test, y_train, y_test = train_test_split(x_data, y_data, test_size=0.2, random_state=42)
-        model = create_and_train_model(X_train, y_train)
-        last_60_days = x_data[-1]
-        future_predictions = predict_future_prices(model, last_60_days)
-
-        start_date = stock_data.index[-1]
-        buy_index, sell_index, buy_date, sell_date = generate_signals(future_predictions, start_date)
-
-        buy_price = future_predictions[buy_index]
-        sell_price = future_predictions[sell_index]
-        price_increase_ratio = (sell_price - buy_price) / buy_price
-
-        results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price))
-
-    # 상위 20 종목 정렬
-    results.sort(key=lambda x: x[1], reverse=True)
-    df_top_20 = pd.DataFrame(results[:20], columns=[
-        'Code', 'Gap', 'Buy Date', 'Sell Date', 'Buy Price', 'Sell Price', 'Current Price'
-    ])
-
-    # 상위 20 종목 로그 출력
-    print("\n===== 상위 20 종목 =====")
-    for idx, row in df_top_20.iterrows():
-        print(f"종목코드: {row['Code']}, 상승률: {row['Gap']:.2%}")
-        print(f"매수 시점: {row['Buy Date']}, 매도 시점: {row['Sell Date']}")
-        print(f"매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}")
-        print("------------------------")
-
-    save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
-
-
-# 실행
-main()
+    if model is not None and stock_codes_test is not None:  # 모델과 테스트 데이터가 있는 경우에만 예측 실행
+        logging.info("다음 거래일 예측 스크립트 실행 중...")
+        predict_next_day(model, stock_codes_test)  # 다음 거래일 예측
+        logging.info("다음 거래일 예측 스크립트 실행 완료.")
+    else:
+        logging.error("모델 훈련에 실패했습니다. 예측을 수행할 수 없습니다.")
