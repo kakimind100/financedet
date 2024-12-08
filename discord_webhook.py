@@ -26,7 +26,7 @@ def get_ai_response(api_key, prompt):
     openai.api_key = api_key
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
