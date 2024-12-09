@@ -36,7 +36,7 @@ def get_ai_response(api_key, prompt):
                 {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300,  # 최대 토큰 수 설정
+            max_tokens=500,  # 최대 토큰 수 설정
             temperature=0.3   # 온도를 0.3으로 설정
         )
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
