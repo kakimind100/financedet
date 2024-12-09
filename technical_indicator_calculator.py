@@ -4,7 +4,7 @@ import os
 import pandas_ta as ta
 import requests
 from bs4 import BeautifulSoup
-from textblob import TextBlob  # 감성 분석을 위한 TextBlob 라이브러리 추가
+from textblob import TextBlob
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -25,12 +25,12 @@ logging.getLogger().addHandler(console_handler)
 
 def fetch_blog_posts():
     """이블로그에서 최신 글을 파싱하는 함수."""
-    url = 'https://example-blog.com/recent-posts'  # 이블로그 URL 변경
+    url = 'https://example-blog.com/recent-posts'
     try:
         response = requests.get(url)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        posts = soup.find_all('div', class_='post')  # 특정 HTML 구조에 맞춰 조정 필요
+        posts = soup.find_all('div', class_='post')
         logging.info("이블로그에서 최신 글 파싱 완료.")
 
         blog_texts = []
@@ -52,6 +52,7 @@ def perform_sentiment_analysis(texts):
             analysis = TextBlob(text)
             sentiment_score = analysis.sentiment.polarity  # 감성 점수 추출
             sentiments.append(sentiment_score)
+            logging.info(f"감성 분석 결과: {sentiment_score} for text: {text[:50]}...")  # 일부 로그 추가
         except Exception as e:
             logging.error(f"감성 분석 중 오류 발생: {e}")
             sentiments.append(None)  # 오류 발생 시 None 처리
@@ -80,7 +81,7 @@ def calculate_technical_indicators(target_code):
 
         # 날짜 열을 datetime 형식으로 변환
         df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d')
-        df.set_index(['Code', 'Date'], inplace=True)  # 종목 코드와 날짜를 인덱스로 설정
+        df.set_index(['Code', 'Date'], inplace=True)
 
         # 중복된 데이터 처리: 종목 코드와 날짜로 그룹화하여 평균값으로 대체
         df = df.groupby(['Code', df.index.get_level_values('Date')]).mean()
@@ -110,7 +111,7 @@ def calculate_technical_indicators(target_code):
         macd = ta.macd(df['Close'])
         df['MACD'] = macd['MACD_12_26_9']
         df['MACD_Signal'] = macd['MACDh_12_26_9']
-        df['MACD_Hist'] = macd['MACD_12_26_9'] - macd['MACDh_12_26_9']  # MACD 히스토그램 추가
+        df['MACD_Hist'] = macd['MACD_12_26_9'] - macd['MACDh_12_26_9']
         logging.info("MACD 계산 완료.")
     except Exception as e:
         logging.error(f"MACD 계산 중 오류 발생: {e}")
@@ -119,8 +120,8 @@ def calculate_technical_indicators(target_code):
     # Bollinger Bands 계산
     try:
         bollinger_bands = ta.bbands(df['Close'], length=20, std=2)
-        df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']  # 중간선
-        df['Bollinger_Low'] = bollinger_bands['BBL_20_2.0']  # 하한선
+        df['Bollinger_High'] = bollinger_bands['BBM_20_2.0']
+        df['Bollinger_Low'] = bollinger_bands['BBL_20_2.0']
         logging.info("Bollinger Bands 계산 완료.")
     except Exception as e:
         logging.error(f"Bollinger Bands 계산 중 오류 발생: {e}")
@@ -129,7 +130,7 @@ def calculate_technical_indicators(target_code):
     # Stochastic Oscillator 추가
     try:
         stoch = ta.stoch(df['High'], df['Low'], df['Close'])
-        df['Stoch'] = stoch['STOCHk_14_3_3']  # 올바른 열 이름 사용
+        df['Stoch'] = stoch['STOCHk_14_3_3']
         logging.info("Stochastic Oscillator 계산 완료.")
     except Exception as e:
         logging.error(f"Stochastic Oscillator 계산 중 오류 발생: {e}")
@@ -144,11 +145,11 @@ def calculate_technical_indicators(target_code):
         df['EMA50'] = ta.ema(df['Close'], length=50)
 
         # 추가 기술적 지표
-        df['Momentum'] = df['Close'].diff(4)  # 4일 전과의 가격 차이
+        df['Momentum'] = df['Close'].diff(4)
         df['Williams %R'] = ta.willr(df['High'], df['Low'], df['Close'], length=14)
         df['ADX'] = ta.adx(df['High'], df['Low'], df['Close'], length=14)['ADX_14']
-        df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()  # 20일 거래량 이동 평균
-        df['ROC'] = ta.roc(df['Close'], length=12)  # Rate of Change 추가
+        df['Volume_MA20'] = df['Volume'].rolling(window=20).mean()
+        df['ROC'] = ta.roc(df['Close'], length=12)
 
         # CMF 및 OBV 계산 추가
         df['CMF'] = ta.cmf(df['High'], df['Low'], df['Close'], df['Volume'], length=20)
@@ -174,11 +175,11 @@ def calculate_technical_indicators(target_code):
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
     logging.info("기술적 지표와 감성 분석 결과가 'stock_data_with_indicators.csv'로 저장되었습니다.")
-    logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")  # 저장된 데이터프레임 정보 로그
-
+    logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")
+    
 if __name__ == "__main__":
     target_code = '006280'  # 특정 종목 코드를 입력하세요.
-    logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
+    logging.info("기술 지표 계산 스크립트 실행 중...")
 
     # 이블로그에서 최신 글 파싱 및 감성 분석 수행
     blog_texts = fetch_blog_posts()
