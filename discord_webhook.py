@@ -16,11 +16,8 @@ logging.basicConfig(
 
 def send_discord_message(webhook_url, message):
     """Discord 웹훅으로 메시지를 전송하는 함수."""
-    data = {
-        "content": message
-    }
     try:
-        response = requests.post(webhook_url, json=data)
+        response = requests.post(webhook_url, json={"content": message})
         response.raise_for_status()  # HTTP 오류 확인
         logging.info("메시지를 성공적으로 Discord에 전송했습니다.")
     except Exception as e:
@@ -55,8 +52,7 @@ def fetch_blog_posts():
         posts = soup.find_all('item')  # RSS 피드에서 글 찾기
         logging.info("이블로그에서 최신 글 파싱 완료.")
 
-        blog_texts = [post.get_text() for post in posts]
-        return blog_texts
+        return [post.get_text() for post in posts]
     
     except requests.RequestException as e:
         logging.error(f"이블로그에서 최신 글을 가져오는 중 오류 발생: {e}")
@@ -117,11 +113,7 @@ def main():
             logging.debug(f"{code}의 전체 데이터 개수: {len(stock_data)}개")
 
             # 최근 10일치 데이터만 남기기
-            if len(stock_data) > 10:
-                recent_data = stock_data.tail(10)  # 마지막 10일 데이터
-            else:
-                recent_data = stock_data  # 데이터가 10일 미만이면 전체 데이터 사용
-
+            recent_data = stock_data.tail(10) if len(stock_data) > 10 else stock_data
             filtered_stocks.extend(recent_data.to_dict(orient='records'))  # 목록에 추가
 
         # 필터링된 데이터로 DataFrame 생성
@@ -140,7 +132,7 @@ def main():
         # 감성 점수를 분석 프롬프트에 추가하여 AI에게 전달
         analysis_prompt = (
             f"주식 데이터는 다음과 같습니다:\n{filtered_df.to_json(orient='records', force_ascii=False)}\n"
-            f"현재 전체 주식 시장의 감성 점수는 {overall_sentiment_score}입니다.\n"
+            f"현재 전체 주식 시장의 감성 점수는 {sentiment_scores[-1]}입니다.\n"  # 최종 감성 점수를 추가
             f"이 점수는 -1에서 +1 사이의 값으로, +1에 가까울수록 시장이 긍정적이고, "
             f"-1에 가까울수록 시장이 부정적임을 의미합니다.\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
@@ -155,8 +147,6 @@ def main():
             f"(예: 기술적 지표가 부정적, 시장 감성 점수가 낮음 등).\n"
             f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
         )
-
-
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
