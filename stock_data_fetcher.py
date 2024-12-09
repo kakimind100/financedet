@@ -53,7 +53,7 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
 
             if recent_volume.sum() > 0:  # 최근 26일 간 거래량이 0이 아닌 경우
                 # 최근 26일 종가가 7000 이상 30만원 이하인지 확인
-                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 10000):
+                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 8000):
                     df.reset_index(inplace=True)  # 인덱스 초기화
                     df['Code'] = code  # 주식 코드 추가
                     df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
