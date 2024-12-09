@@ -176,7 +176,7 @@ def calculate_technical_indicators(target_code):
     df.to_csv(output_file)
     logging.info("기술적 지표와 감성 분석 결과가 'stock_data_with_indicators.csv'로 저장되었습니다.")
     logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")
-    
+
 if __name__ == "__main__":
     target_code = '006280'  # 특정 종목 코드를 입력하세요.
     logging.info("기술 지표 계산 스크립트 실행 중...")
