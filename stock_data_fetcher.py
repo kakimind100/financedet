@@ -53,7 +53,7 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
 
             if recent_volume.sum() > 0:  # 최근 26일 간 거래량이 0이 아닌 경우
                 # 최근 26일 종가가 7000 이상 30만원 이하인지 확인
-                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 300000):
+                if all(recent_data['Close'] >= 7000) and all(recent_data['Close'] <= 10000):
                     df.reset_index(inplace=True)  # 인덱스 초기화
                     df['Code'] = code  # 주식 코드 추가
                     df['Date'] = df['Date'].dt.strftime('%Y-%m-%d')  # 날짜 형식 변경
@@ -69,9 +69,8 @@ def fetch_single_stock_data(code, start_date, end_date, all_stocks_data):
         logging.error(f"{code} 데이터 가져오기 중 오류 발생: {e}")  # 오류 로그
 
 def fetch_stock_data(markets, start_date, end_date):
-    """주식 데이터를 가져오는 메인 함수."""    
+    """주식 데이터를 가져오는 메인 함수."""
     all_stocks_data = {}  # 모든 주식 데이터를 저장할 딕셔너리
-    stock_count = 0  # 주식 데이터 가져온 횟수 카운트
 
     for market in markets:  # 여러 시장에 대해 반복
         codes = fdr.StockListing(market)['Code'].tolist()  # 주식 코드 리스트 가져오기
@@ -85,13 +84,6 @@ def fetch_stock_data(markets, start_date, end_date):
 
         for thread in threads:
             thread.join()  # 모든 스레드가 완료될 때까지 대기
-            
-        stock_count += len(codes)  # 이번 사이클에서 가져온 주식 코드 수 누적
-
-        # 테스트용 2종목 이상 데이터가 가져와졌을 경우 완료 메시지 출력
-        if stock_count >= 2:
-            logging.info("주식 데이터가 2종목 이상 가져와졌습니다. 프로세스를 종료합니다.")
-            break
 
     # 데이터프레임으로 변환 후 CSV로 저장
     if all_stocks_data:  # 데이터가 있는 경우
@@ -105,5 +97,5 @@ def fetch_stock_data(markets, start_date, end_date):
 
 if __name__ == "__main__":
     end_date = datetime.today()  # 오늘 날짜
-    start_date = end_date - timedelta(days=362)  # 1년 전 날짜
+    start_date = end_date - timedelta(days=365)  # 1년 전 날짜
     fetch_stock_data(['KOSPI', 'KOSDAQ'], start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))  # 데이터 가져오기 실행
