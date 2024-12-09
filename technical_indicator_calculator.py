@@ -33,11 +33,7 @@ def fetch_blog_posts():
         posts = soup.find_all('div', class_='post')
         logging.info("이블로그에서 최신 글 파싱 완료.")
 
-        blog_texts = []
-        for post in posts:
-            text = post.get_text()
-            blog_texts.append(text)
-        
+        blog_texts = [post.get_text() for post in posts]
         return blog_texts
     
     except requests.RequestException as e:
@@ -47,14 +43,14 @@ def fetch_blog_posts():
 def perform_sentiment_analysis(texts):
     """텍스트를 입력 받아 감성 분석을 수행하는 함수."""
     sentiments = []
-    for text in texts:
+    for i, text in enumerate(texts):
         try:
             analysis = TextBlob(text)
             sentiment_score = analysis.sentiment.polarity  # 감성 점수 추출
             sentiments.append(sentiment_score)
-            logging.info(f"감성 분석 결과: {sentiment_score} for text: {text[:50]}...")  # 일부 로그 추가
+            logging.info(f"감성 분석 결과 [{i+1}/{len(texts)}]: {sentiment_score} for text snippet: {text[:50]}...")  # 일부 로그 추가
         except Exception as e:
-            logging.error(f"감성 분석 중 오류 발생: {e}")
+            logging.error(f"감성 분석 중 오류 발생: {e} for text snippet: {text[:50]}...")
             sentiments.append(None)  # 오류 발생 시 None 처리
     
     return sentiments
