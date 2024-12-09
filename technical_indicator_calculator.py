@@ -25,7 +25,7 @@ logging.getLogger().addHandler(console_handler)
 
 def fetch_blog_posts():
     """이블로그에서 최신 글을 파싱하는 함수."""
-    url = 'https://example-blog.com/recent-posts'
+    url = 'https://investqq.wordpress.com'
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -178,7 +178,7 @@ def calculate_technical_indicators(target_code):
     logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")
     
 if __name__ == "__main__":
-    target_code = '004980'  # 특정 종목 코드를 입력하세요.
+    target_code = '006280'  # 특정 종목 코드를 입력하세요.
     logging.info("기술 지표 계산 스크립트 실행 중...")
 
     # 이블로그에서 최신 글 파싱 및 감성 분석 수행
