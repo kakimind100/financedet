@@ -1,4 +1,4 @@
-openai==0.28.0          # OpenAI API
+requests
 pandas>=1.5.3           # 데이터 처리 라이브러리
 yfinance>=0.2.18        # Yahoo Finance 데이터 가져오기
 pandas_ta>=0.3.14b0     # 기술적 지표 계산을 위한 라이브러리
