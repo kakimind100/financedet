@@ -1,10 +1,10 @@
-from bs4 import BeautifulSoup
+import os
 import logging
 import requests
 import pandas as pd
+from bs4 import BeautifulSoup
 from textblob import TextBlob
 import pandas_ta as ta
-import os
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -170,7 +170,7 @@ def calculate_technical_indicators(target_code):
     # 계산된 데이터프레임을 CSV로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
     df.to_csv(output_file)
-    logging.info("기술적 지표와 감성 분석 결과가 'stock_data_with_indicators.csv'로 저장되었습니다.")
+    logging.info(f"기술적 지표와 감성 분석 결과가 '{output_file}'로 저장되었습니다.")
     logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")
 
 if __name__ == "__main__":
