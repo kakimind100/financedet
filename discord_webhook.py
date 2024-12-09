@@ -1,6 +1,7 @@
 import sys
 import logging
 import requests
+import openai
 import os
 import pandas as pd
 from datetime import datetime
@@ -27,31 +28,20 @@ def send_discord_message(webhook_url, message):
 
 def get_ai_response(api_key, prompt):
     """AI에게 질문을 하고 응답을 받는 함수."""
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {api_key}',
-    }
-    payload = {
-        "model": "gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
-        "messages": [
-            {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
-            {"role": "user", "content": prompt}
-        ],
-        "max_tokens": 300,  # 최대 토큰 수 설정
-        "temperature": 0.3   # 온도를 0.3으로 설정
-    }
-    
+    openai.api_key = api_key
     try:
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers=headers,
-            json=payload
+        response = openai.ChatCompletion.create(
+            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
+            messages=[
+                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,  # 최대 토큰 수 설정
+            temperature=0.3   # 온도를 0.3으로 설정
         )
-        response.raise_for_status()
-        data = response.json()
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
-        return data['choices'][0]['message']['content']
-    except requests.RequestException as e:
+        return response['choices'][0]['message']['content']
+    except Exception as e:
         logging.error(f"AI 응답 오류: {str(e)}")
         return None
 
@@ -112,10 +102,6 @@ def main():
             logging.error("읽어온 데이터가 비어 있습니다.")
             return
         
-        # 전체 데이터 프레임 로그
-        logging.info("전체 데이터 프레임:")
-        logging.debug(top_stocks.to_string())
-
         # 현재 날짜를 가져오는 부분
         current_date = datetime.today()
         logging.info(f"현재 날짜: {current_date.strftime('%Y-%m-%d')}")
@@ -146,6 +132,10 @@ def main():
 
         # 감성 분석 수행
         sentiment_scores = perform_sentiment_analysis(blog_texts)
+
+        # 전체 감성 점수 계산
+        overall_sentiment_score = sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0
+        logging.info(f"전체 감성 점수: {overall_sentiment_score}")
 
         # 감성 점수를 분석 프롬프트에 추가하여 AI에게 전달
         analysis_prompt = (
