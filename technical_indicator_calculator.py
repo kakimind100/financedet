@@ -160,6 +160,12 @@ def calculate_technical_indicators(target_code):
     df.dropna(inplace=True)
     logging.info(f"NaN 값이 제거된 후 데이터프레임의 크기: {df.shape}")
 
+    # 감성 분석 추가
+    blog_texts = fetch_blog_posts()
+    sentiments = perform_sentiment_analysis(blog_texts)
+    df['Sentiment_Score'] = sentiments
+    logging.info("감성 분석 결과가 데이터프레임에 추가되었습니다.")
+
     # 특정 종목 코드의 데이터 로그하기
     if target_code in df.index.levels[0]:
         target_data = df.loc[target_code]
@@ -167,15 +173,15 @@ def calculate_technical_indicators(target_code):
     else:
         logging.warning(f"{target_code} 종목 코드는 데이터에 존재하지 않습니다.")
 
-    # 계산된 데이터프레임을 CSV로 저장
+    # 계산된 기술적 지표와 감성 분석 결과를 CSV 파일로 저장
     output_file = os.path.join(data_dir, 'stock_data_with_indicators.csv')
-    df.to_csv(output_file)
-    logging.info(f"기술적 지표와 감성 분석 결과가 '{output_file}'로 저장되었습니다.")
-    logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")
+    try:
+        df.to_csv(output_file, index=False)
+        logging.info(f"기술적 지표와 감성 분석 결과가 '{output_file}'로 저장되었습니다.")
+    except Exception as e:
+        logging.error(f"데이터프레임 저장 중 오류 발생: {e}")
 
-if __name__ == "__main__":
-    target_code = '460860'  # 특정 종목 코드를 입력하세요.
-    logging.info(f"{target_code} 종목에 대한 기술적 지표 및 감성 분석을 계산 중...")
-    blog_texts = fetch_blog_posts()
-    sentiments = perform_sentiment_analysis(blog_texts)
-    calculate_technical_indicators(target_code)
+# 예시 사용법
+target_code = '460860'
+logging.info(f"{target_code} 종목에 대한 기술적 지표 및 감성 분석을 계산 중...")
+calculate_technical_indicators(target_code)
