@@ -29,8 +29,8 @@ def fetch_blog_posts():
     try:
         response = requests.get(url)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        posts = soup.find_all('div', class_='post')
+        soup = BeautifulSoup(response.text, 'xml')  # XML로 파싱
+        posts = soup.find_all('item')  # RSS 피드에서 글 찾기
         logging.info("이블로그에서 최신 글 파싱 완료.")
 
         blog_texts = [post.get_text() for post in posts]
