@@ -112,17 +112,13 @@ def generate_signals(predictions, start_date):
     return buy_index, sell_index, buy_date, sell_date
 
 
-def save_and_merge_top_20(df_top_20, original_data_path):
-    """상위 20개 종목 데이터를 기존 데이터와 결합하여 저장."""
+def save_top_20_stocks(df_top_20, output_path='data/top_20_stocks.csv'):
+    """상위 20개 종목 데이터를 저장."""
     try:
-        original_data = pd.read_csv(original_data_path, dtype={'Code': str})
-        original_data['Date'] = pd.to_datetime(original_data['Date'])
-        merged_data = pd.merge(df_top_20, original_data, on='Code', how='left')
-        output_path = 'data/top_20_stocks_all_dates.csv'
-        merged_data.to_csv(output_path, index=False)
-        print(f"결합된 데이터가 {output_path}에 저장되었습니다.")
+        df_top_20.to_csv(output_path, index=False)
+        print(f"상위 20개 종목 데이터가 {output_path}에 저장되었습니다.")
     except Exception as e:
-        print(f"데이터 병합 중 오류 발생: {e}")
+        print(f"데이터 저장 중 오류 발생: {e}")
         raise
 
 
@@ -172,7 +168,8 @@ def main():
         print(f"매수가: {row['Buy Price']:.2f}, 매도가: {row['Sell Price']:.2f}, 현재가: {row['Current Price']:.2f}")
         print("------------------------")
 
-    save_and_merge_top_20(df_top_20, 'data/stock_data_with_indicators.csv')
+    # 상위 20 종목 데이터 저장
+    save_top_20_stocks(df_top_20)
 
 
 # 실행
