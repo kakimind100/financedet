@@ -2,6 +2,7 @@ import sys
 import logging
 import requests
 import os
+import openai
 import pandas as pd
 from datetime import datetime
 from bs4 import BeautifulSoup
