@@ -1,7 +1,6 @@
 import sys
 import logging
 import requests
-import openai
 import os
 import pandas as pd
 from datetime import datetime
@@ -23,27 +22,8 @@ def send_discord_message(webhook_url, message):
         response = requests.post(webhook_url, json=data)
         response.raise_for_status()  # HTTP 오류 확인
         logging.info("메시지를 성공적으로 Discord에 전송했습니다.")
-    except Exception as e:
+    except requests.RequestException as e:
         logging.error(f"메시지 전송 실패: {e}")
-
-def get_ai_response(api_key, prompt):
-    """AI에게 질문을 하고 응답을 받는 함수."""
-    openai.api_key = api_key
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
-            messages=[
-                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,  # 최대 토큰 수 설정
-            temperature=0.3   # 온도를 0.3으로 설정
-        )
-        logging.info("AI로부터 응답을 성공적으로 받았습니다.")
-        return response['choices'][0]['message']['content']
-    except Exception as e:
-        logging.error(f"AI 응답 오류: {str(e)}")
-        return None
 
 def fetch_blog_posts():
     """이블로그에서 최신 글을 파싱하는 함수."""
@@ -81,9 +61,8 @@ def main():
     logging.info("Discord 웹훅 스크립트 실행 중...")
     # 환경 변수에서 설정 로드
     discord_webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
-    openai_api_key = os.getenv('OPENAI_API_KEY')
 
-    if not discord_webhook_url or not openai_api_key:
+    if not discord_webhook_url:
         logging.error("환경 변수가 설정되지 않았습니다.")
         return
 
@@ -156,13 +135,8 @@ def main():
             f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
         )
 
-        logging.info("AI에게 분석 요청을 보내는 중...")
-        ai_response = get_ai_response(openai_api_key, analysis_prompt)
-
-        if ai_response:
-            logging.info(f"AI 응답: {ai_response}")
-            # AI의 응답을 Discord 웹훅으로 전송
-            send_discord_message(discord_webhook_url, f"상승 가능성 예측:\n{ai_response}")
+        # AI의 응답을 Discord 웹훅으로 전송
+        send_discord_message(discord_webhook_url, analysis_prompt)
 
     except FileNotFoundError:
         logging.error("파일을 찾을 수 없습니다.")
