@@ -1,7 +1,6 @@
 import sys
 import logging
 import requests
-import openai
 import os
 import pandas as pd
 from datetime import datetime
@@ -28,20 +27,31 @@ def send_discord_message(webhook_url, message):
 
 def get_ai_response(api_key, prompt):
     """AI에게 질문을 하고 응답을 받는 함수."""
-    openai.api_key = api_key
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    }
+    payload = {
+        "model": "gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
+        "messages": [
+            {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": 300,  # 최대 토큰 수 설정
+        "temperature": 0.3   # 온도를 0.3으로 설정
+    }
+    
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # 모델을 GPT-4o-mini로 설정
-            messages=[
-                {"role": "system", "content": "당신은 투자 전문가로, 시장의 다양한 기술적 지표를 분석하여 투자 결정을 돕는 역할을 합니다."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,  # 최대 토큰 수 설정
-            temperature=0.3   # 온도를 0.3으로 설정
+        response = requests.post(
+            'https://api.openai.com/v1/chat/completions',
+            headers=headers,
+            json=payload
         )
+        response.raise_for_status()
+        data = response.json()
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
-        return response['choices'][0]['message']['content']
-    except Exception as e:
+        return data['choices'][0]['message']['content']
+    except requests.RequestException as e:
         logging.error(f"AI 응답 오류: {str(e)}")
         return None
 
@@ -155,8 +165,6 @@ def main():
             f"(예: 기술적 지표가 부정적, 시장 감성 점수가 낮음 등).\n"
             f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
         )
-
-
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
