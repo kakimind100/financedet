@@ -1,10 +1,10 @@
-import pandas as pd
-import logging
-import os
-import pandas_ta as ta
-import requests
 from bs4 import BeautifulSoup
+import logging
+import requests
+import pandas as pd
 from textblob import TextBlob
+import pandas_ta as ta
+import os
 
 # 로그 디렉토리 설정
 log_dir = 'logs'
@@ -19,7 +19,7 @@ logging.basicConfig(
 
 # 콘솔 로그 출력 설정
 console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)  # DEBUG로 변경하여 모든 로그를 출력하도록 설정
+console_handler.setLevel(logging.DEBUG)  # 모든 로그 출력
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logging.getLogger().addHandler(console_handler)
 
