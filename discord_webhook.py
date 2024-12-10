@@ -36,7 +36,7 @@ def get_ai_response(api_key, prompt):
             max_tokens=500,
             temperature=0.3,  # 랜덤성 최소화
             top_p=1.0,        # 전체 확률 분포를 사용
-            presence_penalty=0.2    # 새로운 아이디어 유도
+            presence_penalty=1.0    # 새로운 아이디어 유도
         )
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
         return response['choices'][0]['message']['content']
@@ -138,7 +138,7 @@ def main():
             f"이 점수는 -1에서 +1 사이의 값으로, +1에 가까울수록 시장이 긍정적이고, "
             f"-1에 가까울수록 시장이 부정적임을 의미합니다.\n"
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
-            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 하나를 추천해 주세요. "
+            f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 세개를 추천해 주세요. "
             f"추천 시 다음 조건을 고려해 주세요:\n"
             f"1. 기술적 지표가 긍정적인 신호를 나타내는 종목을 선택\n"
             f"2. 시장 감성 점수를 고려하여:\n"
