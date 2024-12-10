@@ -60,15 +60,24 @@ def fetch_blog_posts():
         logging.error(f"이블로그에서 최신 글을 가져오는 중 오류 발생: {e}")
         return []
 
-def perform_sentiment_analysis(texts):
-    """텍스트를 입력 받아 감성 분석을 수행하는 함수."""
+def perform_sentiment_analysis(texts, score_adjustment_factor=0.0):
+    """텍스트를 입력 받아 감성 분석을 수행하는 함수.
+
+    Args:
+        texts (list): 감성 분석할 텍스트 리스트.
+        score_adjustment_factor (float): 감성 점수를 낮출 비율 (0 ~ 1 사이의 값).
+
+    Returns:
+        list: 감성 점수 리스트.
+    """
     sentiments = []
     for i, text in enumerate(texts):
         try:
             analysis = TextBlob(text)
-            sentiment_score = analysis.sentiment.polarity  # 감성 점수 추출
-            sentiments.append(sentiment_score)
-            logging.info(f"감성 분석 결과 [{i+1}/{len(texts)}]: {sentiment_score} for text snippet: {text[:50]}...")  # 일부 로그 추가
+            sentiment_score = analysis.sentiment.polarity  # 기본 감성 점수 추출
+            adjusted_score = sentiment_score - (score_adjustment_factor * sentiment_score)
+            sentiments.append(adjusted_score)
+            logging.info(f"감성 분석 결과 [{i+1}/{len(texts)}]: {adjusted_score} for text snippet: {text[:50]}...")  # 일부 로그 추가
         except Exception as e:
             logging.error(f"감성 분석 중 오류 발생: {e} for text snippet: {text[:50]}...")
             sentiments.append(None)  # 오류 발생 시 None 처리
