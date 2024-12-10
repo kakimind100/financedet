@@ -34,7 +34,7 @@ def get_ai_response(api_key, prompt):
                 {"role": "user", "content": prompt}
             ],
             max_tokens=500,
-            temperature=0.5,  # 랜덤성 최소화
+            temperature=0.7,  # 랜덤성 최소화
             top_p=1.0,        # 전체 확률 분포를 사용
             presence_penalty=0.2    # 새로운 아이디어 유도
         )
