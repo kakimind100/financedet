@@ -138,7 +138,7 @@ def main():
             return
 
         # 감성 분석 수행
-        score_adjustment_factor = 0.1  # 점수를 10% 낮추기 위해 조정
+        score_adjustment_factor = 0.2  # 점수를 20% 낮추기 위해 조정
         sentiment_scores = perform_sentiment_analysis(blog_texts, score_adjustment_factor=score_adjustment_factor)
 
 
