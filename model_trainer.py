@@ -102,17 +102,7 @@ def generate_signals(predictions, start_date):
     buy_date = start_date + pd.Timedelta(days=buy_index)
     sell_date = start_date + pd.Timedelta(days=sell_index)
 
-    print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
     return buy_index, sell_index, buy_date, sell_date
-
-def save_top_20_stocks(df_top_20, output_path='data/top_20_stocks_all_dates.csv'):
-    """상위 20개 종목 데이터를 저장."""
-    try:
-        df_top_20.to_csv(output_path, index=False)
-        print(f"상위 20개 종목 데이터가 {output_path}에 저장되었습니다.")
-    except Exception as e:
-        print(f"데이터 저장 중 오류 발생: {e}")
-        raise
 
 def main():
     df = fetch_stock_data()
@@ -144,11 +134,13 @@ def main():
         sell_price = future_predictions[sell_index]
         price_increase_ratio = (sell_price - buy_price) / buy_price
 
-        # 상위 20 종목 저장
-        top_20_data = stock_data[['Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD',
-                                  'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch',
-                                  'Momentum', 'ADX']].iloc[-26:]
-        results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price, top_20_data))
+        # 매수 시점이 오늘 날짜일 때만 추가
+        if buy_date.date() == pd.Timestamp.today().date():
+            # 상위 20 종목 저장
+            top_20_data = stock_data[['Close', 'Change', 'EMA20', 'EMA50', 'RSI', 'MACD',
+                                      'MACD_Signal', 'Bollinger_High', 'Bollinger_Low', 'Stoch',
+                                      'Momentum', 'ADX']].iloc[-26:]
+            results.append((code, price_increase_ratio, buy_date, sell_date, buy_price, sell_price, current_price, top_20_data))
 
     # 상위 20 종목 정렬
     results.sort(key=lambda x: x[1], reverse=True)
