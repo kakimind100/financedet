@@ -102,7 +102,14 @@ def generate_signals(predictions, start_date):
     buy_date = start_date + pd.Timedelta(days=buy_index)
     sell_date = start_date + pd.Timedelta(days=sell_index)
 
+    print(f"매수 신호 날짜: {buy_date}, 매도 신호 날짜: {sell_date}")
     return buy_index, sell_index, buy_date, sell_date
+
+def save_top_20_stocks(df_top_20):
+    """상위 20 종목 데이터를 저장하는 함수."""
+    file_path = 'top_20_stocks.csv'
+    df_top_20.to_csv(file_path, index=False)
+    print(f"상위 20 종목 데이터가 '{file_path}'에 저장되었습니다.")
 
 def main():
     df = fetch_stock_data()
