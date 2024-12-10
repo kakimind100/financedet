@@ -36,7 +36,7 @@ def get_ai_response(api_key, prompt):
             max_tokens=500,
             temperature=0.5,  # 랜덤성 최소화
             top_p=1.0,        # 전체 확률 분포를 사용
-            presence_penalty=1.0    # 새로운 아이디어 유도
+            presence_penalty=0.2    # 새로운 아이디어 유도
         )
         logging.info("AI로부터 응답을 성공적으로 받았습니다.")
         return response['choices'][0]['message']['content']
@@ -140,7 +140,7 @@ def main():
             f"현재 날짜는 {current_date.strftime('%Y-%m-%d')}입니다. "
             f"오늘 시간외 거래에 매수하기에 적절한 종목 코드 세개를 추천해 주세요. "
             f"추천 시 다음 조건을 고려해 주세요:\n"
-            f"1. 기술적 지표가 긍정적인 신호를 나타내는 종목을 선택\n"
+            f"1. 기술적 지표가 긍정적인 신호를 나타나는 종목을 선택\n"
             f"2. 시장 감성 점수를 고려하여:\n"
             f"   - 감성 점수가 0 이상일 경우: 상승 가능성이 있는 종목을 추천\n"
             f"   - 감성 점수가 0 미만일 경우: 추천하지 않거나 보수적으로 접근\n"
@@ -149,6 +149,7 @@ def main():
             f"(예: 기술적 지표가 부정적, 시장 감성 점수가 낮음 등).\n"
             f"AI는 가장 적합한 매수 조건을 판단하여 종목을 선택해 주세요."
         )
+
 
         logging.info("AI에게 분석 요청을 보내는 중...")
         ai_response = get_ai_response(openai_api_key, analysis_prompt)
