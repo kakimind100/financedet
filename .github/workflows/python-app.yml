@@ -2,7 +2,7 @@ name: Run Stock Analysis and Discord Webhook
 
 on:
   schedule:
-    - cron: '00 6 * * *'  # 매일 16:00 KST에 실행 (UTC 07:00)
+    - cron: '00 6 * * *'  # 매일 15:30 KST에 실행 (UTC 06:00)
   workflow_dispatch:  # 수동 실행을 위한 설정
 
 jobs:
