@@ -51,7 +51,7 @@ def get_ai_response(api_key, prompt):
 
 def fetch_blog_posts():
     """이블로그에서 최신 글을 파싱하는 함수."""
-    url = 'https://investqq.wordpress.com/feed'
+    url = 'https://kr.investing.com/rss/market_overview.rss'
     try:
         response = requests.get(url)
         response.raise_for_status()
