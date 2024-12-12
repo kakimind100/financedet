@@ -139,7 +139,7 @@ def calculate_technical_indicators(target_code):
     logging.debug(f"저장된 데이터프레임 정보:\n{df.info()}")  # 저장된 데이터프레임 정보 로그
 
 if __name__ == "__main__":
-    target_code = 'GOOG'  # 특정 종목 코드를 입력하세요.
+    target_code = '006280'  # 특정 종목 코드를 입력하세요.
     logging.info("기술 지표 계산 스크립트 실행 중...")  # 실행 시작 메시지
     calculate_technical_indicators(target_code)
     logging.info("기술 지표 계산 스크립트 실행 완료.")
