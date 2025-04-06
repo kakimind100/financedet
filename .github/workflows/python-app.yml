@@ -1,4 +1,11 @@
 name: Run Stock Analysis 
+
+# 워크플로우 실행 조건
+on:
+  schedule:
+    - cron: '2 15 * * *'  # UTC 15:02 = KST 00:02에 매일 실행
+  workflow_dispatch:  # 수동 실행도 가능하도록 유지
+  
 jobs:
   build:
     runs-on: ubuntu-latest  # Ubuntu 최신 버전에서 실행
